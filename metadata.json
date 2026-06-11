@@ -1,0 +1,6 @@
+{
+  "name": "Biblioteca de Prompts",
+  "description": "Una biblioteca interactiva para almacenar, organizar, completar con variables y optimizar prompts de Inteligencia Artificial mediante Gemini para creadores y creadoras de contenido.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

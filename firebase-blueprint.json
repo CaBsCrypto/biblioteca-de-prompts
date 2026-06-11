@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "Prompt": {
+      "title": "Prompt",
+      "description": "An AI prompt template with details, variables, and categories.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The firebase auth uid of the creator"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the prompt"
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of what the prompt does"
+        },
+        "promptText": {
+          "type": "string",
+          "description": "The exact body of the prompt, potentially containing variable placeholders like {{topic}}"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category like YouTube, Marketing, Coding, Writing, or General"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Labels for categorization"
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the prompt is marked as favorite"
+        },
+        "notas": {
+          "type": "string",
+          "description": "Optional notes or reminders for executing the specific prompt"
+        },
+        "isShared": {
+          "type": "boolean",
+          "description": "Whether the prompt is public and viewable via a shared link without login"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the prompt creator"
+        },
+        "authorAvatar": {
+          "type": "string",
+          "description": "The URL of the prompt creator's avatar"
+        },
+        "likedBy": {
+          "type": "array",
+          "description": "List of user UIDs who have liked this prompt"
+        },
+        "likesCount": {
+          "type": "integer",
+          "description": "Total count of likes"
+        },
+        "forkedFrom": {
+          "type": "string",
+          "description": "Title of the original prompt this was cloned from"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "folderId": {
+          "type": "string",
+          "description": "The unique ID of the custom folder setting"
+        }
+      },
+      "required": ["userId", "title", "promptText", "category", "createdAt", "updatedAt"]
+    },
+    "PromptVersion": {
+      "title": "PromptVersion",
+      "description": "A saved historical state of a prompt's text body.",
+      "type": "object",
+      "properties": {
+        "promptText": {
+          "type": "string",
+          "description": "The previous body text of the prompt."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of when this historical state was captured."
+        }
+      },
+      "required": ["promptText", "createdAt"]
+    },
+    "PromptComment": {
+      "title": "PromptComment",
+      "description": "A comment posted by a user on a community prompt.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The firebase auth uid of the commenter."
+        },
+        "userName": {
+          "type": "string",
+          "description": "The display name of the commenter."
+        },
+        "userAvatar": {
+          "type": "string",
+          "description": "The avatar URL of the commenter."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the comment."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp of when this comment was posted."
+        }
+      },
+      "required": ["userId", "userName", "text", "createdAt"]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "A custom user folder to group prompts.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The creator of the folder."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the folder."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description."
+        },
+        "isShared": {
+          "type": "boolean",
+          "description": "Whether this folder is shared publicly."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the folder creator."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp."
+        }
+      },
+      "required": ["userId", "name", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/folders/{folderId}": {
+      "schema": "Folder",
+      "description": "User defined folders for custom prompt groupings."
+    },
+    "/prompts/{promptId}": {
+      "schema": "Prompt",
+      "description": "Collection of save-able AI prompt templates."
+    },
+    "/prompts/{promptId}/versions/{versionId}": {
+      "schema": "PromptVersion",
+      "description": "Subcollection storing previous historical states of the promptText for revision reverts."
+    },
+    "/prompts/{promptId}/comments/{commentId}": {
+      "schema": "PromptComment",
+      "description": "Subcollection storing community comments and feedback for a prompt."
+    }
+  }
+}

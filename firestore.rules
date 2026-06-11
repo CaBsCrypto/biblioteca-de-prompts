@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Basic validation helper for prompt format
+    function isValidPrompt(data) {
+      return data.userId == request.auth.uid
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.promptText is string && data.promptText.size() > 0 && data.promptText.size() <= 10000
+        && data.category is string && data.category.size() <= 50
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('isFavorite' in data) || data.isFavorite is bool)
+        && (!('notas' in data) || (data.notas is string && data.notas.size() <= 6000))
+        && (!('isShared' in data) || data.isShared is bool)
+        && (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 200))
+        && (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 1000))
+        && (!('likedBy' in data) || (data.likedBy is list && data.likedBy.size() <= 1000))
+        && (!('likesCount' in data) || data.likesCount is int)
+        && (!('forkedFrom' in data) || (data.forkedFrom is string && data.forkedFrom.size() <= 200))
+        && (!('suggestedVariables' in data) || data.suggestedVariables is list)
+        && (!('folderId' in data) || data.folderId == null || (data.folderId is string && data.folderId.size() <= 128));
+    }
+
+    match /folders/{folderId} {
+      allow list, delete: if isSignedIn() && existing().userId == request.auth.uid;
+      allow get: if (isSignedIn() && existing().userId == request.auth.uid) || (existing().isShared == true);
+      
+      allow create: if isSignedIn()
+        && isValidId(folderId)
+        && incoming().userId == request.auth.uid
+        && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+        && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
+        && (!('isShared' in incoming()) || incoming().isShared is bool)
+        && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
+        && incoming().createdAt == request.time;
+        
+      allow update: if isSignedIn()
+        && isValidId(folderId)
+        && existing().userId == request.auth.uid
+        && incoming().userId == request.auth.uid
+        && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+        && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
+        && (!('isShared' in incoming()) || incoming().isShared is bool)
+        && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'authorName']);
+    }
+
+    match /prompts/{promptId} {
+      // Secure list query and document retrieve (allow authenticated owner, shared prompt, or prompt in a shared folder)
+      allow get: if (existing().isShared == true) 
+        || (isSignedIn() && existing().userId == request.auth.uid)
+        || ('folderId' in existing() && existing().folderId is string && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.isShared == true);
+        
+      allow list: if (existing().isShared == true) 
+        || (isSignedIn() && existing().userId == request.auth.uid)
+        || ('folderId' in existing() && existing().folderId is string && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.isShared == true);
+      
+      // Strict creation verification
+      allow create: if isSignedIn() 
+        && isValidId(promptId) 
+        && isValidPrompt(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+        
+      // Strict update matching (Tiered: Owner edit OR Community global social Like)
+      allow update: if isSignedIn()
+        && isValidId(promptId)
+        && (
+          // Case 1: Owner-authorized edit
+          (existing().userId == request.auth.uid
+            && incoming().userId == request.auth.uid
+            && isValidPrompt(incoming())
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'likedBy', 'likesCount', 'forkedFrom', 'updatedAt', 'folderId']))
+          ||
+          // Case 2: Non-owner social interaction (liking/unliking shared prompts)
+          (existing().isShared == true
+            // Enforce immutability of other core fields to prevent injection
+            && incoming().userId == existing().userId
+            && incoming().title == existing().title
+            && incoming().promptText == existing().promptText
+            && incoming().category == existing().category
+            && incoming().isShared == existing().isShared
+            && incoming().createdAt == existing().createdAt
+            && incoming().diff(existing()).affectedKeys().hasOnly(['likedBy', 'likesCount', 'updatedAt'])
+            && incoming().likedBy is list
+            && incoming().likedBy.size() <= 1000
+            && incoming().likesCount is int)
+        );
+        
+      // Strictly deletion
+      allow delete: if isSignedIn()
+        && existing().userId == request.auth.uid;
+
+      // Subcollection for comments
+      match /comments/{commentId} {
+        allow list, get: if (get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true)
+          || (isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid);
+
+        allow create: if isSignedIn()
+          && isValidId(commentId)
+          && (get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid
+              || get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true)
+          && incoming().userId == request.auth.uid
+          && incoming().userName is string && incoming().userName.size() <= 200
+          && (!('userAvatar' in incoming()) || (incoming().userAvatar is string && incoming().userAvatar.size() <= 1000))
+          && incoming().text is string && incoming().text.size() > 0 && incoming().text.size() <= 1000
+          && incoming().createdAt == request.time;
+
+        allow delete: if isSignedIn()
+          && (existing().userId == request.auth.uid
+              || get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid);
+      }
+
+      // Subcollection for version history
+      match /versions/{versionId} {
+        allow get: if isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
+        allow list: if isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
+        
+        allow create: if isSignedIn()
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid
+          && isValidId(versionId)
+          && incoming().promptText is string && incoming().promptText.size() > 0 && incoming().promptText.size() <= 10000
+          && incoming().createdAt == request.time;
+          
+        allow delete: if isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}
