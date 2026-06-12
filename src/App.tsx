@@ -48,12 +48,14 @@ import ProfileModal from "./components/ProfileModal";
 import CreateFolderModal from "./components/CreateFolderModal";
 import ShareFolderModal from "./components/ShareFolderModal";
 import SharedPromptModal from "./components/SharedPromptModal";
+import ActivationChecklist from "./components/ActivationChecklist";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
 import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
+import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { DEFAULT_PROMPTS } from "./data";
 import {
   combineSearchablePrompts,
@@ -194,7 +196,7 @@ export default function App() {
     onNotification: triggerNotification
   });
 
-  const { promptEventScores, trackUserEvent } = usePromptEvents(user);
+  const { userEvents, promptEventScores, trackUserEvent } = usePromptEvents(user);
 
   const handleOpenEdit = (p: Prompt) => {
     trackUserEvent("edit", p);
@@ -409,6 +411,47 @@ export default function App() {
     setShowAIAssistant(true);
   };
 
+  const handleActivationAction = (stepId: ActivationStepId) => {
+    if (stepId === "seed") {
+      handleSeedDefaults();
+      return;
+    }
+
+    if (stepId === "use") {
+      setCurrentTab("mi-biblioteca");
+      setSelectedCategory("Todas");
+      setSelectedFolderId(null);
+      triggerNotification("Abre una tarjeta y usa Copiar, Copiar Relleno o Usar para completar este paso.", "info");
+      return;
+    }
+
+    if (stepId === "remix") {
+      setCurrentTab("comunidad");
+      setSelectedCategory("Todas");
+      setSelectedAuthor(null);
+      setCommunityScope("todos");
+      triggerNotification("Elige un prompt comunitario y pulsa Clonar para crear tu remix editable.", "info");
+      return;
+    }
+
+    if (stepId === "folder") {
+      setCurrentTab("mi-biblioteca");
+      setShowCreateFolder(true);
+      return;
+    }
+
+    if (stepId === "share") {
+      setCurrentTab("mi-biblioteca");
+      const promptToShare = prompts.find((prompt) => !prompt.isShared) || prompts[0];
+      if (promptToShare) {
+        handleOpenEdit(promptToShare);
+        triggerNotification("Activa Permitir compartir publicamente y guarda para completar este paso.", "info");
+      } else {
+        triggerNotification("Primero crea o carga prompts para poder publicar uno.", "info");
+      }
+    }
+  };
+
   // 7. Filtering and Searching Locally For ultra responsive actions
   const filteredPrompts = useMemo(() => {
     return filterPrompts({
@@ -439,6 +482,13 @@ export default function App() {
     return matchedTitles.size;
   }, [defaultPromptTitles, prompts]);
   const missingDefaultPromptCount = Math.max(DEFAULT_PROMPTS.length - existingDefaultPromptCount, 0);
+  const activationChecklistState = useMemo(() => getActivationChecklistState({
+    prompts,
+    folders,
+    userEvents,
+    defaultPromptTitles,
+    defaultPromptsTotal: DEFAULT_PROMPTS.length
+  }), [prompts, folders, userEvents, defaultPromptTitles]);
 
   const allAvailableTags = useMemo(() => {
     return getAvailableTags({
@@ -1069,6 +1119,13 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+              )}
+
+              {currentTab === "mi-biblioteca" && (
+                <ActivationChecklist
+                  state={activationChecklistState}
+                  onAction={handleActivationAction}
+                />
               )}
 
               {/* Stats & Controls Row */}
