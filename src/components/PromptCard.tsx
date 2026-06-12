@@ -301,7 +301,7 @@ ${notesStr}
   return (
     <div
       id={`prompt-card-${prompt.id}`}
-      className={`bg-[#1e293b]/90 border border-slate-700/60 rounded-3xl p-6 shadow-xl hover:shadow-[0_0_25px_rgba(129,140,248,0.12)] hover:border-indigo-450/80 transition-all duration-250 flex flex-col justify-between group ${
+      className={`bg-[#1e293b]/90 border border-slate-700/60 rounded-2xl md:rounded-3xl p-4 sm:p-6 shadow-xl hover:shadow-[0_0_25px_rgba(129,140,248,0.12)] hover:border-indigo-450/80 transition-all duration-250 flex flex-col justify-between group ${
         !isCommunityView ? "cursor-grab active:cursor-grabbing select-none" : ""
       }`}
       draggable={!isCommunityView}
@@ -429,7 +429,7 @@ ${notesStr}
 
       {/* Actions segment */}
       <div className="border-t border-slate-700/50 pt-4 flex flex-col gap-4 mt-auto">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
           {/* Left: Modify / Social Actions Buttons */}
           <div className="flex flex-wrap items-center gap-1">
             {/* If community view and not owned, hide delete/edit, show social interaction */}
@@ -538,11 +538,11 @@ ${notesStr}
           </div>
 
           {/* Right: Copy & Run Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-3 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               id={`btn-copy-${prompt.id}`}
               onClick={handleCopy}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3 py-2 sm:py-1.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 copied
                   ? "bg-slate-800 text-slate-200 border-indigo-500/40"
                   : "bg-slate-800 text-slate-350 border-slate-700 hover:bg-slate-700 hover:text-white"
@@ -568,7 +568,7 @@ ${notesStr}
                 e.stopPropagation();
                 onCopyFilled(prompt);
               }}
-              className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white border border-indigo-500/25 hover:border-indigo-400/50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.1)]"
+              className="px-3 py-2 sm:py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white border border-indigo-500/25 hover:border-indigo-400/50 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.1)]"
               title="Copiar prompt rellenando variables rápidamente"
             >
               <Sparkles size={13} className="text-pink-400 animate-pulse" />
@@ -578,7 +578,7 @@ ${notesStr}
             <button
               id={`btn-use-${prompt.id}`}
               onClick={() => onUse(prompt)}
-              className="px-4 py-1.5 bg-gradient-to-r from-indigo-650 to-pink-600 hover:opacity-90 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
+              className="px-4 py-2 sm:py-1.5 bg-gradient-to-r from-indigo-650 to-pink-600 hover:opacity-90 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
               title="Rellenar variables interactivamente"
             >
               <Play size={12} fill="currentColor" />

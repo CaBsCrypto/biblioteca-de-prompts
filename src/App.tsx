@@ -553,7 +553,7 @@ export default function App() {
       {notification && (
         <div
           id="toast-hud"
-          className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-4 duration-300 ${
+          className={`fixed left-4 right-4 bottom-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50 px-4 sm:px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-4 duration-300 ${
             notification.type === "success"
               ? "bg-[#1e293b]/95 border-indigo-500/40 backdrop-blur-md shadow-[0_0_20px_rgba(99,102,241,0.15)] text-white"
               : "bg-slate-900 border-slate-800 text-white"
@@ -567,15 +567,15 @@ export default function App() {
       )}
 
       {/* Main Top Header Navigation */}
-      <header id="main-app-header" className="bg-[#1e293b]/75 border-b border-[#334155]/60 backdrop-blur-md py-4 px-6 md:px-12 flex items-center justify-between sticky top-0 z-30 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-lg shadow-indigo-600/10">
+      <header id="main-app-header" className="bg-[#1e293b]/75 border-b border-[#334155]/60 backdrop-blur-md py-3.5 px-4 md:px-12 flex items-center justify-between gap-3 sticky top-0 z-30 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-lg shadow-indigo-600/10 shrink-0">
             <Zap size={18} fill="currentColor" className="text-yellow-300 animate-pulse" />
           </div>
-          <div>
-            <h1 className="font-extrabold text-white text-md leading-tight font-sans tracking-tight flex items-center gap-2">
-              <span className="bg-gradient-to-r from-[#818cf8] to-[#ec4899] bg-clip-text text-transparent">Biblioteca de Prompts</span>
-              <span className="bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest leading-none">
+          <div className="min-w-0">
+            <h1 className="font-extrabold text-white text-sm sm:text-md leading-tight font-sans tracking-tight flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="bg-gradient-to-r from-[#818cf8] to-[#ec4899] bg-clip-text text-transparent truncate">Biblioteca de Prompts</span>
+              <span className="hidden min-[430px]:inline bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest leading-none shrink-0">
                 Creadores IA
               </span>
             </h1>
@@ -586,9 +586,9 @@ export default function App() {
         </div>
 
         {/* Right Header Navigation - Auth State panel */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {user ? (
-            <div className="flex items-center gap-3 bg-slate-900/60 p-1.5 pr-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center gap-1.5 sm:gap-3 bg-slate-900/60 p-1.5 sm:pr-4 rounded-2xl border border-slate-800">
               {(currentUserProfile?.photoURL || user.photoURL) ? (
                 <img
                   src={currentUserProfile?.photoURL || user.photoURL || ""}
@@ -612,7 +612,7 @@ export default function App() {
               <button
                 id="btn-edit-profile"
                 onClick={handleOpenProfileModal}
-                className="p-1 px-2.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all ml-1.5 flex items-center gap-1 cursor-pointer"
+                className="p-2 sm:p-1 sm:px-2.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all sm:ml-1.5 flex items-center gap-1 cursor-pointer"
                 title="Editar perfil publico"
               >
                 <UserCheck size={12} />
@@ -621,7 +621,7 @@ export default function App() {
               <button
                 id="btn-logout"
                 onClick={handleSignOut}
-                className="p-1 px-2.5 bg-slate-800 hover:bg-red-500/15 hover:text-red-400 rounded-lg border border-slate-700 text-xs font-bold transition-all ml-1.5 flex items-center gap-1 cursor-pointer"
+                className="p-2 sm:p-1 sm:px-2.5 bg-slate-800 hover:bg-red-500/15 hover:text-red-400 rounded-lg border border-slate-700 text-xs font-bold transition-all sm:ml-1.5 flex items-center gap-1 cursor-pointer"
                 title="Cerrar Sesión"
               >
                 <LogOut size={12} />
@@ -633,7 +633,7 @@ export default function App() {
               <button
                 id="btn-google-login"
                 onClick={handleSignIn}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98] cursor-pointer"
+                className="px-3 sm:px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98] cursor-pointer"
               >
                 <svg className="w-4 h-4 mr-0.5" viewBox="0 0 24 24" fill="none">
                   <path
@@ -653,7 +653,8 @@ export default function App() {
                     fill="#EA4335"
                   />
                 </svg>
-                <span>Conectar Google</span>
+                <span className="hidden min-[390px]:inline">Conectar Google</span>
+                <span className="min-[390px]:hidden">Google</span>
               </button>
             )
           )}
@@ -662,9 +663,9 @@ export default function App() {
 
       {/* Main Core Area layout */}
       {sharedCollection ? (
-        <div className="flex-1 overflow-y-auto px-6 py-12 md:px-12 max-w-6xl mx-auto w-full space-y-8 animate-in fade-in duration-300">
+        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
           {/* Header of the Shared Collection */}
-          <div className="bg-[#1e293b]/50 rounded-3xl p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
+          <div className="bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
             <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-indigo-600/10 blur-[80px] pointer-events-none"></div>
             
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -752,11 +753,11 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-12 space-y-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8">
           
           {/* Welcome Dashboard Block if offline/unauthenticated */}
           {!user && !authLoading ? (
-            <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-4xl mx-auto">
+            <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-4xl mx-auto">
               {/* background vector accent spheres */}
               <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-violet-600/10 blur-[80px] pointer-events-none"></div>
               <div className="absolute left-1/3 bottom-0 w-60 h-60 rounded-full bg-pink-500/5 blur-[60px] pointer-events-none"></div>
@@ -1069,8 +1070,8 @@ export default function App() {
               )}
 
               {/* Stats & Controls Row */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1e293b]/90 p-6 rounded-3xl border border-slate-700/85 shadow-xl">
-                <div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1e293b]/90 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-700/85 shadow-xl">
+                <div className="min-w-0">
                   <h2 className="text-lg font-extrabold text-white leading-tight flex items-center gap-2">
                     {currentTab === "mi-biblioteca" ? "Mi Panel de Control" : selectedAuthor ? `Catálogo de ${selectedAuthor.name}` : "Comunidad de Prompts"}
                   </h2>
@@ -1094,13 +1095,13 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-2 w-full md:w-auto">
                   {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                     <button
                       id="btn-seed-defaults"
                       onClick={handleSeedDefaults}
                       disabled={loadingPrompts}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer animate-pulse"
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer animate-pulse min-w-0"
                     >
                       <BookOpen size={14} />
                       <span>
@@ -1124,7 +1125,7 @@ export default function App() {
                         setGeminiRecommendationError("");
                         setShowRecommendationModal(true);
                       }}
-                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                      className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                       title="Recomendar un prompt existente sin usar IA externa"
                     >
                       <Sparkles size={14} />
@@ -1138,7 +1139,7 @@ export default function App() {
                       setPresetAItext("");
                       setShowAIAssistant(!showAIAssistant);
                     }}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md border cursor-pointer ${
+                    className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md border cursor-pointer ${
                       showAIAssistant
                         ? "bg-pink-500/10 text-pink-400 border-pink-500/30 hover:bg-pink-500/20"
                         : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
@@ -1155,7 +1156,7 @@ export default function App() {
                   <button
                     id="btn-open-switcher"
                     onClick={() => setShowQuickSwitcher(true)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
                     title="Atajo de teclado: Ctrl+J o Cmd+J"
                   >
                     <Search size={14} className="text-indigo-400" />
@@ -1168,7 +1169,7 @@ export default function App() {
                   <button
                     id="btn-new-prompt"
                     onClick={handleOpenAdd}
-                    className="px-4 py-2 bg-gradient-to-r from-[#4f46e5] to-[#9333ea] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] cursor-pointer"
+                    className="px-4 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#9333ea] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] cursor-pointer"
                   >
                     <Plus size={14} />
                     <span>Nuevo Prompt</span>
