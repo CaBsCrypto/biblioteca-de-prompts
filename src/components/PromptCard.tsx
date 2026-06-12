@@ -103,8 +103,6 @@ export default function PromptCard({
     if (!prompt.isShared) {
       if (onNotification) {
         onNotification("Este prompt es privado. Activa 'Permitir compartir públicamente' al editar.", "info");
-      } else {
-        alert("Este prompt es privado. Activa 'Permitir compartir públicamente' al editar.");
       }
       return;
     }
@@ -245,25 +243,32 @@ ${notesStr}
     document.head.appendChild(printStyle);
 
     // Build internal printable elements
-    const tagsStr = prompt.tags && prompt.tags.length > 0 ? prompt.tags.map(t => `#${t}`).join(" ") : "";
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    const tagsStr = prompt.tags && prompt.tags.length > 0 ? prompt.tags.map(t => `#${escapeHtml(t)}`).join(" ") : "";
     const notesHtml = prompt.notas ? `
       <div class="print-section-title">Notas de Ejecución / Instrucciones</div>
-      <div class="print-box">${prompt.notas}</div>
+      <div class="print-box">${escapeHtml(prompt.notas)}</div>
     ` : "";
 
     printContainer.innerHTML = `
-      <div class="print-title">${prompt.title}</div>
+      <div class="print-title">${escapeHtml(prompt.title)}</div>
       <div class="print-meta">
-        <strong>Categoría:</strong> ${prompt.category} &nbsp;|&nbsp; 
+        <strong>Categoría:</strong> ${escapeHtml(prompt.category)} &nbsp;|&nbsp;
         <strong>Etiquetas:</strong> ${tagsStr || "Ninguna"} &nbsp;|&nbsp;
         <strong>Fecha de Exportación:</strong> ${new Date().toLocaleDateString()}
       </div>
       
       <div class="print-section-title">Descripción</div>
-      <div class="print-box">${prompt.description || "Sin descripción proporcionada."}</div>
+      <div class="print-box">${escapeHtml(prompt.description || "Sin descripción proporcionada.")}</div>
       
       <div class="print-section-title">Plantilla del Prompt</div>
-      <div class="print-prompt-text">${prompt.promptText}</div>
+      <div class="print-prompt-text">${escapeHtml(prompt.promptText)}</div>
       
       ${notesHtml}
       

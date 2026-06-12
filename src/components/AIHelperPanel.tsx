@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { Prompt } from "../types";
 import { Sparkles, ArrowRight, Save, RotateCcw, Copy, Check, FileText } from "lucide-react";
+import { auth } from "../firebase";
 
 interface PromptVariableInput {
   name: string;
@@ -11,7 +13,7 @@ interface GeneratedPromptData {
   title: string;
   description: string;
   promptText: string;
-  category: "YouTube" | "Marketing" | "Programación" | "Redacción" | "General";
+  category: Prompt["category"];
   tags: string[];
   suggestedVariables: PromptVariableInput[];
 }
@@ -46,6 +48,29 @@ export default function AIHelperPanel({
   const [result, setResult] = useState<GeneratedPromptData | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const requestAI = async (endpoint: "/api/ai/crear" | "/api/ai/optimizar", payload: Record<string, unknown>) => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error("Inicia sesión para usar el asistente de IA.");
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(data?.error || "Ocurrió un error con el asistente de IA.");
+    }
+
+    return data as GeneratedPromptData;
+  };
+
   const handleCreatePrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
@@ -55,22 +80,11 @@ export default function AIHelperPanel({
     setResult(null);
 
     try {
-      const response = await fetch("/api/ai/crear", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: description.trim(),
-          targetRole: targetRole.trim() || undefined,
-          channelContext: channelContext.trim() || undefined
-        })
+      const data = await requestAI("/api/ai/crear", {
+        description: description.trim(),
+        targetRole: targetRole.trim() || undefined,
+        channelContext: channelContext.trim() || undefined
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Ocurrió un error generando el prompt.");
-      }
-
-      const data = await response.json();
       setResult(data);
     } catch (err) {
       console.error(err);
@@ -89,21 +103,10 @@ export default function AIHelperPanel({
     setResult(null);
 
     try {
-      const response = await fetch("/api/ai/optimizar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          originalPromptText: originalPrompt.trim(),
-          comments: comments.trim() || undefined
-        })
+      const data = await requestAI("/api/ai/optimizar", {
+        originalPromptText: originalPrompt.trim(),
+        comments: comments.trim() || undefined
       });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Ocurrió un error optimizando el prompt.");
-      }
-
-      const data = await response.json();
       setResult(data);
     } catch (err) {
       console.error(err);

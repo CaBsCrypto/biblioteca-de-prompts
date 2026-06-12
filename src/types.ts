@@ -18,6 +18,7 @@ export interface Prompt {
   suggestedVariables?: PromptVariable[];
   authorName?: string;
   authorAvatar?: string;
+  authorHandle?: string;
   likedBy?: string[];
   likesCount?: number;
   forkedFrom?: string;
@@ -33,6 +34,35 @@ export interface Folder {
   description?: string;
   isShared?: boolean;
   authorName?: string;
+  authorHandle?: string;
+  createdAt: any; // Firestore Timestamp
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  photoURL?: string;
+  handle: string;
+  bio?: string;
+  role?: "founder" | "creator" | "member";
+  status?: "active" | "hidden" | "blocked";
+  stats?: {
+    publicPromptsCount?: number;
+    followersCount?: number;
+    followingCount?: number;
+  };
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+}
+
+export interface UserEvent {
+  id: string;
+  type: "recommendation_open" | "recommendation_use" | "recommendation_copy" | "use" | "copy" | "edit";
+  promptId?: string | null;
+  promptTitle?: string | null;
+  category?: Prompt["category"] | null;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
   createdAt: any; // Firestore Timestamp
 }
 

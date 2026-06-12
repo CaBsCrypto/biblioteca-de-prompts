@@ -3,18 +3,10 @@ import {
   collection,
   doc,
   getDoc,
-  addDoc,
-  setDoc,
-  deleteDoc,
-  updateDoc,
   query,
   where,
-  onSnapshot,
-  serverTimestamp,
-  getDocs,
-  orderBy
+  getDocs
 } from "firebase/firestore";
-import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
 import {
   Sparkles,
   Plus,
@@ -42,53 +34,38 @@ import {
   UserPlus
 } from "lucide-react";
 
-import { auth, db, googleProvider, handleFirestoreError, OperationType } from "./firebase";
+import { auth, db } from "./firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { Prompt, CategoryFilter, Folder } from "./types";
-import { DEFAULT_PROMPTS } from "./data";
 import PromptCard from "./components/PromptCard";
 import PromptFormModal from "./components/PromptFormModal";
 import PromptFillerModal from "./components/PromptFillerModal";
 import CopyFilledModal from "./components/CopyFilledModal";
 import AIHelperPanel from "./components/AIHelperPanel";
 import QuickSwitcherModal from "./components/QuickSwitcherModal";
+import RecommendationModal, { GeminiRecommendationResult } from "./components/RecommendationModal";
+import ProfileModal from "./components/ProfileModal";
+import CreateFolderModal from "./components/CreateFolderModal";
+import ShareFolderModal from "./components/ShareFolderModal";
+import SharedPromptModal from "./components/SharedPromptModal";
+import { useAuthProfile } from "./hooks/useAuthProfile";
+import { usePromptEvents } from "./hooks/usePromptEvents";
+import { usePromptLibrary } from "./hooks/usePromptLibrary";
+import { useFolders } from "./hooks/useFolders";
+import { useCommunity } from "./hooks/useCommunity";
+import { buildLocalRecommendations } from "./utils/recommendations";
+import {
+  combineSearchablePrompts,
+  filterPrompts,
+  getAuthorProfileStats,
+  getAvailableTags,
+  getPublicFeaturedPrompts,
+  getTagSuggestions
+} from "./utils/promptFilters";
 
 export default function App() {
-  // Authentication states
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // Prompts states
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [loadingPrompts, setLoadingPrompts] = useState(false);
-
-  // Custom folders states
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [loadingFolders, setLoadingFolders] = useState(false);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [showCreateFolder, setShowCreateFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [newFolderDesc, setNewFolderDesc] = useState("");
-  const [isSavingFolder, setIsSavingFolder] = useState(false);
-
-  // Social / Community States
+  // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad">("mi-biblioteca");
-  const [communityPrompts, setCommunityPrompts] = useState<Prompt[]>([]);
-  const [loadingCommunityPrompts, setLoadingCommunityPrompts] = useState(false);
-  const [selectedAuthor, setSelectedAuthor] = useState<{ name: string; uid: string; avatar?: string } | null>(null);
-  const [followedCreatorUids, setFollowedCreatorUids] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem("prompt_followed_creators");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Save followed creators list to LocalStorage
-  useEffect(() => {
-    localStorage.setItem("prompt_followed_creators", JSON.stringify(followedCreatorUids));
-  }, [followedCreatorUids]);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Todas");
@@ -118,6 +95,11 @@ export default function App() {
   const [copyingFilledPrompt, setCopyingFilledPrompt] = useState<Prompt | null>(null);
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [showRecommendationModal, setShowRecommendationModal] = useState(false);
+  const [recommendationGoal, setRecommendationGoal] = useState("");
+  const [geminiRecommendation, setGeminiRecommendation] = useState<GeminiRecommendationResult | null>(null);
+  const [geminiRecommendationLoading, setGeminiRecommendationLoading] = useState(false);
+  const [geminiRecommendationError, setGeminiRecommendationError] = useState("");
   const [presetAItext, setPresetAItext] = useState("");
 
   // Notifications feedback State
@@ -127,6 +109,109 @@ export default function App() {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  const {
+    user,
+    currentUserProfile,
+    authLoading,
+    showProfileModal,
+    setShowProfileModal,
+    profileNameInput,
+    setProfileNameInput,
+    profileHandleInput,
+    setProfileHandleInput,
+    profileBioInput,
+    setProfileBioInput,
+    isSavingProfile,
+    handleSignIn,
+    handleSignOut,
+    handleOpenProfileModal,
+    handleSaveProfile,
+    getAuthorIdentity,
+    normalizeProfileHandle,
+    buildProfileHandle
+  } = useAuthProfile({
+    onNotification: triggerNotification,
+    onAfterSignOut: () => {
+      setSelectedCategory("Todas");
+      setSearchQuery("");
+      setShowAIAssistant(false);
+    }
+  });
+
+  const {
+    prompts,
+    loadingPrompts,
+    setLoadingPrompts,
+    handleSeedDefaults,
+    handleSavePrompt,
+    handleFavoriteToggle,
+    handleDeletePrompt,
+    handleImportFromAI
+  } = usePromptLibrary({
+    user,
+    editingPrompt,
+    setEditingPrompt,
+    setShowFormModal,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const {
+    folders,
+    loadingFolders,
+    selectedFolderId,
+    setSelectedFolderId,
+    showCreateFolder,
+    setShowCreateFolder,
+    newFolderName,
+    setNewFolderName,
+    newFolderDesc,
+    setNewFolderDesc,
+    isSavingFolder,
+    showShareFolderModal,
+    setShowShareFolderModal,
+    isFolderSharedInput,
+    setIsFolderSharedInput,
+    publishFolderPromptsInput,
+    setPublishFolderPromptsInput,
+    isSavingFolderShare,
+    dragOverFolderId,
+    setDragOverFolderId,
+    closeCreateFolderModal,
+    handleCreateFolder,
+    handleDeleteFolder,
+    handleOpenShareFolderModal,
+    handleSaveFolderShareSettings,
+    handleMovePromptToFolder
+  } = useFolders({
+    user,
+    prompts,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const {
+    communityPrompts,
+    loadingCommunityPrompts,
+    communityScope,
+    setCommunityScope,
+    selectedAuthor,
+    setSelectedAuthor,
+    followedCreatorUids,
+    handleLikeToggle,
+    handleForkPrompt,
+    handleToggleFollowCreator,
+    handleSelectAuthor
+  } = useCommunity({
+    user,
+    setCurrentTab,
+    setLoadingPrompts,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const { promptEventScores, trackUserEvent } = usePromptEvents(user);
 
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
@@ -138,10 +223,6 @@ export default function App() {
   const [sharedCollection, setSharedCollection] = useState<Folder | null>(null);
   const [sharedCollectionPrompts, setSharedCollectionPrompts] = useState<Prompt[]>([]);
   const [loadingSharedCollection, setLoadingSharedCollection] = useState(false);
-  const [showShareFolderModal, setShowShareFolderModal] = useState<Folder | null>(null);
-  const [isFolderSharedInput, setIsFolderSharedInput] = useState(false);
-  const [isSavingFolderShare, setIsSavingFolderShare] = useState(false);
-  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   // Global Keyboard Shortcuts (Ctrl+K/Cmd+K for AI Helper, Ctrl+J/Cmd+J for Quick Switcher)
   useEffect(() => {
@@ -171,15 +252,6 @@ export default function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
-
-  // 1. Subscribe to Authentication changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-    return unsubscribe;
   }, []);
 
   // 1.5 Detect and fetch shared prompt or collection on mount
@@ -238,7 +310,8 @@ export default function App() {
               // Now fetch all prompts in this folder
               const promptsQuery = query(
                 collection(db, "prompts"),
-                where("folderId", "==", colId)
+                where("folderId", "==", colId),
+                where("isShared", "==", true)
               );
               const pSnap = await getDocs(promptsQuery);
               const pList: Prompt[] = [];
@@ -270,531 +343,9 @@ export default function App() {
     checkShareParam();
   }, []);
 
-  // 2. Fetch or subscribe to user's prompts in Firestore in real-time
-  useEffect(() => {
-    if (!user) {
-      setPrompts([]);
-      return;
-    }
-
-    setLoadingPrompts(true);
-    const promptsCollectionPath = "prompts";
-    
-    // Query prompts belonging exclusively to current authenticated user
-    const userPromptsQuery = query(
-      collection(db, promptsCollectionPath),
-      where("userId", "==", user.uid)
-    );
-
-    const unsubscribe = onSnapshot(
-      userPromptsQuery,
-      (snapshot) => {
-        const list: Prompt[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          list.push({
-            id: docSnap.id,
-            ...data
-          } as Prompt);
-        });
-
-        // Sort by favorite first, and then by createdAt (newest first)
-        list.sort((a, b) => {
-          if (a.isFavorite && !b.isFavorite) return -1;
-          if (!a.isFavorite && b.isFavorite) return 1;
-          
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        });
-
-        setPrompts(list);
-        setLoadingPrompts(false);
-      },
-      (error) => {
-        setLoadingPrompts(false);
-        handleFirestoreError(error, OperationType.LIST, promptsCollectionPath);
-      }
-    );
-
-    return unsubscribe;
-  }, [user]);
-
-  // 2.3 Fetch or subscribe to user's custom folders in Firestore in real-time
-  useEffect(() => {
-    if (!user) {
-      setFolders([]);
-      setSelectedFolderId(null);
-      return;
-    }
-
-    setLoadingFolders(true);
-    const foldersCollectionPath = "folders";
-    const userFoldersQuery = query(
-      collection(db, foldersCollectionPath),
-      where("userId", "==", user.uid)
-    );
-
-    const unsubscribe = onSnapshot(
-      userFoldersQuery,
-      (snapshot) => {
-        const list: Folder[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push({
-            id: docSnap.id,
-            ...docSnap.data()
-          } as Folder);
-        });
-
-        // Sort folders alphabetically by name
-        list.sort((a, b) => a.name.localeCompare(b.name));
-
-        setFolders(list);
-        setLoadingFolders(false);
-      },
-      (error) => {
-        setLoadingFolders(false);
-        handleFirestoreError(error, OperationType.LIST, foldersCollectionPath);
-      }
-    );
-
-    return unsubscribe;
-  }, [user]);
-
-  // 2.5 Subscribing to public community shared prompts in real-time
-  useEffect(() => {
-    setLoadingCommunityPrompts(true);
-    const promptsCollectionPath = "prompts";
-    const communityQuery = query(
-      collection(db, promptsCollectionPath),
-      where("isShared", "==", true)
-    );
-
-    const unsubscribe = onSnapshot(
-      communityQuery,
-      (snapshot) => {
-        const list: Prompt[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          list.push({
-            id: docSnap.id,
-            ...data
-          } as Prompt);
-        });
-
-        // Sort by likesCount (popular first) and then by creation date
-        list.sort((a, b) => {
-          const aLikes = a.likesCount || a.likedBy?.length || 0;
-          const bLikes = b.likesCount || b.likedBy?.length || 0;
-          if (bLikes !== aLikes) return bLikes - aLikes;
-
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        });
-
-        setCommunityPrompts(list);
-        setLoadingCommunityPrompts(false);
-      },
-      (error) => {
-        console.error("Error subscribing to community prompts:", error);
-        setLoadingCommunityPrompts(false);
-      }
-    );
-
-    return unsubscribe;
-  }, []);
-
-  // 3. User Sign in with Google
-  const handleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      triggerNotification("Sesión iniciada con éxito.", "success");
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      setSelectedCategory("Todas");
-      setSearchQuery("");
-      setShowAIAssistant(false);
-      triggerNotification("Se cerró la sesión con éxito.", "info");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
-
-  // 4. Seeding Pre-made prompts if library is empty
-  const handleSeedDefaults = async () => {
-    if (!user) return;
-    setLoadingPrompts(true);
-    
-    try {
-      const promptsCollectionPath = "prompts";
-      const promises = DEFAULT_PROMPTS.map((p) => {
-        const newDocRef = doc(collection(db, promptsCollectionPath));
-        return setDoc(newDocRef, {
-          ...p,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      });
-
-      await Promise.all(promises);
-      triggerNotification("Se añadieron los prompts recomendados para tu canal de YouTube.", "success");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "prompts");
-    } finally {
-      setLoadingPrompts(false);
-    }
-  };
-
-  // 5. Create or Update Prompt
-  const handleSavePrompt = async (
-    promptData: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">
-  ) => {
-    if (!user) return;
-    const promptsCollectionPath = "prompts";
-
-    try {
-      if (editingPrompt) {
-        // Update Action
-        const docRef = doc(db, promptsCollectionPath, editingPrompt.id);
-
-        // Save historical state if promptText has changed
-        if (editingPrompt.promptText !== promptData.promptText) {
-          try {
-            const versionsColRef = collection(db, promptsCollectionPath, editingPrompt.id, "versions");
-            await addDoc(versionsColRef, {
-              promptText: editingPrompt.promptText,
-              createdAt: serverTimestamp()
-            });
-
-            // Keep only the last 3 versions
-            const q = query(versionsColRef, orderBy("createdAt", "desc"));
-            const snapshot = await getDocs(q);
-            if (snapshot.size > 3) {
-              const docsToDelete = snapshot.docs.slice(3);
-              for (const d of docsToDelete) {
-                await deleteDoc(d.ref);
-              }
-            }
-          } catch (verErr) {
-            console.error("Error updating version subcollection in Firestore:", verErr);
-          }
-        }
-
-        const payload = {
-          title: promptData.title,
-          description: promptData.description,
-          promptText: promptData.promptText,
-          category: promptData.category,
-          tags: promptData.tags,
-          isFavorite: promptData.isFavorite,
-          isShared: promptData.isShared || false,
-          notas: promptData.notas || "",
-          suggestedVariables: promptData.suggestedVariables || [],
-          authorName: user.displayName || user.email?.split("@")[0] || "Miembro de la comunidad",
-          authorAvatar: user.photoURL || "",
-          updatedAt: serverTimestamp(),
-          folderId: promptData.folderId || null
-        };
-
-        await updateDoc(docRef, payload);
-        triggerNotification("Prompt actualizado correctamente.");
-      } else {
-        // Create Action
-        const docRef = doc(collection(db, promptsCollectionPath));
-        const payload = {
-          ...promptData,
-          userId: user.uid,
-          isShared: promptData.isShared || false,
-          authorName: user.displayName || user.email?.split("@")[0] || "Miembro de la comunidad",
-          authorAvatar: user.photoURL || "",
-          likedBy: [],
-          likesCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          folderId: promptData.folderId || null
-        };
-
-        await setDoc(docRef, payload);
-        triggerNotification("Nuevo prompt añadido a la biblioteca.");
-      }
-    } catch (error) {
-      handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, promptsCollectionPath);
-    } finally {
-      setShowFormModal(false);
-      setEditingPrompt(null);
-    }
-  };
-
-  // 5.5 Manage Custom Folders
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newFolderName.trim()) return;
-
-    setIsSavingFolder(true);
-    const foldersCollectionPath = "folders";
-    try {
-      const docRef = doc(collection(db, foldersCollectionPath));
-      await setDoc(docRef, {
-        userId: user.uid,
-        name: newFolderName.trim(),
-        description: newFolderDesc.trim(),
-        createdAt: serverTimestamp()
-      });
-
-      triggerNotification("Carpeta creada correctamente.", "success");
-      setNewFolderName("");
-      setNewFolderDesc("");
-      setShowCreateFolder(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, foldersCollectionPath);
-    } finally {
-      setIsSavingFolder(false);
-    }
-  };
-
-  const handleDeleteFolder = async (folderId: string) => {
-    if (!user) return;
-    
-    const foldersCollectionPath = "folders";
-    try {
-      // 1. Delete folder doc
-      await deleteDoc(doc(db, foldersCollectionPath, folderId));
-      
-      // 2. Un-associate any prompts belonging to this folder (set folderId to null)
-      const promptsInFolder = prompts.filter(p => p.folderId === folderId);
-      const promises = promptsInFolder.map(p => {
-        const docRef = doc(db, "prompts", p.id);
-        return updateDoc(docRef, { folderId: null });
-      });
-      await Promise.all(promises);
-
-      // 3. Reset selected folder filtering if we deleted the current active folder
-      if (selectedFolderId === folderId) {
-        setSelectedFolderId(null);
-      }
-
-      triggerNotification("Carpeta eliminada con éxito.");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, foldersCollectionPath);
-    }
-  };
-
-  // 5.6 Folders public sharing settings
-  const handleOpenShareFolderModal = (folder: Folder) => {
-    setShowShareFolderModal(folder);
-    setIsFolderSharedInput(folder.isShared || false);
-  };
-
-  const handleSaveFolderShareSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !showShareFolderModal) return;
-
-    setIsSavingFolderShare(true);
-    const foldersCollectionPath = "folders";
-    try {
-      const folderDocRef = doc(db, foldersCollectionPath, showShareFolderModal.id);
-      await updateDoc(folderDocRef, {
-        isShared: isFolderSharedInput,
-        authorName: user.displayName || user.email?.split("@")[0] || "Miembro de la biblioteca"
-      });
-
-      triggerNotification(
-        isFolderSharedInput 
-          ? "Colección compartida públicamente. ¡Puedes copiar el enlace!" 
-          : "La colección ahora es privada.", 
-        "success"
-      );
-      setShowShareFolderModal(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, foldersCollectionPath);
-    } finally {
-      setIsSavingFolderShare(false);
-    }
-  };
-
-  // Move prompt to folder (Drag & Drop or Manual)
-  const handleMovePromptToFolder = async (promptId: string, folderId: string | null) => {
-    if (!user) {
-      triggerNotification("Inicia sesión para poder organizar tus prompts.", "info");
-      return;
-    }
-
-    const promptsCollectionPath = "prompts";
-    try {
-      const docRef = doc(db, promptsCollectionPath, promptId);
-      await updateDoc(docRef, {
-        folderId: folderId,
-        updatedAt: serverTimestamp()
-      });
-
-      let folderName = "Sin carpeta";
-      if (folderId) {
-        const foundFolder = folders.find(f => f.id === folderId);
-        if (foundFolder) {
-          folderName = `"${foundFolder.name}"`;
-        }
-      }
-      triggerNotification(`Prompt organizado en la carpeta ${folderName} con éxito.`, "success");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, promptsCollectionPath);
-    }
-  };
-
-  // Toggle Favorite
-  const handleFavoriteToggle = async (target: Prompt) => {
-    if (!user) return;
-    const promptsCollectionPath = "prompts";
-    try {
-      const docRef = doc(db, promptsCollectionPath, target.id);
-      await updateDoc(docRef, {
-        isFavorite: !target.isFavorite,
-        updatedAt: serverTimestamp()
-      });
-      triggerNotification(
-        target.isFavorite ? "Eliminado de favoritos." : "Guardado en tus favoritos.",
-        "success"
-      );
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, promptsCollectionPath);
-    }
-  };
-
-  // Delete Prompt
-  const handleDeletePrompt = async (target: Prompt) => {
-    if (!user) return;
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar "${target.title}"?`)) return;
-
-    const promptsCollectionPath = "prompts";
-    try {
-      const docRef = doc(db, promptsCollectionPath, target.id);
-      await deleteDoc(docRef);
-      triggerNotification("Prompt eliminado correctamente.", "info");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, promptsCollectionPath);
-    }
-  };
-
-  // 5.5 Social Like/Unlike and Fork cloning handlers
-  const handleLikeToggle = async (prompt: Prompt) => {
-    if (!user) {
-      triggerNotification("Debes iniciar sesión para reaccionar o dar 'Me Gusta'.", "info");
-      return;
-    }
-
-    const docRef = doc(db, "prompts", prompt.id);
-    const currentLikedBy = prompt.likedBy || [];
-    const isLiked = currentLikedBy.includes(user.uid);
-
-    let updatedLikedBy: string[];
-    if (isLiked) {
-      updatedLikedBy = currentLikedBy.filter((uid) => uid !== user.uid);
-    } else {
-      updatedLikedBy = [...currentLikedBy, user.uid];
-    }
-
-    try {
-      await updateDoc(docRef, {
-        likedBy: updatedLikedBy,
-        likesCount: updatedLikedBy.length,
-        updatedAt: serverTimestamp()
-      });
-      triggerNotification(isLiked ? "Ya no te gusta este prompt." : "¡Te gusta este prompt!", "success");
-    } catch (err) {
-      console.error("Error toggling like:", err);
-      triggerNotification("No se pudo registrar la reacción.", "info");
-    }
-  };
-
-  const handleForkPrompt = async (prompt: Prompt) => {
-    if (!user) {
-      triggerNotification("Debes iniciar sesión para clonar prompts de la comunidad.", "info");
-      return;
-    }
-
-    setLoadingPrompts(true);
-    try {
-      const newPromptData = {
-        userId: user.uid,
-        title: `${prompt.title} (Clon)`,
-        description: prompt.description || "",
-        promptText: prompt.promptText,
-        category: prompt.category,
-        tags: prompt.tags || [],
-        isFavorite: false,
-        isShared: false, // fork starts as private
-        notas: prompt.notas || "",
-        forkedFrom: prompt.title,
-        suggestedVariables: prompt.suggestedVariables || [],
-        authorName: user.displayName || user.email?.split("@")[0] || "Miembro de la comunidad",
-        authorAvatar: user.photoURL || "",
-        likedBy: [],
-        likesCount: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      await addDoc(collection(db, "prompts"), newPromptData);
-      triggerNotification(`¡Prompt "${prompt.title}" clonado a tu biblioteca!`, "success");
-      setCurrentTab("mi-biblioteca");
-    } catch (err) {
-      console.error("Error forking prompt:", err);
-      triggerNotification("No se pudo clonar el prompt de la comunidad.", "info");
-    } finally {
-      setLoadingPrompts(false);
-    }
-  };
-
-  const handleToggleFollowCreator = (creatorUid: string) => {
-    setFollowedCreatorUids((prev) => {
-      const isFollowing = prev.includes(creatorUid);
-      const updated = isFollowing ? prev.filter((id) => id !== creatorUid) : [...prev, creatorUid];
-      triggerNotification(
-        isFollowing ? "Has dejado de seguir a este creador." : "¡Ahora sigues a este creador!",
-        "success"
-      );
-      return updated;
-    });
-  };
-
-  // 6. Import from AI Assistant
-  const handleImportFromAI = async (aiData: {
-    title: string;
-    description: string;
-    promptText: string;
-    category: "YouTube" | "Marketing" | "Programación" | "Redacción" | "General";
-    tags: string[];
-    suggestedVariables: any[];
-  }) => {
-    if (!user) {
-      triggerNotification("Inicia sesión antes de guardar prompts creados con IA.", "info");
-      return;
-    }
-    const promptsCollectionPath = "prompts";
-    try {
-      const docRef = doc(collection(db, promptsCollectionPath));
-      await setDoc(docRef, {
-        ...aiData,
-        userId: user.uid,
-        isFavorite: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-      triggerNotification("¡Importado con éxito desde el Asistente IA!");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, promptsCollectionPath);
-    }
-  };
-
   // Direct Option: Open Form Edit or creation
   const handleOpenEdit = (p: Prompt) => {
+    trackUserEvent("edit", p);
     setEditingPrompt(p);
     setShowFormModal(true);
   };
@@ -812,6 +363,16 @@ export default function App() {
     window.history.replaceState({}, "", url.toString());
   };
 
+  const handleUsePrompt = (prompt: Prompt, source = "library") => {
+    trackUserEvent(source === "recommendation" ? "recommendation_use" : "use", prompt, { source });
+    setUsingPrompt(prompt);
+  };
+
+  const handleCopyFilledPrompt = (prompt: Prompt) => {
+    trackUserEvent("copy", prompt, { mode: "filled" });
+    setCopyingFilledPrompt(prompt);
+  };
+
   // Live trigger optimize with AI directly from Form
   const handleOptimizeWithAIDirect = (promptText: string) => {
     setShowFormModal(false);
@@ -821,103 +382,123 @@ export default function App() {
 
   // 7. Filtering and Searching Locally For ultra responsive actions
   const filteredPrompts = useMemo(() => {
-    let targetSource = currentTab === "mi-biblioteca" ? prompts : communityPrompts;
-    if (currentTab === "comunidad" && selectedAuthor) {
-      targetSource = targetSource.filter((p) => p.userId === selectedAuthor.uid);
-    }
-    return targetSource.filter((p) => {
-      // Folder filter (only applicable to user library)
-      if (currentTab === "mi-biblioteca" && selectedFolderId) {
-        if (selectedFolderId === "uncategorized") {
-          if (p.folderId) return false;
-        } else {
-          if (p.folderId !== selectedFolderId) return false;
-        }
-      }
-
-      // Category filter
-      if (selectedCategory === "Favoritos") {
-        if (!p.isFavorite) return false;
-      } else if (selectedCategory !== "Todas") {
-        if (p.category !== selectedCategory) return false;
-      }
-
-      // Selected dynamic autocomplete tags filter
-      if (selectedTags.length > 0) {
-        const matchesAllSelectedTags = selectedTags.every((selTag) =>
-          p.tags?.some((t) => t.toLowerCase() === selTag.toLowerCase())
-        );
-        if (!matchesAllSelectedTags) return false;
-      }
-
-      // Search query filter
-      if (searchQuery.trim() !== "") {
-        const queryClean = searchQuery.toLowerCase().trim();
-        const titleMatch = p.title?.toLowerCase().includes(queryClean);
-        const descMatch = p.description?.toLowerCase().includes(queryClean);
-        const promptMatch = p.promptText?.toLowerCase().includes(queryClean);
-        const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(queryClean));
-        const authorMatch = p.authorName?.toLowerCase().includes(queryClean);
-
-        return titleMatch || descMatch || promptMatch || tagMatch || authorMatch;
-      }
-
-      return true;
+    return filterPrompts({
+      prompts,
+      communityPrompts,
+      currentTab,
+      selectedAuthor,
+      communityScope,
+      followedCreatorUids,
+      selectedCategory,
+      searchQuery,
+      selectedTags,
+      selectedFolderId
     });
-  }, [prompts, communityPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId]);
+  }, [prompts, communityPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids]);
 
-  // Extract all unique tags across the library of user prompts
   const allAvailableTags = useMemo(() => {
-    let targetSource = currentTab === "mi-biblioteca" ? prompts : communityPrompts;
-    if (currentTab === "comunidad" && selectedAuthor) {
-      targetSource = targetSource.filter((p) => p.userId === selectedAuthor.uid);
-    }
-    const tagsSet = new Set<string>();
-    targetSource.forEach((p) => {
-      if (p.tags && Array.isArray(p.tags)) {
-        p.tags.forEach((t) => {
-          const trimmed = t.trim();
-          if (trimmed) {
-            tagsSet.add(trimmed);
-          }
-        });
-      }
+    return getAvailableTags({
+      prompts,
+      communityPrompts,
+      currentTab,
+      selectedAuthor,
+      communityScope,
+      followedCreatorUids
     });
-    return Array.from(tagsSet).sort((a, b) => a.localeCompare(b));
-  }, [prompts, communityPrompts, currentTab, selectedAuthor]);
+  }, [prompts, communityPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids]);
 
-  // Compute tag matching suggestions for autocomplete search
   const tagSuggestions = useMemo(() => {
-    const cleanSearch = tagSearchInput.toLowerCase().trim();
-    if (!cleanSearch) {
-      return allAvailableTags.filter((tag) => !selectedTags.includes(tag));
-    }
-    return allAvailableTags.filter(
-      (tag) => tag.toLowerCase().includes(cleanSearch) && !selectedTags.includes(tag)
-    );
+    return getTagSuggestions(allAvailableTags, tagSearchInput, selectedTags);
   }, [allAvailableTags, tagSearchInput, selectedTags]);
 
-  // Combine user's prompts and community prompts cleanly for the Quick Switcher, avoiding duplicates
-  const allSearchablePrompts = useMemo(() => {
-    const map = new Map<string, Prompt>();
-    prompts.forEach((p) => map.set(p.id, p));
-    communityPrompts.forEach((p) => {
-      if (!map.has(p.id)) {
-        map.set(p.id, p);
-      }
+  const recommendedPrompts = useMemo(() => {
+    return buildLocalRecommendations({
+      prompts,
+      goal: recommendationGoal,
+      selectedCategory,
+      selectedTags,
+      promptEventScores
     });
-    return Array.from(map.values());
+  }, [prompts, recommendationGoal, selectedCategory, selectedTags, promptEventScores]);
+
+  const handleImproveRecommendationsWithGemini = async () => {
+    if (!user || !auth.currentUser) {
+      triggerNotification("Inicia sesion para usar Gemini en el recomendador.", "info");
+      return;
+    }
+
+    if (!recommendationGoal.trim()) {
+      setGeminiRecommendationError("Escribe primero el objetivo que quieres lograr.");
+      return;
+    }
+
+    const candidates = (recommendedPrompts.length > 0 ? recommendedPrompts : prompts.slice(0, 5).map((prompt) => ({
+      prompt,
+      score: prompt.isFavorite ? 4 : 1,
+      reasons: prompt.isFavorite ? ["Favorito de tu biblioteca."] : ["Candidato general de tu biblioteca."]
+    }))).slice(0, 8);
+
+    if (candidates.length === 0) {
+      setGeminiRecommendationError("Necesitas al menos un prompt en tu biblioteca para comparar candidatos.");
+      return;
+    }
+
+    setGeminiRecommendationLoading(true);
+    setGeminiRecommendationError("");
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/ai/recomendar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          goal: recommendationGoal.trim(),
+          filters: {
+            category: selectedCategory,
+            tags: selectedTags
+          },
+          candidates: candidates.map(({ prompt, score, reasons }) => ({
+            id: prompt.id,
+            title: prompt.title,
+            description: prompt.description || "",
+            category: prompt.category,
+            tags: prompt.tags || [],
+            isFavorite: prompt.isFavorite,
+            likesCount: prompt.likesCount || 0,
+            score,
+            reasons
+          }))
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo mejorar la recomendacion con Gemini.");
+      }
+
+      setGeminiRecommendation(data);
+      triggerNotification("Gemini reviso tus candidatos locales.", "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gemini no respondio correctamente.";
+      setGeminiRecommendationError(message);
+    } finally {
+      setGeminiRecommendationLoading(false);
+    }
+  };
+
+  const allSearchablePrompts = useMemo(() => {
+    return combineSearchablePrompts(prompts, communityPrompts);
   }, [prompts, communityPrompts]);
 
   const authorProfileStats = useMemo(() => {
-    if (!selectedAuthor) return { count: 0, likes: 0 };
-    const authorPrompts = communityPrompts.filter((p) => p.userId === selectedAuthor.uid);
-    const totalLikes = authorPrompts.reduce((sum, p) => sum + (p.likesCount || p.likedBy?.length || 0), 0);
-    return {
-      count: authorPrompts.length,
-      likes: totalLikes
-    };
+    return getAuthorProfileStats(communityPrompts, selectedAuthor);
   }, [communityPrompts, selectedAuthor]);
+
+  const publicFeaturedPrompts = useMemo(() => {
+    return getPublicFeaturedPrompts(communityPrompts);
+  }, [communityPrompts]);
 
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
@@ -966,24 +547,35 @@ export default function App() {
         <div className="flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-3 bg-slate-900/60 p-1.5 pr-4 rounded-2xl border border-slate-800">
-              {user.photoURL ? (
+              {(currentUserProfile?.photoURL || user.photoURL) ? (
                 <img
-                  src={user.photoURL}
+                  src={currentUserProfile?.photoURL || user.photoURL || ""}
                   referrerPolicy="no-referrer"
-                  alt={user.displayName || "Usuario"}
+                  alt={currentUserProfile?.displayName || user.displayName || "Usuario"}
                   className="w-8 h-8 rounded-xl object-cover hover:rotate-6 transition-transform"
                 />
               ) : (
                 <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-pink-600 text-white font-bold rounded-xl flex items-center justify-center text-xs">
-                  {user.displayName?.charAt(0) || "U"}
+                  {(currentUserProfile?.displayName || user.displayName)?.charAt(0) || "U"}
                 </div>
               )}
               <div className="hidden sm:block text-left">
                 <p className="text-[10px] font-extrabold text-slate-200 leading-tight">
-                  {user.displayName}
+                  {currentUserProfile?.displayName || user.displayName}
                 </p>
-                <p className="text-[8px] text-slate-400 leading-none">{user.email}</p>
+                <p className="text-[8px] text-slate-400 leading-none">
+                  @{currentUserProfile?.handle || buildProfileHandle(user)}
+                </p>
               </div>
+              <button
+                id="btn-edit-profile"
+                onClick={handleOpenProfileModal}
+                className="p-1 px-2.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all ml-1.5 flex items-center gap-1 cursor-pointer"
+                title="Editar perfil publico"
+              >
+                <UserCheck size={12} />
+                <span className="hidden md:inline">Perfil</span>
+              </button>
               <button
                 id="btn-logout"
                 onClick={handleSignOut}
@@ -1100,14 +692,14 @@ export default function App() {
                     onFavoriteToggle={() => {}}
                     onEdit={handleOpenEdit}
                     onDelete={() => {}}
-                    onUse={(p) => setUsingPrompt(p)}
-                    onCopyFilled={(p) => setCopyingFilledPrompt(p)}
+                    onUse={(p) => handleUsePrompt(p, "shared_collection")}
+                    onCopyFilled={(p) => handleCopyFilledPrompt(p)}
                     onNotification={triggerNotification}
                     isCommunityView={true}
                     currentUser={user}
                     onFork={handleForkPrompt}
                     onLikeToggle={handleLikeToggle}
-                    onAuthorClick={setSelectedAuthor}
+                    onAuthorClick={handleSelectAuthor}
                   />
                 ))}
               </div>
@@ -1178,6 +770,85 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="relative z-10 pt-6 border-t border-slate-700/60 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
+                      Biblioteca gratuita de prompts
+                    </span>
+                    <h3 className="text-lg font-extrabold text-white mt-3">Explora prompts publicos antes de iniciar sesion</h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                      Puedes probar plantillas compartidas por la comunidad. Para guardar, clonar o publicar tus propias colecciones, crea tu biblioteca.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSignIn}
+                    className="px-4 py-2 bg-slate-900/70 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer w-fit"
+                  >
+                    <Plus size={13} />
+                    <span>Crear mi biblioteca</span>
+                  </button>
+                </div>
+
+                {loadingCommunityPrompts ? (
+                  <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-8 text-center">
+                    <div className="w-7 h-7 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin mx-auto"></div>
+                    <p className="text-xs text-slate-400 mt-3">Cargando prompts publicos...</p>
+                  </div>
+                ) : publicFeaturedPrompts.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-6">
+                    <p className="text-sm font-bold text-white">Aun no hay prompts publicos destacados.</p>
+                    <p className="text-xs text-slate-400 mt-1">Cuando publiques tu primera coleccion, aparecera aqui como vitrina inicial.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {publicFeaturedPrompts.map((prompt) => (
+                      <div key={prompt.id} className="rounded-2xl border border-slate-700/70 bg-slate-900/45 p-4 flex flex-col gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">{prompt.category}</span>
+                            {prompt.authorName && (
+                              <span className="text-[10px] text-slate-400">por {prompt.authorName}</span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-extrabold text-white mt-2 leading-tight line-clamp-1">{prompt.title}</h4>
+                          <p className="text-xs text-slate-400 mt-1 line-clamp-2">{prompt.description || "Prompt publico de la comunidad."}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {(prompt.tags || []).slice(0, 4).map((tag) => (
+                            <span key={tag} className="text-[10px] text-slate-300 bg-slate-800 border border-slate-700/70 px-2 py-0.5 rounded-lg">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex justify-end gap-2 mt-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(prompt.promptText);
+                              triggerNotification("Prompt publico copiado.", "success");
+                            }}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Copy size={12} />
+                            <span>Copiar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUsePrompt(prompt, "public_showcase")}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Play size={12} fill="currentColor" />
+                            <span>Usar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           ) : (
             // Authenticated Dashboard Layout
@@ -1190,6 +861,7 @@ export default function App() {
                     setCurrentTab("mi-biblioteca");
                     setSelectedCategory("Todas");
                     setSelectedAuthor(null);
+                    setCommunityScope("todos");
                   }}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                     currentTab === "mi-biblioteca"
@@ -1208,6 +880,7 @@ export default function App() {
                     setCurrentTab("comunidad");
                     setSelectedCategory("Todas");
                     setSelectedAuthor(null);
+                    setCommunityScope("todos");
                   }}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                     currentTab === "comunidad"
@@ -1222,6 +895,45 @@ export default function App() {
                   </span>
                 </button>
               </div>
+
+              {currentTab === "comunidad" && !selectedAuthor && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-[#1e293b]/45 p-3">
+                  <div className="flex items-center gap-1.5 rounded-xl bg-slate-950/50 p-1 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setCommunityScope("todos")}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        communityScope === "todos"
+                          ? "bg-indigo-600 text-white shadow-md"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCommunityScope("siguiendo")}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        communityScope === "siguiendo"
+                          ? "bg-emerald-600 text-white shadow-md"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <UserCheck size={13} />
+                      <span>Siguiendo</span>
+                      {followedCreatorUids.length > 0 && (
+                        <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{followedCreatorUids.length}</span>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 font-sans">
+                    {communityScope === "siguiendo"
+                      ? "Mostrando prompts de creadores que sigues."
+                      : "Explora prompts publicos de toda la comunidad."}
+                  </p>
+                </div>
+              )}
 
               {/* Author Community Profile Banner */}
               {currentTab === "comunidad" && selectedAuthor && (
@@ -1325,6 +1037,8 @@ export default function App() {
                       <>Colección personal. Tienes <strong className="text-pink-400">{prompts.length}</strong> prompts guardados en total.</>
                     ) : selectedAuthor ? (
                       <>Explorando el catálogo público de <strong className="text-indigo-300">{selectedAuthor.name}</strong>. Mostrando sus <strong className="text-pink-400">{filteredPrompts.length}</strong> prompts compartidos.</>
+                    ) : communityScope === "siguiendo" ? (
+                      <>Feed de creadores seguidos. Mostrando <strong className="text-emerald-400">{filteredPrompts.length}</strong> prompts de <strong className="text-indigo-300">{followedCreatorUids.length}</strong> creadores.</>
                     ) : (
                       <>Descubre innovadoras plantillas de la comunidad. ¡Agrégalas a tu biblioteca, vótala, o discútela!</>
                     )}
@@ -1341,6 +1055,27 @@ export default function App() {
                     >
                       <BookOpen size={14} />
                       <span>Cargar Prompts Ejemplos</span>
+                    </button>
+                  )}
+
+                  {currentTab === "mi-biblioteca" && (
+                    <button
+                      id="btn-open-recommender"
+                      onClick={() => {
+                        trackUserEvent("recommendation_open", undefined, {
+                          promptsCount: prompts.length,
+                          selectedCategory,
+                          selectedTags
+                        });
+                        setGeminiRecommendation(null);
+                        setGeminiRecommendationError("");
+                        setShowRecommendationModal(true);
+                      }}
+                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                      title="Recomendar un prompt existente sin usar IA externa"
+                    >
+                      <Sparkles size={14} />
+                      <span>Recomendar Prompt</span>
                     </button>
                   )}
 
@@ -1695,9 +1430,13 @@ export default function App() {
                           ? "Tu biblioteca está lista para ser poblada. Puedes dar clic en 'Cargar Prompts Ejemplos' para agregar plantillas recomendadas de inmediato o crear una nueva con el Asistente IA de Gemini."
                           : "No se encontraron prompts en tu biblioteca que coincidan con la categoría o filtros."
                       ) : (
-                        communityPrompts.length === 0
-                          ? "Aún no hay prompts públicos publicados en la comunidad. ¡Sé el primero compartiendo una de tus plantillas personales activando el interruptor 'Hacer público'!"
-                          : "No se encontraron prompts públicos que coincidan con los filtros de búsqueda o categoría en la comunidad."
+                        communityScope === "siguiendo" && followedCreatorUids.length === 0
+                          ? "Todavia no sigues a ningun creador. Explora la comunidad, abre un perfil y pulsa Seguir Creador para construir tu feed."
+                          : communityScope === "siguiendo"
+                          ? "Los creadores que sigues aun no tienen prompts publicos que coincidan con tus filtros."
+                          : communityPrompts.length === 0
+                          ? "Aun no hay prompts publicos publicados en la comunidad. Se el primero compartiendo una de tus plantillas personales activando el interruptor Hacer publico."
+                          : "No se encontraron prompts publicos que coincidan con los filtros de busqueda o categoria en la comunidad."
                       )}
                     </p>
                   </div>
@@ -1734,14 +1473,14 @@ export default function App() {
                           onFavoriteToggle={handleFavoriteToggle}
                           onEdit={handleOpenEdit}
                           onDelete={handleDeletePrompt}
-                          onUse={(p) => setUsingPrompt(p)}
-                          onCopyFilled={(p) => setCopyingFilledPrompt(p)}
+                          onUse={(p) => handleUsePrompt(p, currentTab)}
+                          onCopyFilled={(p) => handleCopyFilledPrompt(p)}
                           onNotification={triggerNotification}
                           isCommunityView={currentTab === "comunidad"}
                           currentUser={user}
                           onFork={handleForkPrompt}
                           onLikeToggle={handleLikeToggle}
-                          onAuthorClick={setSelectedAuthor}
+                          onAuthorClick={handleSelectAuthor}
                         />
                       </motion.div>
                     ))}
@@ -1810,305 +1549,106 @@ export default function App() {
         prompts={allSearchablePrompts}
         isOpen={showQuickSwitcher}
         onClose={() => setShowQuickSwitcher(false)}
-        onUse={(p) => setUsingPrompt(p)}
-        onCopyFilled={(p) => setCopyingFilledPrompt(p)}
+        onUse={(p) => handleUsePrompt(p, "quick_switcher")}
+        onCopyFilled={(p) => handleCopyFilledPrompt(p)}
         onEdit={(p) => handleOpenEdit(p)}
         onNotification={triggerNotification}
       />
 
+      {/* Modal - Recomendador Local */}
+      {showRecommendationModal && (
+        <RecommendationModal
+          prompts={prompts}
+          recommendationGoal={recommendationGoal}
+          setRecommendationGoal={setRecommendationGoal}
+          recommendedPrompts={recommendedPrompts}
+          geminiRecommendation={geminiRecommendation}
+          geminiRecommendationLoading={geminiRecommendationLoading}
+          geminiRecommendationError={geminiRecommendationError}
+          onImproveWithGemini={handleImproveRecommendationsWithGemini}
+          onUse={(prompt) => {
+            handleUsePrompt(prompt, "recommendation");
+            setShowRecommendationModal(false);
+          }}
+          onCopy={(prompt) => {
+            navigator.clipboard.writeText(prompt.promptText);
+            trackUserEvent("recommendation_copy", prompt, { source: "recommendation" });
+            triggerNotification("Prompt recomendado copiado.", "success");
+          }}
+          onEdit={(prompt) => {
+            handleOpenEdit(prompt);
+            setShowRecommendationModal(false);
+          }}
+          onCopySuggestedPrompt={(promptText) => {
+            navigator.clipboard.writeText(promptText);
+            triggerNotification("Sugerencia Gemini copiada.", "success");
+          }}
+          onClose={() => setShowRecommendationModal(false)}
+        />
+      )}
+
+      {/* Modal - Editar Perfil Publico */}
+      {showProfileModal && user && (
+        <ProfileModal
+          user={user}
+          currentUserProfile={currentUserProfile}
+          profileNameInput={profileNameInput}
+          profileHandleInput={profileHandleInput}
+          profileBioInput={profileBioInput}
+          isSavingProfile={isSavingProfile}
+          setProfileNameInput={setProfileNameInput}
+          setProfileHandleInput={setProfileHandleInput}
+          setProfileBioInput={setProfileBioInput}
+          normalizeProfileHandle={normalizeProfileHandle}
+          onSave={handleSaveProfile}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
+
       {/* Modal - Crear Nueva Carpeta */}
       {showCreateFolder && (
-        <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleCreateFolder} className="bg-[#1e293b] rounded-3xl w-full max-w-md shadow-2xl p-6 border border-slate-700/80 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-white text-md">Crear Nueva Carpeta</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateFolder(false);
-                  setNewFolderName("");
-                  setNewFolderDesc("");
-                }}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-400 uppercase">Nombre de la Carpeta *</label>
-                <input
-                  type="text"
-                  required
-                  maxLength={50}
-                  value={newFolderName}
-                  onChange={e => setNewFolderName(e.target.value)}
-                  placeholder="ej. Canales Secundarios, SEO Youtube..."
-                  className="w-full text-xs rounded-xl border border-slate-700 bg-[#0f172a]/50 px-3 py-2.5 text-white focus:outline-none focus:border-indigo-400 font-sans"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-slate-400 uppercase">Descripción (Opcional)</label>
-                <input
-                  type="text"
-                  maxLength={150}
-                  value={newFolderDesc}
-                  onChange={e => setNewFolderDesc(e.target.value)}
-                  placeholder="ej. Plantillas de scripts y shorts..."
-                  className="w-full text-xs rounded-xl border border-slate-700 bg-[#0f172a]/50 px-3 py-2.5 text-white focus:outline-none focus:border-indigo-400 font-sans"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateFolder(false);
-                  setNewFolderName("");
-                  setNewFolderDesc("");
-                }}
-                className="px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-350 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingFolder || !newFolderName.trim()}
-                className="px-4.5 py-2 bg-gradient-to-r from-indigo-600 to-pink-600 text-white text-xs font-bold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
-              >
-                {isSavingFolder ? "Creando..." : "Crear Carpeta"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <CreateFolderModal
+          newFolderName={newFolderName}
+          newFolderDesc={newFolderDesc}
+          isSavingFolder={isSavingFolder}
+          setNewFolderName={setNewFolderName}
+          setNewFolderDesc={setNewFolderDesc}
+          onCreate={handleCreateFolder}
+          onClose={closeCreateFolderModal}
+        />
       )}
 
-      {/* Modal - Configurar Compartido de la Carpeta/Colección */}
+      {/* Modal - Configurar Compartido de la Carpeta/Coleccion */}
       {showShareFolderModal && (
-        <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleSaveFolderShareSettings} className="bg-[#1e293b] rounded-3xl w-full max-w-lg shadow-2xl p-6 border border-slate-700/80 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Share2 size={18} className="text-emerald-400" />
-                <h3 className="font-extrabold text-white text-md">Compartir Colección</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowShareFolderModal(null)}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/80 space-y-1">
-                <p className="text-xs font-bold text-white">Colección: <span className="text-indigo-400">{showShareFolderModal.name}</span></p>
-                <p className="text-[11px] text-slate-400">{showShareFolderModal.description || "Sin descripción establecida."}</p>
-              </div>
-
-              {/* Toggle Switch */}
-              <div className="flex items-center justify-between bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
-                <div className="space-y-0.5 pointer-events-none">
-                  <p className="text-xs font-extrabold text-white">Publicar carpeta en la web</p>
-                  <p className="text-[10px] text-slate-400 font-sans">Cualquiera con el enlace podrá ver los prompts guardados en esta carpeta.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-4">
-                  <input
-                    type="checkbox"
-                    checked={isFolderSharedInput}
-                    onChange={(e) => setIsFolderSharedInput(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white"></div>
-                </label>
-              </div>
-
-              {/* Public Link Generator Input */}
-              {isFolderSharedInput && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-black tracking-wider text-emerald-400 uppercase">Enlace de la Colección Pública</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${window.location.origin}${window.location.pathname}?collection=${showShareFolderModal.id}`}
-                        className="flex-1 text-[11px] rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-350 focus:outline-none font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const link = `${window.location.origin}${window.location.pathname}?collection=${showShareFolderModal.id}`;
-                          navigator.clipboard.writeText(link);
-                          triggerNotification("¡Enlace de colección copiado con éxito!", "success");
-                        }}
-                        className="px-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                        title="Copiar enlace"
-                      >
-                        <Copy size={13} />
-                        <span className="hidden sm:inline">Copiar</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-800/60">
-              <button
-                type="button"
-                onClick={() => setShowShareFolderModal(null)}
-                className="px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-350 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingFolderShare}
-                className="px-4.5 py-2 bg-gradient-to-r from-emerald-600 to-indigo-600 text-white text-xs font-bold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer disabled:cursor-not-allowed"
-              >
-                {isSavingFolderShare ? "Guardando..." : "Guardar Cambios"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <ShareFolderModal
+          folder={showShareFolderModal}
+          prompts={prompts}
+          isFolderSharedInput={isFolderSharedInput}
+          publishFolderPromptsInput={publishFolderPromptsInput}
+          isSavingFolderShare={isSavingFolderShare}
+          setIsFolderSharedInput={setIsFolderSharedInput}
+          setPublishFolderPromptsInput={setPublishFolderPromptsInput}
+          onSave={handleSaveFolderShareSettings}
+          onClose={() => setShowShareFolderModal(null)}
+          onNotification={triggerNotification}
+        />
       )}
-
       {/* Public Shared Prompt Modal Viewer Overlay */}
       {sharedPrompt && (
-        <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1e293b] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-250">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                  <Globe size={16} className="animate-pulse" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 leading-none">Prompt Compartido Públicamente</h2>
-                  <p className="text-[10px] text-slate-400 mt-1">Visible para cualquier persona con el enlace único</p>
-                </div>
-              </div>
-              <button
-                onClick={handleCloseShared}
-                className="p-1 px-2.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white font-bold transition-all cursor-pointer"
-                title="Cerrar vista"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200">
-              
-              {/* Category, Title & Desc */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded font-bold">
-                    {sharedPrompt.category}
-                  </span>
-                  {sharedPrompt.tags && sharedPrompt.tags.map(tag => (
-                    <span key={tag} className="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700/60">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-                
-                <h3 className="text-xl font-extrabold text-white leading-tight">{sharedPrompt.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed font-sans">{sharedPrompt.description || "Este prompt no tiene una descripción adicional."}</p>
-              </div>
-
-              {/* Execution Notes (Opcional) */}
-              {sharedPrompt.notas && (
-                <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/25 space-y-1">
-                  <h4 className="text-xs font-bold text-[#818cf8] uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                    <StickyNote size={12} className="text-indigo-400" /> Notas sobre cómo ejecutar este prompt
-                  </h4>
-                  <p className="text-xs text-[#cbd5e1] leading-relaxed font-sans">{sharedPrompt.notas}</p>
-                </div>
-              )}
-
-              {/* Prompt Text Render with custom highlight for variables */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Texto del Prompt</label>
-                <div className="relative">
-                  <pre className="w-full rounded-2xl border border-slate-700 bg-slate-950 p-4 text-xs font-mono text-slate-100 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto">
-                    {sharedPrompt.promptText}
-                  </pre>
-                  
-                  {/* Subtle note about variable presence */}
-                  {sharedPrompt.suggestedVariables && sharedPrompt.suggestedVariables.length > 0 && (
-                    <p className="text-[10px] text-pink-400 bg-pink-500/5 border-t border-slate-800/80 p-2.5 rounded-b-2xl flex items-center gap-1">
-                      <Sparkles size={11} className="animate-spin duration-1000 shrink-0" />
-                      <span>Este prompt contiene <strong>{sharedPrompt.suggestedVariables.length} variables</strong> editables. Haz clic en "Rellenar Variables" para usarlas.</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Variables Summary */}
-              {sharedPrompt.suggestedVariables && sharedPrompt.suggestedVariables.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Campos / Variables Disponibles</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {sharedPrompt.suggestedVariables.map((v, i) => (
-                      <div key={i} className="p-3 rounded-xl bg-slate-800/40 border border-slate-800 flex items-center justify-between text-xs font-sans">
-                        <span className="font-extrabold text-pink-400 font-mono">{"{{" + v.name + "}}"}</span>
-                        <span className="text-[10px] text-slate-400 italic max-w-xs">{v.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-            {/* Actions Footer */}
-            <div className="px-6 py-5 border-t border-slate-700/60 bg-slate-900/40 flex items-center justify-between gap-3 shrink-0">
-              
-              {/* Call to register banner or alert */}
-              <div className="hidden md:flex items-center gap-1 font-mono text-[9px] text-slate-400 select-none">
-                <Zap size={10} className="text-yellow-405 fill-current" />
-                <span>¿Quieres guardar tus propios prompts? Conecta con Google.</span>
-              </div>
-
-              <div className="flex items-center gap-3 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(sharedPrompt.promptText);
-                    triggerNotification("Contenido del prompt copiado con éxito.", "success");
-                  }}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Copy size={13} />
-                  <span>Copiar Plano</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsingPrompt(sharedPrompt);
-                    handleCloseShared();
-                  }}
-                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-pink-600 hover:opacity-95 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
-                >
-                  <Play size={12} fill="currentColor" />
-                  <span>Rellenar Variables</span>
-                </button>
-              </div>
-
-            </div>
-
-          </div>
-        </div>
+        <SharedPromptModal
+          prompt={sharedPrompt}
+          onClose={handleCloseShared}
+          onCopy={() => {
+            navigator.clipboard.writeText(sharedPrompt.promptText);
+            trackUserEvent("copy", sharedPrompt, { source: "shared_prompt" });
+            triggerNotification("Contenido del prompt copiado con exito.", "success");
+          }}
+          onUse={() => {
+            handleUsePrompt(sharedPrompt, "shared_prompt");
+            handleCloseShared();
+          }}
+        />
       )}
-
       {/* Humble Footer */}
       <footer className="bg-[#0f172a]/95 border-t border-[#334155]/50 py-5 px-6 md:px-12 text-center text-[10px] text-slate-450 shrink-0 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 select-none">
         <p>© {new Date().getFullYear()} Biblioteca de Prompts — Diseñado para creadores de YouTube de Inteligencia Artificial.</p>

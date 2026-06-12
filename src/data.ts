@@ -1209,5 +1209,672 @@ El correo redactado debe cumplir estrictamente con los siguientes requisitos:
     suggestedVariables: [
       { name: "motivo_correo", description: "Explicación o respuesta que requieres enviar", defaultValue: "Pedir una extensión de tiempo comprensiva de 3 días para entregar el pipeline de backend a un cliente exigente" }
     ]
+  },
+
+  // ==================== PACK FUNDADOR CREADORES IA (25 Prompts) ====================
+  {
+    title: "Documental IA: Historia, Conflicto y Revelación",
+    description: "Convierte un tema de inteligencia artificial en un documental narrativo con tensión, contexto histórico, personajes, giros y cierre memorable.",
+    category: "YouTube",
+    promptText: `Actúa como un guionista documental especializado en tecnología, inteligencia artificial y cultura digital.
+
+Tema del documental: "{{tema_documental}}"
+Audiencia objetivo: "{{audiencia_objetivo}}"
+Duración aproximada: "{{duracion_minutos}}" minutos
+
+Diseña un guion documental completo con:
+1. Un cold open de 20 segundos que plantee una pregunta inquietante.
+2. Contexto histórico breve para entender por qué "{{tema_documental}}" importa ahora.
+3. Tres actos narrativos con conflicto, tensión y evolución.
+4. Momentos visuales sugeridos para B-roll, gráficos, capturas y animaciones.
+5. Una conclusión que conecte el tema con el futuro cercano de la audiencia.
+
+Evita sonar genérico. Prioriza ritmo, claridad y una sensación de descubrimiento progresivo.`,
+    tags: ["Documental", "YouTube", "Storytelling", "IA"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "tema_documental", description: "Tema central del documental", defaultValue: "La carrera por crear agentes de IA autónomos" },
+      { name: "audiencia_objetivo", description: "A quién va dirigido el video", defaultValue: "Creadores, emprendedores y profesionales curiosos sobre IA" },
+      { name: "duracion_minutos", description: "Duración estimada del video", defaultValue: "14" }
+    ]
+  },
+  {
+    title: "Tutorial IA Paso a Paso: De Cero a Resultado",
+    description: "Estructura tutoriales prácticos de IA con preparación, pasos claros, errores comunes, validación y cierre accionable.",
+    category: "YouTube",
+    promptText: `Actúa como un instructor experto en tutoriales de IA para YouTube.
+
+Herramienta o flujo a enseñar: "{{herramienta_o_flujo}}"
+Resultado final deseado: "{{resultado_final}}"
+Nivel de la audiencia: "{{nivel_audiencia}}"
+
+Genera un guion tutorial paso a paso que incluya:
+1. Qué se construirá y por qué es útil.
+2. Requisitos previos y configuración inicial.
+3. Pasos numerados con instrucciones concretas.
+4. Errores comunes y cómo solucionarlos.
+5. Prueba final para verificar que el resultado funciona.
+6. CTA útil conectada con el siguiente aprendizaje.
+
+Incluye indicaciones visuales para pantalla, zooms, cortes y overlays.`,
+    tags: ["Tutorial", "IA", "YouTube", "Paso a Paso"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "herramienta_o_flujo", description: "Herramienta o proceso que enseñarás", defaultValue: "crear un agente de investigación con Gemini y Google Sheets" },
+      { name: "resultado_final", description: "Resultado que verá la audiencia", defaultValue: "un reporte automático de tendencias semanales" },
+      { name: "nivel_audiencia", description: "Nivel técnico del público", defaultValue: "principiante curioso con nociones básicas" }
+    ]
+  },
+  {
+    title: "Comparativa IA: Herramienta A vs Herramienta B",
+    description: "Crea comparativas honestas entre herramientas IA con criterios, pruebas, tabla de decisión y recomendación por perfil de usuario.",
+    category: "YouTube",
+    promptText: `Actúa como un analista independiente de herramientas de IA.
+
+Herramienta A: "{{herramienta_a}}"
+Herramienta B: "{{herramienta_b}}"
+Caso de uso principal: "{{caso_uso}}"
+
+Diseña una comparativa para video o artículo con:
+1. Contexto breve de ambas herramientas.
+2. Criterios de evaluación: facilidad, costo, calidad, velocidad, integraciones y limitaciones.
+3. Tres pruebas prácticas usando el caso "{{caso_uso}}".
+4. Tabla de puntuación con explicación.
+5. Recomendación final por perfil: principiante, creador, negocio y usuario técnico.
+
+No vendas humo. Señala tradeoffs reales y evita declarar un ganador universal si depende del uso.`,
+    tags: ["Comparativa", "Herramientas IA", "Análisis", "YouTube"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "herramienta_a", description: "Primera herramienta a comparar", defaultValue: "Gemini" },
+      { name: "herramienta_b", description: "Segunda herramienta a comparar", defaultValue: "ChatGPT" },
+      { name: "caso_uso", description: "Uso concreto de la comparación", defaultValue: "crear guiones y assets para videos educativos" }
+    ]
+  },
+  {
+    title: "Errores Comunes con IA: Video Educativo de Alto Valor",
+    description: "Transforma errores frecuentes en un video útil, claro y entretenido con soluciones prácticas y ejemplos reales.",
+    category: "YouTube",
+    promptText: `Actúa como un educador experto en IA aplicada y creador de contenido.
+
+Tema o herramienta: "{{tema_o_herramienta}}"
+Audiencia: "{{audiencia}}"
+
+Crea una estructura de video sobre errores comunes con:
+1. Gancho inicial mostrando el costo de cometer estos errores.
+2. Lista de 7 errores ordenados de básico a avanzado.
+3. Para cada error: síntoma, causa, ejemplo realista y solución.
+4. Un mini-checklist descargable para evitar repetirlos.
+5. Cierre con una recomendación práctica para mejorar hoy mismo.
+
+El tono debe ser útil, directo y empático, sin ridiculizar a principiantes.`,
+    tags: ["Errores", "Educación IA", "YouTube", "Checklist"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_o_herramienta", description: "Tema donde se cometen errores", defaultValue: "usar prompts genéricos para crear contenido" },
+      { name: "audiencia", description: "Perfil de quien verá el video", defaultValue: "creadores de contenido que recién empiezan con IA" }
+    ]
+  },
+  {
+    title: "Radar de Tendencias IA: Análisis Semanal",
+    description: "Convierte noticias y señales del mercado IA en un análisis semanal con implicancias, oportunidades y contenido accionable.",
+    category: "YouTube",
+    promptText: `Actúa como un analista de tendencias tecnológicas y editor de un canal de IA.
+
+Lista de noticias o señales:
+"""
+{{noticias_o_senales}}
+"""
+
+Genera un episodio de análisis semanal con:
+1. Resumen ejecutivo de las 5 señales más importantes.
+2. Qué cambió realmente y qué es solo ruido.
+3. Impacto para creadores, negocios y profesionales.
+4. Oportunidades de contenido derivadas de cada señal.
+5. Predicción prudente para las próximas semanas.
+
+Mantén un tono claro, crítico y útil. No exageres predicciones sin evidencia.`,
+    tags: ["Tendencias IA", "Noticias", "Análisis", "YouTube"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "noticias_o_senales", description: "Pega noticias, links, titulares o notas de tendencias", defaultValue: "Nuevos modelos multimodales, agentes en navegador, actualizaciones de Gemini, automatizaciones en empresas..." }
+    ]
+  },
+  {
+    title: "Caso de Uso Real IA: Antes, Después y ROI",
+    description: "Diseña un video de caso práctico mostrando problema, solución IA, implementación, resultados y aprendizajes.",
+    category: "YouTube",
+    promptText: `Actúa como un consultor de transformación digital y narrador de casos de éxito.
+
+Caso de uso: "{{caso_uso}}"
+Herramientas utilizadas: "{{herramientas}}"
+Resultado medido: "{{resultado_medido}}"
+
+Estructura un guion de caso real con:
+1. Situación inicial y problema concreto.
+2. Costos ocultos de seguir trabajando igual.
+3. Solución con IA explicada paso a paso.
+4. Demostración del antes/después.
+5. Métricas de resultado: tiempo, costo, calidad o ingresos.
+6. Lecciones aprendidas y límites del sistema.
+
+Incluye escenas visuales y preguntas para generar comentarios.`,
+    tags: ["Caso de Uso", "ROI", "Automatización", "YouTube"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "caso_uso", description: "Proceso o problema resuelto con IA", defaultValue: "automatizar la investigación de temas para un canal de YouTube" },
+      { name: "herramientas", description: "Herramientas usadas", defaultValue: "Gemini, Google Sheets, Vercel y Firebase" },
+      { name: "resultado_medido", description: "Resultado que quieres destacar", defaultValue: "reducir 5 horas semanales de investigación a 30 minutos" }
+    ]
+  },
+  {
+    title: "Shorts IA: 5 Ideas Virales en Formato Rápido",
+    description: "Genera cinco ideas de Shorts/Reels/TikToks sobre IA con gancho, estructura, visual y cierre de comentario.",
+    category: "YouTube",
+    promptText: `Actúa como estratega de video corto para nichos de IA y tecnología.
+
+Tema central: "{{tema_central}}"
+Plataforma: "{{plataforma}}"
+
+Genera 5 ideas de videos cortos. Para cada una entrega:
+1. Título interno de la idea.
+2. Gancho de 2 segundos.
+3. Guion de 35 a 50 segundos.
+4. Visual principal o demo en pantalla.
+5. Texto grande para subtítulos.
+6. Pregunta final para comentarios.
+
+Prioriza claridad, sorpresa y utilidad inmediata.`,
+    tags: ["Shorts", "Reels", "TikTok", "Ideas Virales"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_central", description: "Tema que quieres convertir en videos cortos", defaultValue: "automatizaciones con agentes de IA" },
+      { name: "plataforma", description: "Dónde publicarás", defaultValue: "YouTube Shorts" }
+    ]
+  },
+  {
+    title: "Hooks con Storytelling para Videos Cortos",
+    description: "Crea ganchos narrativos breves para videos de IA usando conflicto, curiosidad, contraste y transformación.",
+    category: "YouTube",
+    promptText: `Actúa como copywriter de hooks para videos cortos.
+
+Tema del video: "{{tema_video}}"
+Promesa principal: "{{promesa}}"
+
+Escribe 20 hooks de máximo 12 palabras clasificados en:
+1. Curiosidad.
+2. Miedo a quedarse atrás.
+3. Contraste antes/después.
+4. Historia personal.
+5. Desafío o experimento.
+
+Después elige los 5 más fuertes y explica por qué podrían retener mejor la atención.`,
+    tags: ["Hooks", "Storytelling", "Shorts", "Retención"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_video", description: "Tema del video corto", defaultValue: "cómo un agente de IA puede planificar tu semana" },
+      { name: "promesa", description: "Resultado que prometes mostrar", defaultValue: "ahorrar una hora diaria sin contratar a nadie" }
+    ]
+  },
+  {
+    title: "Carrusel Educativo IA para Instagram o LinkedIn",
+    description: "Convierte un tema complejo de IA en un carrusel de 8 diapositivas con narrativa, diseño y CTA.",
+    category: "Marketing",
+    promptText: `Actúa como estratega de contenido visual para redes profesionales.
+
+Tema del carrusel: "{{tema_carrusel}}"
+Audiencia: "{{audiencia}}"
+
+Crea un carrusel de 8 slides:
+1. Portada con promesa clara.
+2. Problema o mito común.
+3. Explicación simple.
+4. Ejemplo práctico.
+5. Paso a paso.
+6. Error frecuente.
+7. Checklist final.
+8. CTA para guardar, comentar o visitar un recurso.
+
+Incluye texto exacto por slide y sugerencia visual breve.`,
+    tags: ["Carrusel", "LinkedIn", "Instagram", "Educación IA"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_carrusel", description: "Tema educativo a transformar en carrusel", defaultValue: "qué son los agentes de IA y para qué sirven" },
+      { name: "audiencia", description: "Perfil de lectores", defaultValue: "profesionales no técnicos interesados en productividad" }
+    ]
+  },
+  {
+    title: "Demo Rápida IA: Guion de 60 Segundos",
+    description: "Diseña una demo breve y clara para mostrar una herramienta, prompt o agente IA en menos de un minuto.",
+    category: "YouTube",
+    promptText: `Actúa como director de demos rápidas para contenido educativo.
+
+Demo a mostrar: "{{demo}}"
+Resultado que debe verse: "{{resultado}}"
+
+Escribe un guion de 60 segundos con:
+1. Gancho inicial de 3 segundos.
+2. Contexto mínimo.
+3. Pasos visuales en pantalla.
+4. Resultado final.
+5. Frase de cierre que invite a probarlo.
+
+Incluye texto para subtítulos y cortes sugeridos cada 5 a 8 segundos.`,
+    tags: ["Demo", "Shorts", "IA", "Guion Rápido"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "demo", description: "Qué vas a demostrar", defaultValue: "un prompt que convierte notas sueltas en un calendario editorial" },
+      { name: "resultado", description: "Resultado visual de la demo", defaultValue: "una tabla con 10 ideas listas para grabar" }
+    ]
+  },
+  {
+    title: "Auditor de Miniaturas IA: CTR y Claridad Visual",
+    description: "Evalúa una miniatura o concepto visual con criterios de CTR, legibilidad, emoción, contraste y curiosidad.",
+    category: "YouTube",
+    promptText: `Actúa como director creativo de miniaturas para canales de IA y tecnología.
+
+Descripción de la miniatura:
+"""
+{{descripcion_miniatura}}
+"""
+Título del video: "{{titulo_video}}"
+
+Audita la miniatura con:
+1. Diagnóstico de claridad en menos de 2 segundos.
+2. Problemas de contraste, foco y exceso de elementos.
+3. Coherencia entre título y visual.
+4. Riesgo de clickbait o promesa confusa.
+5. Tres mejoras concretas.
+6. Una versión alternativa de alto CTR.
+
+Devuelve una puntuación de 1 a 10 y justifícala.`,
+    tags: ["Miniaturas", "CTR", "Auditoría", "YouTube"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "descripcion_miniatura", description: "Describe o pega el concepto de miniatura", defaultValue: "Fondo oscuro, robot al centro, texto 'IA GRATIS', flecha roja y mi cara sorprendida" },
+      { name: "titulo_video", description: "Título asociado al video", defaultValue: "Probé 7 agentes de IA gratis y este ganó" }
+    ]
+  },
+  {
+    title: "Títulos A/B para Videos de IA",
+    description: "Genera variantes de títulos para YouTube separadas por intención: curiosidad, utilidad, autoridad, miedo y resultado.",
+    category: "YouTube",
+    promptText: `Actúa como estratega de títulos para YouTube especializado en IA.
+
+Idea del video: "{{idea_video}}"
+Resultado prometido: "{{resultado_prometido}}"
+
+Genera 25 títulos divididos en:
+1. Curiosidad.
+2. Tutorial práctico.
+3. Advertencia o error.
+4. Experimento personal.
+5. Comparativa o ranking.
+
+Para cada título indica:
+- Emoción dominante.
+- Riesgo de parecer clickbait.
+- Versión más sobria si el canal busca autoridad.
+
+Termina con tus 5 favoritos ordenados por potencial de CTR.`,
+    tags: ["Títulos", "CTR", "YouTube", "A/B Testing"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "idea_video", description: "Idea base del video", defaultValue: "cómo uso agentes de IA para investigar temas de contenido" },
+      { name: "resultado_prometido", description: "Beneficio principal", defaultValue: "duplicar la velocidad de planificación de videos" }
+    ]
+  },
+  {
+    title: "Empaquetado de Video: Idea, Título, Miniatura y Promesa",
+    description: "Convierte una idea suelta en un paquete completo de video listo para validar antes de grabar.",
+    category: "YouTube",
+    promptText: `Actúa como productor editorial de YouTube para canales de tecnología.
+
+Idea base: "{{idea_base}}"
+Audiencia: "{{audiencia}}"
+
+Construye un paquete de video con:
+1. Promesa central en una frase.
+2. Ángulo diferencial frente a videos similares.
+3. Tres opciones de título.
+4. Tres conceptos de miniatura.
+5. Guion de apertura de 30 segundos.
+6. Objeciones que podrían hacer que el espectador no haga clic.
+7. Mejor versión final recomendada.
+
+El objetivo es decidir si vale la pena grabar antes de producir.`,
+    tags: ["Empaquetado", "YouTube", "Miniaturas", "Estrategia"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "idea_base", description: "Idea inicial del video", defaultValue: "crear una biblioteca de prompts como red social" },
+      { name: "audiencia", description: "Audiencia principal", defaultValue: "creadores de contenido y emprendedores que usan IA" }
+    ]
+  },
+  {
+    title: "LinkedIn IA: Post de Autoridad sin Humo",
+    description: "Escribe posts de LinkedIn sobre IA con credibilidad, historia breve, aprendizaje práctico y CTA conversacional.",
+    category: "Marketing",
+    promptText: `Actúa como ghostwriter de LinkedIn para un fundador o creador de IA.
+
+Tema del post: "{{tema_post}}"
+Punto de vista propio: "{{punto_de_vista}}"
+
+Escribe 3 versiones de post:
+1. Narrativa personal.
+2. Opinión contraria o matizada.
+3. Framework práctico.
+
+Cada versión debe incluir:
+- Primera línea fuerte.
+- Desarrollo claro sin jerga excesiva.
+- Aprendizaje accionable.
+- Pregunta final para comentarios.
+
+Evita frases vacías como "la IA cambiará todo".`,
+    tags: ["LinkedIn", "Marca Personal", "IA", "Autoridad"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_post", description: "Tema central del post", defaultValue: "por qué los prompts guardados son un activo de conocimiento" },
+      { name: "punto_de_vista", description: "Opinión o postura que quieres defender", defaultValue: "la ventaja no está en usar IA, sino en sistematizar cómo la usas" }
+    ]
+  },
+  {
+    title: "Hilo X: Explicar una Tendencia IA en 10 Tweets",
+    description: "Transforma una noticia o tendencia de IA en un hilo claro, viral y útil para Twitter/X.",
+    category: "Marketing",
+    promptText: `Actúa como creador experto de hilos en X sobre tecnología e IA.
+
+Tendencia o noticia: "{{tendencia}}"
+Audiencia: "{{audiencia}}"
+
+Escribe un hilo de 10 tweets con:
+1. Tweet inicial con promesa y curiosidad.
+2. Contexto simple.
+3. Por qué importa.
+4. Ejemplo concreto.
+5. Riesgos o límites.
+6. Oportunidad práctica.
+7. Predicción prudente.
+8. Recurso o idea accionable.
+9. Resumen.
+10. CTA para seguir o responder.
+
+Cada tweet debe ser claro, breve y con ritmo.`,
+    tags: ["Twitter", "X", "Hilos", "Tendencias IA"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tendencia", description: "Tendencia, noticia o tema a explicar", defaultValue: "los navegadores controlados por agentes de IA" },
+      { name: "audiencia", description: "Perfil de la audiencia", defaultValue: "creadores y builders de herramientas IA" }
+    ]
+  },
+  {
+    title: "Newsletter IA Semanal: Curación con Opinión",
+    description: "Genera una newsletter semanal con noticias, análisis, recursos, oportunidad práctica y CTA.",
+    category: "Redacción",
+    promptText: `Actúa como editor de una newsletter de IA para creadores y emprendedores.
+
+Notas, links o titulares de la semana:
+"""
+{{notas_semana}}
+"""
+
+Crea una newsletter con:
+1. Asunto del email y preheader.
+2. Intro breve con punto de vista.
+3. Tres noticias explicadas con impacto práctico.
+4. Un recurso recomendado.
+5. Una idea accionable para probar esta semana.
+6. Cierre con pregunta para responder.
+
+El tono debe ser cercano, inteligente y útil, no corporativo.`,
+    tags: ["Newsletter", "IA", "Curación", "Email"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "notas_semana", description: "Pega noticias, links o apuntes de la semana", defaultValue: "nuevo modelo Gemini, herramientas de agentes, cambios en Vercel, casos de uso de creadores" }
+    ]
+  },
+  {
+    title: "Resumen de Noticias IA para Video o Boletín",
+    description: "Convierte varias noticias de IA en un resumen editorial con ranking, contexto y lectura práctica.",
+    category: "Redacción",
+    promptText: `Actúa como editor de noticias tecnológicas especializado en IA.
+
+Noticias a resumir:
+"""
+{{noticias}}
+"""
+
+Entrega:
+1. Ranking de importancia de las noticias.
+2. Resumen de cada una en lenguaje simple.
+3. Qué significa para usuarios comunes.
+4. Qué significa para creadores o negocios.
+5. Ángulo recomendado para contenido.
+6. Titulares posibles para video, newsletter y post.
+
+Sé crítico con el hype y marca lo que todavía no está comprobado.`,
+    tags: ["Noticias IA", "Resumen", "Newsletter", "YouTube"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "noticias", description: "Lista de noticias o titulares a procesar", defaultValue: "Pega aquí 5 a 10 noticias sobre IA de la semana" }
+    ]
+  },
+  {
+    title: "Landing Page para Recurso Gratuito de Prompts",
+    description: "Crea una landing page simple para regalar prompts, captar emails o invitar a crear una biblioteca personal.",
+    category: "Marketing",
+    promptText: `Actúa como copywriter de landing pages para productos digitales de IA.
+
+Recurso gratuito: "{{recurso}}"
+Audiencia objetivo: "{{audiencia}}"
+Acción deseada: "{{accion_deseada}}"
+
+Escribe una landing page con:
+1. Hero: headline, subheadline y CTA.
+2. Problema que resuelve.
+3. Qué incluye el recurso.
+4. Beneficios concretos.
+5. Cómo usarlo en 3 pasos.
+6. Bloque de confianza.
+7. CTA final.
+
+Haz que suene valioso, directo y sin prometer resultados mágicos.`,
+    tags: ["Landing Page", "Lead Magnet", "Prompts", "Marketing"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "recurso", description: "Recurso que vas a regalar", defaultValue: "pack gratuito de 25 prompts para crear contenido con IA" },
+      { name: "audiencia", description: "Perfil al que va dirigida la landing", defaultValue: "creadores de contenido sobre inteligencia artificial" },
+      { name: "accion_deseada", description: "Acción principal", defaultValue: "crear una biblioteca personal de prompts" }
+    ]
+  },
+  {
+    title: "Lead Magnet de Prompts: Estructura y Copy",
+    description: "Diseña un recurso descargable basado en prompts con nombre, promesa, estructura, módulos y secuencia de entrega.",
+    category: "Marketing",
+    promptText: `Actúa como estratega de crecimiento para productos de IA.
+
+Tema del lead magnet: "{{tema_lead_magnet}}"
+Audiencia: "{{audiencia}}"
+
+Diseña el lead magnet completo:
+1. Nombre irresistible.
+2. Promesa clara.
+3. Tabla de contenidos.
+4. 10 prompts incluidos con una frase de uso.
+5. Instrucciones para obtener el máximo valor.
+6. Email de entrega.
+7. CTA para el siguiente paso.
+
+Debe sentirse práctico y accionable desde el primer minuto.`,
+    tags: ["Lead Magnet", "Prompts", "Email", "Crecimiento"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_lead_magnet", description: "Tema del recurso gratuito", defaultValue: "prompts para planificar 30 días de contenido IA" },
+      { name: "audiencia", description: "Quién recibirá el recurso", defaultValue: "creadores que quieren publicar más rápido" }
+    ]
+  },
+  {
+    title: "Oferta para Curso o Taller de IA",
+    description: "Construye una oferta clara para vender un taller, curso o mentoría de IA con promesa, módulos y objeciones.",
+    category: "Marketing",
+    promptText: `Actúa como estratega de ofertas educativas.
+
+Producto o taller: "{{producto}}"
+Audiencia objetivo: "{{audiencia}}"
+Resultado deseado: "{{resultado}}"
+
+Crea una oferta con:
+1. Promesa principal.
+2. Para quién es y para quién no es.
+3. Módulos o sesiones.
+4. Resultado tangible al terminar.
+5. Bonos o recursos de apoyo.
+6. Objeciones comunes y respuestas.
+7. CTA de inscripción.
+
+Evita exageraciones. La oferta debe sentirse concreta, confiable y medible.`,
+    tags: ["Oferta", "Curso IA", "Taller", "Ventas"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "producto", description: "Curso, taller o mentoría", defaultValue: "taller para crear tu sistema de prompts de contenido" },
+      { name: "audiencia", description: "Público objetivo", defaultValue: "creadores y emprendedores que usan IA pero no tienen sistema" },
+      { name: "resultado", description: "Resultado prometido", defaultValue: "salir con una biblioteca organizada y 30 ideas listas" }
+    ]
+  },
+  {
+    title: "Diseñador de Agente IA Personal",
+    description: "Define un agente personal con objetivo, entradas, herramientas, límites, memoria y flujo de trabajo.",
+    category: "IA Agentes",
+    promptText: `Actúa como arquitecto de agentes IA personales.
+
+Objetivo del agente: "{{objetivo_agente}}"
+Contexto de uso: "{{contexto_uso}}"
+
+Diseña el agente con:
+1. Rol y misión.
+2. Entradas necesarias.
+3. Herramientas o integraciones recomendadas.
+4. Flujo paso a paso.
+5. Memoria útil que debería conservar.
+6. Límites de seguridad y cosas que no debe hacer.
+7. Prompt de sistema inicial.
+8. Checklist para probar si funciona.
+
+Prioriza utilidad real y control del usuario.`,
+    tags: ["Agentes IA", "Productividad", "Diseño de Sistemas", "Prompt System"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "objetivo_agente", description: "Qué debe lograr el agente", defaultValue: "organizar mi calendario editorial semanal" },
+      { name: "contexto_uso", description: "Dónde y cómo se usará", defaultValue: "creación de contenido para YouTube, LinkedIn y newsletter" }
+    ]
+  },
+  {
+    title: "Agente de Research para Creadores IA",
+    description: "Diseña un agente de investigación que encuentre señales, sintetice fuentes y proponga ángulos de contenido.",
+    category: "IA Agentes",
+    promptText: `Actúa como diseñador de agentes de investigación para creadores de contenido.
+
+Tema de investigación: "{{tema_investigacion}}"
+Tipo de contenido final: "{{tipo_contenido}}"
+
+Diseña un flujo de research con:
+1. Preguntas de investigación.
+2. Fuentes ideales a consultar.
+3. Criterios para filtrar ruido.
+4. Formato de notas.
+5. Síntesis final.
+6. Ángulos de contenido derivados.
+7. Prompt operativo para ejecutar el research.
+
+Incluye una sección de verificación para separar hechos, opinión e hipótesis.`,
+    tags: ["Research", "Agentes IA", "Contenido", "Fuentes"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tema_investigacion", description: "Tema a investigar", defaultValue: "nuevas herramientas de agentes para navegador" },
+      { name: "tipo_contenido", description: "Formato final", defaultValue: "video largo de YouTube y newsletter" }
+    ]
+  },
+  {
+    title: "Agente de Contenido Multiplataforma",
+    description: "Diseña un agente que convierte una idea central en video, shorts, newsletter, post y carrusel.",
+    category: "IA Agentes",
+    promptText: `Actúa como arquitecto de sistemas de contenido con IA.
+
+Idea central: "{{idea_central}}"
+Plataformas objetivo: "{{plataformas}}"
+
+Crea el diseño de un agente que:
+1. Analice la idea central.
+2. Extraiga la promesa principal.
+3. Genere adaptaciones por plataforma.
+4. Mantenga coherencia de marca.
+5. Proponga calendario de publicación.
+6. Detecte piezas faltantes.
+7. Devuelva checklist de assets necesarios.
+
+Entrega también el prompt de sistema del agente y un ejemplo de salida.`,
+    tags: ["Agentes IA", "Contenido", "Multiplataforma", "Sistema"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "idea_central", description: "Idea madre de contenido", defaultValue: "cómo construir una biblioteca de prompts que acelere tu trabajo" },
+      { name: "plataformas", description: "Canales donde publicarás", defaultValue: "YouTube, Shorts, LinkedIn, X y newsletter" }
+    ]
+  },
+  {
+    title: "Agente de Automatización para Tareas Repetitivas",
+    description: "Convierte un proceso repetitivo en una especificación de agente con pasos, herramientas y control humano.",
+    category: "IA Agentes",
+    promptText: `Actúa como consultor de automatización con agentes IA.
+
+Proceso repetitivo: "{{proceso}}"
+Herramientas disponibles: "{{herramientas}}"
+
+Diseña una automatización con:
+1. Objetivo del flujo.
+2. Pasos que puede hacer la IA.
+3. Pasos que requieren aprobación humana.
+4. Datos de entrada y salida.
+5. Riesgos y controles.
+6. Prompt de sistema.
+7. Prueba mínima para validar el agente.
+
+No automatices decisiones sensibles sin revisión humana explícita.`,
+    tags: ["Automatización", "Agentes IA", "Workflow", "Productividad"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "proceso", description: "Proceso que quieres automatizar", defaultValue: "convertir ideas sueltas en tareas de producción semanal" },
+      { name: "herramientas", description: "Herramientas disponibles", defaultValue: "Google Sheets, Gmail, Notion y Gemini" }
+    ]
+  },
+  {
+    title: "Auditor de Prompt: Claridad, Contexto y Riesgos",
+    description: "Evalúa un prompt existente y entrega diagnóstico, problemas, versión mejorada y criterios de prueba.",
+    category: "Asistente de Prompts",
+    promptText: `Actúa como auditor profesional de prompts.
+
+Prompt a auditar:
+"""
+{{prompt_original}}
+"""
+
+Audita el prompt en:
+1. Objetivo.
+2. Contexto.
+3. Rol.
+4. Formato de salida.
+5. Restricciones.
+6. Variables necesarias.
+7. Riesgos de ambigüedad.
+
+Después entrega:
+- Diagnóstico breve.
+- Lista de mejoras.
+- Prompt reescrito.
+- Prueba mínima para saber si la nueva versión funciona mejor.`,
+    tags: ["Auditoría", "Prompt Engineering", "Optimización", "Calidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "prompt_original", description: "Prompt que quieres auditar", defaultValue: "Actúa como experto en marketing y dame ideas para mi canal de IA" }
+    ]
   }
 ];

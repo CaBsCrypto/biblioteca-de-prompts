@@ -24,6 +24,28 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function ownsFolder(folderId) {
+      return folderId == null
+        || (
+          folderId is string
+          && folderId.size() <= 128
+          && exists(/databases/$(database)/documents/folders/$(folderId))
+          && get(/databases/$(database)/documents/folders/$(folderId)).data.userId == request.auth.uid
+        );
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.uid == userId
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 120
+        && data.handle is string && data.handle.size() > 0 && data.handle.size() <= 40
+        && data.handle.matches('^[a-z0-9][a-z0-9_-]*$')
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 500))
+        && (!('role' in data) || data.role in ['founder', 'creator', 'member'])
+        && (!('status' in data) || data.status in ['active', 'hidden', 'blocked'])
+        && (!('stats' in data) || data.stats is map);
+    }
+
     // Basic validation helper for prompt format
     function isValidPrompt(data) {
       return data.userId == request.auth.uid
@@ -37,11 +59,71 @@ service cloud.firestore {
         && (!('isShared' in data) || data.isShared is bool)
         && (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 200))
         && (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 1000))
+        && (!('authorHandle' in data) || (data.authorHandle is string && data.authorHandle.size() <= 40))
         && (!('likedBy' in data) || (data.likedBy is list && data.likedBy.size() <= 1000))
         && (!('likesCount' in data) || data.likesCount is int)
         && (!('forkedFrom' in data) || (data.forkedFrom is string && data.forkedFrom.size() <= 200))
         && (!('suggestedVariables' in data) || data.suggestedVariables is list)
-        && (!('folderId' in data) || data.folderId == null || (data.folderId is string && data.folderId.size() <= 128));
+        && (!('folderId' in data) || ownsFolder(data.folderId));
+    }
+
+    match /users/{userId} {
+      allow get, list: if existing().status == 'active' || (isSignedIn() && request.auth.uid == userId);
+
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming(), userId)
+        && incoming().role in ['creator', 'member']
+        && incoming().status == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && existing().uid == userId
+        && incoming().uid == existing().uid
+        && incoming().role == existing().role
+        && incoming().status == existing().status
+        && incoming().createdAt == existing().createdAt
+        && incoming().stats == existing().stats
+        && incoming().updatedAt == request.time
+        && isValidUserProfile(incoming(), userId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'handle', 'bio', 'updatedAt']);
+
+      allow delete: if false;
+
+      match /following/{creatorId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && creatorId != userId
+          && incoming().targetUid == creatorId
+          && incoming().targetName is string && incoming().targetName.size() > 0 && incoming().targetName.size() <= 200
+          && (!('targetAvatar' in incoming()) || (incoming().targetAvatar is string && incoming().targetAvatar.size() <= 1000))
+          && incoming().createdAt == request.time;
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /events/{eventId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && isValidId(eventId)
+          && incoming().type in ['recommendation_open', 'recommendation_use', 'recommendation_copy', 'use', 'copy', 'edit']
+          && (!('promptId' in incoming()) || incoming().promptId == null || (incoming().promptId is string && incoming().promptId.size() <= 128))
+          && (!('promptTitle' in incoming()) || incoming().promptTitle == null || (incoming().promptTitle is string && incoming().promptTitle.size() <= 150))
+          && (!('category' in incoming()) || incoming().category == null || (incoming().category is string && incoming().category.size() <= 50))
+          && (!('tags' in incoming()) || (incoming().tags is list && incoming().tags.size() <= 10))
+          && (!('metadata' in incoming()) || incoming().metadata is map)
+          && incoming().createdAt == request.time;
+
+        allow update, delete: if false;
+      }
     }
 
     match /folders/{folderId} {
@@ -55,6 +137,7 @@ service cloud.firestore {
         && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
         && (!('isShared' in incoming()) || incoming().isShared is bool)
         && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
+        && (!('authorHandle' in incoming()) || (incoming().authorHandle is string && incoming().authorHandle.size() <= 40))
         && incoming().createdAt == request.time;
         
       allow update: if isSignedIn()
@@ -65,19 +148,18 @@ service cloud.firestore {
         && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
         && (!('isShared' in incoming()) || incoming().isShared is bool)
         && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
+        && (!('authorHandle' in incoming()) || (incoming().authorHandle is string && incoming().authorHandle.size() <= 40))
         && incoming().createdAt == existing().createdAt
-        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'authorName']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'authorName', 'authorHandle']);
     }
 
     match /prompts/{promptId} {
-      // Secure list query and document retrieve (allow authenticated owner, shared prompt, or prompt in a shared folder)
+      // Secure list query and document retrieve (allow authenticated owner or explicitly shared prompt)
       allow get: if (existing().isShared == true) 
-        || (isSignedIn() && existing().userId == request.auth.uid)
-        || ('folderId' in existing() && existing().folderId is string && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.isShared == true);
+        || (isSignedIn() && existing().userId == request.auth.uid);
         
       allow list: if (existing().isShared == true) 
-        || (isSignedIn() && existing().userId == request.auth.uid)
-        || ('folderId' in existing() && existing().folderId is string && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.isShared == true);
+        || (isSignedIn() && existing().userId == request.auth.uid);
       
       // Strict creation verification
       allow create: if isSignedIn() 
@@ -96,7 +178,7 @@ service cloud.firestore {
             && isValidPrompt(incoming())
             && incoming().createdAt == existing().createdAt
             && incoming().updatedAt == request.time
-            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'likedBy', 'likesCount', 'forkedFrom', 'updatedAt', 'folderId']))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'updatedAt', 'folderId']))
           ||
           // Case 2: Non-owner social interaction (liking/unliking shared prompts)
           (existing().isShared == true
@@ -110,7 +192,31 @@ service cloud.firestore {
             && incoming().diff(existing()).affectedKeys().hasOnly(['likedBy', 'likesCount', 'updatedAt'])
             && incoming().likedBy is list
             && incoming().likedBy.size() <= 1000
-            && incoming().likesCount is int)
+            && incoming().likesCount is int
+            && incoming().likesCount == incoming().likedBy.size()
+            && (
+              (
+                !('likedBy' in existing())
+                && request.auth.uid in incoming().likedBy
+                && incoming().likedBy.size() == 1
+              )
+              ||
+              (
+                'likedBy' in existing()
+                && !(request.auth.uid in existing().likedBy)
+                && request.auth.uid in incoming().likedBy
+                && incoming().likedBy.size() == existing().likedBy.size() + 1
+                && incoming().likedBy.hasAll(existing().likedBy)
+              )
+              ||
+              (
+                'likedBy' in existing()
+                && request.auth.uid in existing().likedBy
+                && !(request.auth.uid in incoming().likedBy)
+                && incoming().likedBy.size() == existing().likedBy.size() - 1
+                && existing().likedBy.hasAll(incoming().likedBy)
+              )
+            ))
         );
         
       // Strictly deletion
