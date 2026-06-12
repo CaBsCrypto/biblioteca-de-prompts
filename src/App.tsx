@@ -64,6 +64,8 @@ import {
   getTagSuggestions
 } from "./utils/promptFilters";
 
+const FOUNDER_PACK_USER_ID = "founder-pack";
+
 export default function App() {
   // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad">("mi-biblioteca");
@@ -213,6 +215,30 @@ export default function App() {
   });
 
   const { promptEventScores, trackUserEvent } = usePromptEvents(user);
+
+  const founderPackPrompts = useMemo<Prompt[]>(() => {
+    return DEFAULT_PROMPTS.map((prompt, index) => ({
+      ...prompt,
+      id: `founder-pack-${index + 1}`,
+      userId: FOUNDER_PACK_USER_ID,
+      isShared: true,
+      authorName: "Pack Fundador",
+      authorAvatar: "",
+      authorHandle: "pack-fundador",
+      likedBy: [],
+      likesCount: 0,
+      createdAt: null,
+      updatedAt: null
+    }));
+  }, []);
+
+  const communityCatalogPrompts = useMemo(() => {
+    const communityIds = new Set(communityPrompts.map((prompt) => prompt.id));
+    return [
+      ...founderPackPrompts.filter((prompt) => !communityIds.has(prompt.id)),
+      ...communityPrompts
+    ];
+  }, [communityPrompts, founderPackPrompts]);
 
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
@@ -385,7 +411,7 @@ export default function App() {
   const filteredPrompts = useMemo(() => {
     return filterPrompts({
       prompts,
-      communityPrompts,
+      communityPrompts: communityCatalogPrompts,
       currentTab,
       selectedAuthor,
       communityScope,
@@ -395,7 +421,7 @@ export default function App() {
       selectedTags,
       selectedFolderId
     });
-  }, [prompts, communityPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids]);
+  }, [prompts, communityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids]);
 
   const defaultPromptTitles = useMemo(
     () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
@@ -415,13 +441,13 @@ export default function App() {
   const allAvailableTags = useMemo(() => {
     return getAvailableTags({
       prompts,
-      communityPrompts,
+      communityPrompts: communityCatalogPrompts,
       currentTab,
       selectedAuthor,
       communityScope,
       followedCreatorUids
     });
-  }, [prompts, communityPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids]);
+  }, [prompts, communityCatalogPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids]);
 
   const tagSuggestions = useMemo(() => {
     return getTagSuggestions(allAvailableTags, tagSearchInput, selectedTags);
@@ -505,16 +531,16 @@ export default function App() {
   };
 
   const allSearchablePrompts = useMemo(() => {
-    return combineSearchablePrompts(prompts, communityPrompts);
-  }, [prompts, communityPrompts]);
+    return combineSearchablePrompts(prompts, communityCatalogPrompts);
+  }, [prompts, communityCatalogPrompts]);
 
   const authorProfileStats = useMemo(() => {
-    return getAuthorProfileStats(communityPrompts, selectedAuthor);
-  }, [communityPrompts, selectedAuthor]);
+    return getAuthorProfileStats(communityCatalogPrompts, selectedAuthor);
+  }, [communityCatalogPrompts, selectedAuthor]);
 
   const publicFeaturedPrompts = useMemo(() => {
-    return getPublicFeaturedPrompts(communityPrompts);
-  }, [communityPrompts]);
+    return getPublicFeaturedPrompts(communityCatalogPrompts);
+  }, [communityCatalogPrompts]);
 
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
@@ -907,7 +933,7 @@ export default function App() {
                   <Users size={13} />
                   <span>Red de la Comunidad</span>
                   <span className="text-[10px] bg-slate-900 text-pink-400 font-extrabold px-2 py-0.5 rounded-md font-mono animate-pulse">
-                    {communityPrompts.length}
+                    {communityCatalogPrompts.length}
                   </span>
                 </button>
               </div>
@@ -1050,7 +1076,14 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-400 mt-1 max-w-lg leading-relaxed font-sans">
                     {currentTab === "mi-biblioteca" ? (
-                      <>Colección personal. Tienes <strong className="text-pink-400">{prompts.length}</strong> prompts guardados en total.</>
+                      <>
+                        Colección personal. Tienes <strong className="text-pink-400">{prompts.length}</strong> prompts guardados en total.
+                        {missingDefaultPromptCount > 0 && (
+                          <span className="ml-1 text-slate-400">
+                            Pack inicial: <strong className="text-indigo-300">{existingDefaultPromptCount}/{DEFAULT_PROMPTS.length}</strong> guardados.
+                          </span>
+                        )}
+                      </>
                     ) : selectedAuthor ? (
                       <>Explorando el catálogo público de <strong className="text-indigo-300">{selectedAuthor.name}</strong>. Mostrando sus <strong className="text-pink-400">{filteredPrompts.length}</strong> prompts compartidos.</>
                     ) : communityScope === "siguiendo" ? (
@@ -1386,7 +1419,7 @@ export default function App() {
                             >
                               <span className="font-bold text-pink-400">#{tag}</span>
                               <span className="text-[9px] font-mono text-slate-400 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded-md">
-                                {(currentTab === "mi-biblioteca" ? prompts : communityPrompts).filter(p => p.tags?.some(t => t.toLowerCase() === tag.toLowerCase())).length}
+                                {(currentTab === "mi-biblioteca" ? prompts : communityCatalogPrompts).filter(p => p.tags?.some(t => t.toLowerCase() === tag.toLowerCase())).length}
                               </span>
                             </button>
                           ))
@@ -1454,7 +1487,7 @@ export default function App() {
                           ? "Todavia no sigues a ningun creador. Explora la comunidad, abre un perfil y pulsa Seguir Creador para construir tu feed."
                           : communityScope === "siguiendo"
                           ? "Los creadores que sigues aun no tienen prompts publicos que coincidan con tus filtros."
-                          : communityPrompts.length === 0
+                          : communityCatalogPrompts.length === 0
                           ? "Aun no hay prompts publicos publicados en la comunidad. Se el primero compartiendo una de tus plantillas personales activando el interruptor Hacer publico."
                           : "No se encontraron prompts publicos que coincidan con los filtros de busqueda o categoria en la comunidad."
                       )}

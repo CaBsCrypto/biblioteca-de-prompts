@@ -42,9 +42,10 @@ export default function PromptCard({
   const [linkCopied, setLinkCopied] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
+  const isFounderPackPrompt = prompt.userId === "founder-pack" || prompt.id.startsWith("founder-pack-");
 
   useEffect(() => {
-    if (prompt.isShared) {
+    if (prompt.isShared && !isFounderPackPrompt) {
       const q = query(collection(db, `prompts/${prompt.id}/comments`));
       const unsubscribe = onSnapshot(
         q,
@@ -57,7 +58,7 @@ export default function PromptCard({
       );
       return unsubscribe;
     }
-  }, [prompt.id, prompt.isShared]);
+  }, [isFounderPackPrompt, prompt.id, prompt.isShared]);
 
   const isLiked = currentUser ? prompt.likedBy?.includes(currentUser.uid) : false;
   const likesCount = prompt.likesCount || prompt.likedBy?.length || 0;
@@ -454,7 +455,7 @@ ${notesStr}
             )}
 
             {/* Social Likes Interaction Button */}
-            {onLikeToggle && (
+            {onLikeToggle && !isFounderPackPrompt && (
               <button
                 onClick={() => onLikeToggle(prompt)}
                 className={`p-2 rounded-lg transition-all flex items-center gap-1.5 ${
@@ -470,20 +471,22 @@ ${notesStr}
             )}
 
             {/* Comments Toggle Button */}
-            <button
-              onClick={() => setShowComments(!showComments)}
-              className={`p-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-                showComments
-                  ? "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20"
-                  : "text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10"
-              }`}
-              title="Ver comentarios y aportar recomendaciones o sugerencias de mejora"
-            >
-              <MessageSquare size={16} />
-              <span className="text-xs font-bold font-mono">
-                {commentCount !== null && commentCount > 0 ? `Comentarios (${commentCount})` : "Sugerencias"}
-              </span>
-            </button>
+            {!isFounderPackPrompt && (
+              <button
+                onClick={() => setShowComments(!showComments)}
+                className={`p-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  showComments
+                    ? "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20"
+                    : "text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                }`}
+                title="Ver comentarios y aportar recomendaciones o sugerencias de mejora"
+              >
+                <MessageSquare size={16} />
+                <span className="text-xs font-bold font-mono">
+                  {commentCount !== null && commentCount > 0 ? `Comentarios (${commentCount})` : "Sugerencias"}
+                </span>
+              </button>
+            )}
 
             {/* Fork/Duplicate Button */}
             {isCommunityView && onFork && currentUser && prompt.userId !== currentUser.uid && (
@@ -498,20 +501,22 @@ ${notesStr}
             )}
 
             {/* Native Share button */}
-            <button
-              id={`btn-share-${prompt.id}`}
-              onClick={handleShareClick}
-              className={`p-2 rounded-lg transition-all ${
-                linkCopied
-                  ? "text-emerald-400 bg-emerald-500/10"
-                  : prompt.isShared
-                  ? "text-indigo-400 hover:text-white hover:bg-indigo-500/10"
-                  : "text-slate-550 hover:text-indigo-400 hover:bg-slate-800"
-              }`}
-              title={prompt.isShared ? "Copiar enlace de compartición pública" : "Activar compartir en Editar para obtener enlace"}
-            >
-              {linkCopied ? <Check size={16} className="text-emerald-400" /> : <Share2 size={16} />}
-            </button>
+            {!isFounderPackPrompt && (
+              <button
+                id={`btn-share-${prompt.id}`}
+                onClick={handleShareClick}
+                className={`p-2 rounded-lg transition-all ${
+                  linkCopied
+                    ? "text-emerald-400 bg-emerald-500/10"
+                    : prompt.isShared
+                    ? "text-indigo-400 hover:text-white hover:bg-indigo-500/10"
+                    : "text-slate-550 hover:text-indigo-400 hover:bg-slate-800"
+                }`}
+                title={prompt.isShared ? "Copiar enlace de compartición pública" : "Activar compartir en Editar para obtener enlace"}
+              >
+                {linkCopied ? <Check size={16} className="text-emerald-400" /> : <Share2 size={16} />}
+              </button>
+            )}
             
             <button
               id={`btn-export-md-${prompt.id}`}
