@@ -22,6 +22,11 @@ export interface Prompt {
   likedBy?: string[];
   likesCount?: number;
   forkedFrom?: string;
+  forkedFromPromptId?: string;
+  forkedFromUserId?: string;
+  forkedFromAuthorName?: string;
+  forkedFromAuthorHandle?: string;
+  forkedFromTitle?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   folderId?: string | null; // Custom folder grouping

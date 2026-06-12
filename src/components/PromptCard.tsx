@@ -43,6 +43,8 @@ export default function PromptCard({
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const isFounderPackPrompt = prompt.userId === "founder-pack" || prompt.id.startsWith("founder-pack-");
+  const forkSourceTitle = prompt.forkedFromTitle || prompt.forkedFrom;
+  const forkSourceAuthor = prompt.forkedFromAuthorName || "";
 
   useEffect(() => {
     if (prompt.isShared && !isFounderPackPrompt) {
@@ -378,10 +380,13 @@ ${notesStr}
         )}
 
         {/* Fork indicator label */}
-        {prompt.forkedFrom && (
-          <div className="inline-flex items-center gap-1 text-[10px] text-indigo-300 bg-indigo-500/5 px-2.5 py-1 rounded-lg border border-indigo-500/15 mb-3.5 font-mono">
-            <GitFork size={10} />
-            <span>Bifurcado de {prompt.forkedFrom}</span>
+        {forkSourceTitle && (
+          <div className="inline-flex items-center gap-1 text-[10px] text-indigo-300 bg-indigo-500/5 px-2.5 py-1 rounded-lg border border-indigo-500/15 mb-3.5 font-mono max-w-full">
+            <GitFork size={10} className="shrink-0" />
+            <span className="min-w-0 truncate">
+              Basado en {forkSourceTitle}
+              {forkSourceAuthor ? ` por ${forkSourceAuthor}` : ""}
+            </span>
           </div>
         )}
 

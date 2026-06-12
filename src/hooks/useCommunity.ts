@@ -10,8 +10,10 @@ export type CommunityAuthor = { name: string; uid: string; avatar?: string };
 
 interface UseCommunityOptions {
   user: User | null;
+  prompts: Prompt[];
   setCurrentTab: (tab: "mi-biblioteca" | "comunidad") => void;
   setLoadingPrompts: (loading: boolean) => void;
+  onOpenEdit: (prompt: Prompt) => void;
   getAuthorIdentity: () => {
     authorName: string;
     authorAvatar: string;
@@ -22,8 +24,10 @@ interface UseCommunityOptions {
 
 export function useCommunity({
   user,
+  prompts,
   setCurrentTab,
   setLoadingPrompts,
+  onOpenEdit,
   getAuthorIdentity,
   onNotification
 }: UseCommunityOptions) {
@@ -73,7 +77,7 @@ export function useCommunity({
 
   const handleLikeToggle = async (prompt: Prompt) => {
     if (!user) {
-      onNotification("Debes iniciar sesión para reaccionar o dar 'Me Gusta'.", "info");
+      onNotification("Debes iniciar sesion para reaccionar o dar Me Gusta.", "info");
       return;
     }
 
@@ -86,22 +90,35 @@ export function useCommunity({
         likesCount: increment(isLiked ? -1 : 1),
         updatedAt: serverTimestamp()
       });
-      onNotification(isLiked ? "Ya no te gusta este prompt." : "¡Te gusta este prompt!", "success");
+      onNotification(isLiked ? "Ya no te gusta este prompt." : "Te gusta este prompt.", "success");
     } catch (err) {
       console.error("Error toggling like:", err);
-      onNotification("No se pudo registrar la reacción.", "info");
+      onNotification("No se pudo registrar la reaccion.", "info");
     }
   };
 
   const handleForkPrompt = async (prompt: Prompt) => {
     if (!user) {
-      onNotification("Debes iniciar sesión para clonar prompts de la comunidad.", "info");
+      onNotification("Debes iniciar sesion para clonar prompts de la comunidad.", "info");
       return;
     }
 
     setLoadingPrompts(true);
     try {
-      await addDoc(collection(db, "prompts"), {
+      const sourcePromptId = prompt.forkedFromPromptId || prompt.id;
+      const existingFork = prompts.find((candidate) =>
+        candidate.forkedFromPromptId === sourcePromptId ||
+        (!candidate.forkedFromPromptId && candidate.forkedFrom === prompt.title)
+      );
+
+      if (existingFork) {
+        setCurrentTab("mi-biblioteca");
+        onOpenEdit(existingFork);
+        onNotification("Ya tenias este prompt en tu biblioteca. Abrimos tu copia para editar.", "info");
+        return;
+      }
+
+      const forkData = {
         userId: user.uid,
         title: `${prompt.title} (Clon)`,
         description: prompt.description || "",
@@ -112,15 +129,30 @@ export function useCommunity({
         isShared: false,
         notas: prompt.notas || "",
         forkedFrom: prompt.title,
+        forkedFromPromptId: sourcePromptId,
+        forkedFromUserId: prompt.forkedFromUserId || prompt.userId,
+        forkedFromAuthorName: prompt.forkedFromAuthorName || prompt.authorName || "Creador",
+        forkedFromAuthorHandle: prompt.forkedFromAuthorHandle || prompt.authorHandle || "",
+        forkedFromTitle: prompt.forkedFromTitle || prompt.title,
         suggestedVariables: prompt.suggestedVariables || [],
         ...getAuthorIdentity(),
         likedBy: [],
         likesCount: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
-      onNotification(`¡Prompt "${prompt.title}" clonado a tu biblioteca!`, "success");
+      };
+
+      const docRef = await addDoc(collection(db, "prompts"), forkData);
+      const editableFork = {
+        id: docRef.id,
+        ...forkData,
+        createdAt: null,
+        updatedAt: null
+      } as Prompt;
+
       setCurrentTab("mi-biblioteca");
+      onOpenEdit(editableFork);
+      onNotification(`Prompt "${prompt.title}" clonado a tu biblioteca para editar.`, "success");
     } catch (err) {
       console.error("Error forking prompt:", err);
       onNotification("No se pudo clonar el prompt de la comunidad.", "info");
@@ -131,7 +163,7 @@ export function useCommunity({
 
   const handleToggleFollowCreator = async (creatorUid: string) => {
     if (!user) {
-      onNotification("Inicia sesión para seguir creadores.", "info");
+      onNotification("Inicia sesion para seguir creadores.", "info");
       return;
     }
     if (creatorUid === user.uid) {

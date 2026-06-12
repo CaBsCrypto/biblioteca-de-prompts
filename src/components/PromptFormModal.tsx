@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Plus, Trash2, Tag, HelpCircle, Sparkles, StickyNote, Globe, History, RotateCcw, Mic, MicOff } from "lucide-react";
+import { X, Save, Plus, Trash2, Tag, HelpCircle, Sparkles, StickyNote, Globe, History, RotateCcw, Mic, MicOff, GitFork } from "lucide-react";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { Prompt, PromptVariable, Folder } from "../types";
@@ -166,6 +166,8 @@ export default function PromptFormModal({
 
   const [versions, setVersions] = useState<{ id: string; promptText: string; createdAt: any }[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
+  const forkSourceTitle = prompt?.forkedFromTitle || prompt?.forkedFrom;
+  const forkSourceAuthor = prompt?.forkedFromAuthorName || "";
 
   // Fetch older versions of promptText
   useEffect(() => {
@@ -304,6 +306,19 @@ export default function PromptFormModal({
 
         {/* Scrollable Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-slate-200">
+          {forkSourceTitle && (
+            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-3.5 text-xs text-indigo-200 flex items-start gap-2.5">
+              <GitFork size={14} className="mt-0.5 text-indigo-300 shrink-0" />
+              <div className="leading-relaxed">
+                <span className="font-extrabold">Remix privado.</span>{" "}
+                <span className="text-slate-300">
+                  Basado en <span className="font-bold text-indigo-200">{forkSourceTitle}</span>
+                  {forkSourceAuthor ? <> por <span className="font-bold text-indigo-200">{forkSourceAuthor}</span></> : ""}.
+                  Puedes editarlo libremente; solo se publica si activas compartir publicamente.
+                </span>
+              </div>
+            </div>
+          )}
           
           {/* Row 1: Title */}
           <div className="flex flex-col gap-1.5">

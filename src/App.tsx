@@ -194,6 +194,14 @@ export default function App() {
     onNotification: triggerNotification
   });
 
+  const { promptEventScores, trackUserEvent } = usePromptEvents(user);
+
+  const handleOpenEdit = (p: Prompt) => {
+    trackUserEvent("edit", p);
+    setEditingPrompt(p);
+    setShowFormModal(true);
+  };
+
   const {
     communityPrompts,
     loadingCommunityPrompts,
@@ -208,13 +216,13 @@ export default function App() {
     handleSelectAuthor
   } = useCommunity({
     user,
+    prompts,
     setCurrentTab,
     setLoadingPrompts,
+    onOpenEdit: handleOpenEdit,
     getAuthorIdentity,
     onNotification: triggerNotification
   });
-
-  const { promptEventScores, trackUserEvent } = usePromptEvents(user);
 
   const founderPackPrompts = useMemo<Prompt[]>(() => {
     return DEFAULT_PROMPTS.map((prompt, index) => ({
@@ -370,13 +378,7 @@ export default function App() {
     checkShareParam();
   }, []);
 
-  // Direct Option: Open Form Edit or creation
-  const handleOpenEdit = (p: Prompt) => {
-    trackUserEvent("edit", p);
-    setEditingPrompt(p);
-    setShowFormModal(true);
-  };
-
+  // Direct Option: Open Form creation
   const handleOpenAdd = () => {
     setEditingPrompt(null);
     setShowFormModal(true);
