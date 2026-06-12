@@ -99,6 +99,19 @@ export function usePromptLibrary({
   ) => {
     if (!user) return;
     const promptsCollectionPath = "prompts";
+    const definedPromptData = Object.fromEntries(
+      Object.entries(promptData).filter(([, value]) => value !== undefined)
+    );
+    const forkMetadata = Object.fromEntries(
+      [
+        ["forkedFrom", promptData.forkedFrom],
+        ["forkedFromPromptId", promptData.forkedFromPromptId],
+        ["forkedFromUserId", promptData.forkedFromUserId],
+        ["forkedFromAuthorName", promptData.forkedFromAuthorName],
+        ["forkedFromAuthorHandle", promptData.forkedFromAuthorHandle],
+        ["forkedFromTitle", promptData.forkedFromTitle]
+      ].filter(([, value]) => value !== undefined)
+    );
 
     try {
       if (editingPrompt) {
@@ -135,6 +148,7 @@ export function usePromptLibrary({
           isShared: promptData.isShared || false,
           notas: promptData.notas || "",
           suggestedVariables: promptData.suggestedVariables || [],
+          ...forkMetadata,
           ...getAuthorIdentity(),
           updatedAt: serverTimestamp(),
           folderId: promptData.folderId || null
@@ -143,7 +157,7 @@ export function usePromptLibrary({
       } else {
         const docRef = doc(collection(db, promptsCollectionPath));
         await setDoc(docRef, {
-          ...promptData,
+          ...definedPromptData,
           userId: user.uid,
           isShared: promptData.isShared || false,
           ...getAuthorIdentity(),

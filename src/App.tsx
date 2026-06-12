@@ -13,7 +13,6 @@ import {
   Search,
   LogOut,
   FolderOpen,
-  Filter,
   Check,
   Zap,
   Youtube,
@@ -31,7 +30,8 @@ import {
   Play,
   ArrowLeft,
   UserCheck,
-  UserPlus
+  UserPlus,
+  GitFork
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -49,11 +49,13 @@ import CreateFolderModal from "./components/CreateFolderModal";
 import ShareFolderModal from "./components/ShareFolderModal";
 import SharedPromptModal from "./components/SharedPromptModal";
 import ActivationChecklist from "./components/ActivationChecklist";
+import PublicPromptDetailModal from "./components/PublicPromptDetailModal";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
 import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
+import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { DEFAULT_PROMPTS } from "./data";
@@ -62,11 +64,28 @@ import {
   filterPrompts,
   getAuthorProfileStats,
   getAvailableTags,
-  getPublicFeaturedPrompts,
-  getTagSuggestions
+  getPublicShowcasePrompts,
+  getTagSuggestions,
+  type LibraryViewFilter
 } from "./utils/promptFilters";
 
 const FOUNDER_PACK_USER_ID = "founder-pack";
+const PUBLIC_SHOWCASE_CATEGORIES: CategoryFilter[] = [
+  "Todas",
+  "YouTube",
+  "Marketing",
+  "IA Agentes",
+  "Asistente de Prompts",
+  "IA Videos",
+  "General"
+];
+const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
+  { id: "todos", label: "Todos" },
+  { id: "privados", label: "Privados" },
+  { id: "publicados", label: "Publicados" },
+  { id: "remixes", label: "Remixes" },
+  { id: "favoritos", label: "Favoritos" }
+];
 
 export default function App() {
   // Social / Community navigation
@@ -78,6 +97,7 @@ export default function App() {
   const [tagSearchInput, setTagSearchInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [libraryViewFilter, setLibraryViewFilter] = useState<LibraryViewFilter>("todos");
 
   // Close tag autocomplete dropdown on click outside
   useEffect(() => {
@@ -98,6 +118,7 @@ export default function App() {
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [usingPrompt, setUsingPrompt] = useState<Prompt | null>(null);
   const [copyingFilledPrompt, setCopyingFilledPrompt] = useState<Prompt | null>(null);
+  const [selectedPublicPrompt, setSelectedPublicPrompt] = useState<Prompt | null>(null);
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showRecommendationModal, setShowRecommendationModal] = useState(false);
@@ -106,6 +127,10 @@ export default function App() {
   const [geminiRecommendationLoading, setGeminiRecommendationLoading] = useState(false);
   const [geminiRecommendationError, setGeminiRecommendationError] = useState("");
   const [presetAItext, setPresetAItext] = useState("");
+  const [publicShowcaseCategory, setPublicShowcaseCategory] = useState<CategoryFilter>("Todas");
+  const [publicShowcaseSearch, setPublicShowcaseSearch] = useState("");
+  const [pendingPublicSavePrompt, setPendingPublicSavePrompt] = useState<Prompt | null>(null);
+  const [isResolvingPendingPublicSave, setIsResolvingPendingPublicSave] = useState(false);
 
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
@@ -140,6 +165,7 @@ export default function App() {
     onAfterSignOut: () => {
       setSelectedCategory("Todas");
       setSearchQuery("");
+      setLibraryViewFilter("todos");
       setShowAIAssistant(false);
     }
   });
@@ -225,6 +251,59 @@ export default function App() {
     getAuthorIdentity,
     onNotification: triggerNotification
   });
+
+  const {
+    socialFavorites,
+    socialFavoritePromptIds,
+    handleToggleSocialFavorite
+  } = useSocialFavorites({
+    user,
+    onNotification: triggerNotification
+  });
+
+  const resolvePublicSavePrompt = async (prompt: Prompt) => {
+    if (!user) {
+      setPendingPublicSavePrompt(prompt);
+      triggerNotification("Conecta con Google y guardaremos este prompt como remix privado.", "info");
+      await handleSignIn();
+      return;
+    }
+
+    if (prompt.userId === user.uid && prompt.userId !== FOUNDER_PACK_USER_ID) {
+      const ownPrompt = prompts.find((candidate) => candidate.id === prompt.id) || prompt;
+      setCurrentTab("mi-biblioteca");
+      handleOpenEdit(ownPrompt);
+      triggerNotification("Este prompt ya es tuyo. Abrimos el editor directamente.", "info");
+      return;
+    }
+
+    await handleForkPrompt(prompt);
+  };
+
+  useEffect(() => {
+    if (!user || !pendingPublicSavePrompt || loadingPrompts || isResolvingPendingPublicSave) return;
+
+    let cancelled = false;
+    const promptToSave = pendingPublicSavePrompt;
+    setPendingPublicSavePrompt(null);
+    setIsResolvingPendingPublicSave(true);
+
+    const resolvePendingSave = async () => {
+      try {
+        await resolvePublicSavePrompt(promptToSave);
+      } finally {
+        if (!cancelled) {
+          setIsResolvingPendingPublicSave(false);
+        }
+      }
+    };
+
+    void resolvePendingSave();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pendingPublicSavePrompt, loadingPrompts, isResolvingPendingPublicSave]);
 
   const founderPackPrompts = useMemo<Prompt[]>(() => {
     return DEFAULT_PROMPTS.map((prompt, index) => ({
@@ -452,6 +531,14 @@ export default function App() {
     }
   };
 
+  const ownForkedSourceIds = useMemo(() => {
+    return new Set(
+      prompts
+        .map((prompt) => prompt.forkedFromPromptId || "")
+        .filter(Boolean)
+    );
+  }, [prompts]);
+
   // 7. Filtering and Searching Locally For ultra responsive actions
   const filteredPrompts = useMemo(() => {
     return filterPrompts({
@@ -464,9 +551,12 @@ export default function App() {
       selectedCategory,
       searchQuery,
       selectedTags,
-      selectedFolderId
+      selectedFolderId,
+      socialFavoritePromptIds,
+      ownForkedSourceIds,
+      libraryViewFilter
     });
-  }, [prompts, communityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids]);
+  }, [prompts, communityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids, socialFavoritePromptIds, ownForkedSourceIds, libraryViewFilter]);
 
   const defaultPromptTitles = useMemo(
     () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
@@ -497,9 +587,12 @@ export default function App() {
       currentTab,
       selectedAuthor,
       communityScope,
-      followedCreatorUids
+      followedCreatorUids,
+      socialFavoritePromptIds,
+      ownForkedSourceIds,
+      libraryViewFilter
     });
-  }, [prompts, communityCatalogPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids]);
+  }, [prompts, communityCatalogPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids, socialFavoritePromptIds, ownForkedSourceIds, libraryViewFilter]);
 
   const tagSuggestions = useMemo(() => {
     return getTagSuggestions(allAvailableTags, tagSearchInput, selectedTags);
@@ -590,9 +683,20 @@ export default function App() {
     return getAuthorProfileStats(communityCatalogPrompts, selectedAuthor);
   }, [communityCatalogPrompts, selectedAuthor]);
 
-  const publicFeaturedPrompts = useMemo(() => {
-    return getPublicFeaturedPrompts(communityCatalogPrompts);
-  }, [communityCatalogPrompts]);
+  const publicShowcasePrompts = useMemo(() => {
+    return getPublicShowcasePrompts({
+      prompts: communityCatalogPrompts,
+      selectedCategory: publicShowcaseCategory,
+      searchQuery: publicShowcaseSearch
+    });
+  }, [communityCatalogPrompts, publicShowcaseCategory, publicShowcaseSearch]);
+
+  const socialFavoritePrompts = useMemo(() => {
+    return socialFavorites.map((favorite) => ({
+      favorite,
+      prompt: communityCatalogPrompts.find((prompt) => prompt.id === favorite.promptId) || null
+    }));
+  }, [socialFavorites, communityCatalogPrompts]);
 
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
@@ -792,9 +896,12 @@ export default function App() {
                     onNotification={triggerNotification}
                     isCommunityView={true}
                     currentUser={user}
-                    onFork={handleForkPrompt}
+                    onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
                     onLikeToggle={handleLikeToggle}
                     onAuthorClick={handleSelectAuthor}
+                    onViewDetails={setSelectedPublicPrompt}
+                    onSocialFavoriteToggle={handleToggleSocialFavorite}
+                    isSocialFavorite={socialFavoritePromptIds.has(p.id)}
                   />
                 ))}
               </div>
@@ -873,7 +980,7 @@ export default function App() {
                     </span>
                     <h3 className="text-lg font-extrabold text-white mt-3">Explora prompts publicos antes de iniciar sesion</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                      Puedes probar plantillas compartidas por la comunidad. Para guardar, clonar o publicar tus propias colecciones, crea tu biblioteca.
+                      Prueba plantillas del Pack Fundador y de la comunidad. Cuando quieras adaptarlas, guardalas como remix privado en tu biblioteca.
                     </p>
                   </div>
                   <button
@@ -886,23 +993,60 @@ export default function App() {
                   </button>
                 </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-start">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Search size={14} />
+                    </div>
+                    <input
+                      type="text"
+                      value={publicShowcaseSearch}
+                      onChange={(e) => setPublicShowcaseSearch(e.target.value)}
+                      placeholder="Buscar por titulo, autor, tag o texto..."
+                      className="w-full text-xs rounded-2xl border border-slate-700 bg-slate-950/45 pl-9.5 pr-4 py-3 focus:outline-none focus:border-indigo-455 transition-all font-sans text-white placeholder-slate-450"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {PUBLIC_SHOWCASE_CATEGORIES.map((category) => (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setPublicShowcaseCategory(category)}
+                        className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                          publicShowcaseCategory === category
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-slate-900/55 text-slate-400 border-slate-700 hover:text-slate-200"
+                        }`}
+                      >
+                        {category === "Todas" ? "Todo" : category}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {loadingCommunityPrompts ? (
                   <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-8 text-center">
                     <div className="w-7 h-7 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin mx-auto"></div>
                     <p className="text-xs text-slate-400 mt-3">Cargando prompts publicos...</p>
                   </div>
-                ) : publicFeaturedPrompts.length === 0 ? (
+                ) : publicShowcasePrompts.length === 0 ? (
                   <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-6">
-                    <p className="text-sm font-bold text-white">Aun no hay prompts publicos destacados.</p>
-                    <p className="text-xs text-slate-400 mt-1">Cuando publiques tu primera coleccion, aparecera aqui como vitrina inicial.</p>
+                    <p className="text-sm font-bold text-white">No encontramos prompts publicos con esos filtros.</p>
+                    <p className="text-xs text-slate-400 mt-1">Prueba otra categoria o limpia la busqueda para explorar el pack completo.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {publicFeaturedPrompts.map((prompt) => (
+                    {publicShowcasePrompts.map((prompt) => (
                       <div key={prompt.id} className="rounded-2xl border border-slate-700/70 bg-slate-900/45 p-4 flex flex-col gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">{prompt.category}</span>
+                            {prompt.userId === FOUNDER_PACK_USER_ID && (
+                              <span className="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                                Pack Fundador
+                              </span>
+                            )}
                             {prompt.authorName && (
                               <span className="text-[10px] text-slate-400">por {prompt.authorName}</span>
                             )}
@@ -917,14 +1061,44 @@ export default function App() {
                             </span>
                           ))}
                         </div>
-                        <div className="flex justify-end gap-2 mt-auto">
+                        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2 mt-auto">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPublicPrompt(prompt)}
+                            className="px-3 py-2 bg-slate-950/50 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Globe size={12} />
+                            <span>Ver prompt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void resolvePublicSavePrompt(prompt)}
+                            className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <GitFork size={12} />
+                            <span>Guardar</span>
+                          </button>
+                          {prompt.userId !== FOUNDER_PACK_USER_ID && (
+                            <button
+                              type="button"
+                              onClick={() => void handleToggleSocialFavorite(prompt)}
+                              className={`px-3 py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer ${
+                                socialFavoritePromptIds.has(prompt.id)
+                                  ? "bg-amber-500/10 text-amber-300 border-amber-500/25"
+                                  : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                              }`}
+                            >
+                              <Star size={12} fill={socialFavoritePromptIds.has(prompt.id) ? "currentColor" : "none"} />
+                              <span>Favorito</span>
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
                               navigator.clipboard.writeText(prompt.promptText);
                               triggerNotification("Prompt publico copiado.", "success");
                             }}
-                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Copy size={12} />
                             <span>Copiar</span>
@@ -932,7 +1106,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => handleUsePrompt(prompt, "public_showcase")}
-                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Play size={12} fill="currentColor" />
                             <span>Usar</span>
@@ -1020,11 +1194,45 @@ export default function App() {
                         <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{followedCreatorUids.length}</span>
                       )}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setCommunityScope("favoritos")}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        communityScope === "favoritos"
+                          ? "bg-amber-500 text-slate-950 shadow-md"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <Star size={13} fill={communityScope === "favoritos" ? "currentColor" : "none"} />
+                      <span>Favoritos</span>
+                      {socialFavorites.length > 0 && (
+                        <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{socialFavorites.length}</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCommunityScope("remixeados")}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        communityScope === "remixeados"
+                          ? "bg-pink-600 text-white shadow-md"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      <GitFork size={13} />
+                      <span>Remixeados</span>
+                      {ownForkedSourceIds.size > 0 && (
+                        <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{ownForkedSourceIds.size}</span>
+                      )}
+                    </button>
                   </div>
 
                   <p className="text-[11px] text-slate-400 font-sans">
                     {communityScope === "siguiendo"
                       ? "Mostrando prompts de creadores que sigues."
+                      : communityScope === "favoritos"
+                      ? "Tus favoritos sociales guardados como referencia."
+                      : communityScope === "remixeados"
+                      ? "Prompts que ya convertiste en remixes editables."
                       : "Explora prompts publicos de toda la comunidad."}
                   </p>
                 </div>
@@ -1148,6 +1356,10 @@ export default function App() {
                       <>Explorando el catálogo público de <strong className="text-indigo-300">{selectedAuthor.name}</strong>. Mostrando sus <strong className="text-pink-400">{filteredPrompts.length}</strong> prompts compartidos.</>
                     ) : communityScope === "siguiendo" ? (
                       <>Feed de creadores seguidos. Mostrando <strong className="text-emerald-400">{filteredPrompts.length}</strong> prompts de <strong className="text-indigo-300">{followedCreatorUids.length}</strong> creadores.</>
+                    ) : communityScope === "favoritos" ? (
+                      <>Favoritos sociales. Tienes <strong className="text-amber-300">{socialFavorites.length}</strong> prompts guardados como referencia privada.</>
+                    ) : communityScope === "remixeados" ? (
+                      <>Remixes creados desde la comunidad. Mostrando <strong className="text-pink-400">{filteredPrompts.length}</strong> origenes que ya adaptaste.</>
                     ) : (
                       <>Descubre innovadoras plantillas de la comunidad. ¡Agrégalas a tu biblioteca, vótala, o discútela!</>
                     )}
@@ -1235,6 +1447,105 @@ export default function App() {
                   </button>
                 </div>
               </div>
+
+              {user && currentTab === "mi-biblioteca" && (
+                <div className="bg-[#1e293b]/50 p-3.5 rounded-2xl border border-slate-800/85 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">Vista de mi biblioteca</h3>
+                      <p className="text-[11px] text-slate-500 font-sans mt-0.5">
+                        Separa tus prompts privados, publicaciones, remixes y favoritos propios.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                      {LIBRARY_VIEW_FILTERS.map((filter) => {
+                        const count = filter.id === "todos"
+                          ? prompts.length
+                          : filter.id === "privados"
+                          ? prompts.filter((prompt) => !prompt.isShared).length
+                          : filter.id === "publicados"
+                          ? prompts.filter((prompt) => prompt.isShared).length
+                          : filter.id === "remixes"
+                          ? prompts.filter((prompt) => prompt.forkedFromPromptId || prompt.forkedFrom).length
+                          : prompts.filter((prompt) => prompt.isFavorite).length;
+
+                        return (
+                          <button
+                            key={filter.id}
+                            type="button"
+                            onClick={() => setLibraryViewFilter(filter.id)}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                              libraryViewFilter === filter.id
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700"
+                            }`}
+                          >
+                            <span>{filter.label}</span>
+                            <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {user && currentTab === "mi-biblioteca" && socialFavorites.length > 0 && (
+                <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/20 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                        <Star size={13} fill="currentColor" />
+                        Favoritos sociales
+                      </h3>
+                      <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                        Referencias guardadas de otros creadores. No son copias editables hasta que las guardes como remix.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentTab("comunidad");
+                        setCommunityScope("favoritos");
+                        setSelectedAuthor(null);
+                      }}
+                      className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Star size={12} />
+                      <span>Ver todos</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {socialFavoritePrompts.slice(0, 3).map(({ favorite, prompt }) => (
+                      <div key={favorite.id} className="rounded-xl border border-amber-500/15 bg-slate-950/35 p-3 min-w-0">
+                        <p className="text-xs font-extrabold text-white line-clamp-1">{favorite.promptTitle}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">
+                          {favorite.promptCategory} · {favorite.promptAuthorName}
+                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => prompt ? setSelectedPublicPrompt(prompt) : triggerNotification("Este favorito aun no esta disponible en el feed local.", "info")}
+                            className="text-[10px] font-bold text-indigo-300 hover:text-indigo-200 cursor-pointer"
+                          >
+                            Ver prompt
+                          </button>
+                          {prompt && (
+                            <button
+                              type="button"
+                              onClick={() => void resolvePublicSavePrompt(prompt)}
+                              className="text-[10px] font-bold text-emerald-300 hover:text-emerald-200 cursor-pointer"
+                            >
+                              Remix
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Custom Folders Section (Only for authenticated user and Mi Biblioteca) */}
               {user && currentTab === "mi-biblioteca" && (
@@ -1547,6 +1858,10 @@ export default function App() {
                           ? "Todavia no sigues a ningun creador. Explora la comunidad, abre un perfil y pulsa Seguir Creador para construir tu feed."
                           : communityScope === "siguiendo"
                           ? "Los creadores que sigues aun no tienen prompts publicos que coincidan con tus filtros."
+                          : communityScope === "favoritos"
+                          ? "Todavia no guardaste favoritos sociales. Abre un prompt publico y marca Favorito para guardarlo como referencia privada."
+                          : communityScope === "remixeados"
+                          ? "Todavia no tienes remixes creados desde la comunidad. Usa Guardar en mi biblioteca para adaptar prompts de otros creadores."
                           : communityCatalogPrompts.length === 0
                           ? "Aun no hay prompts publicos publicados en la comunidad. Se el primero compartiendo una de tus plantillas personales activando el interruptor Hacer publico."
                           : "No se encontraron prompts publicos que coincidan con los filtros de busqueda o categoria en la comunidad."
@@ -1593,9 +1908,12 @@ export default function App() {
                           onNotification={triggerNotification}
                           isCommunityView={currentTab === "comunidad"}
                           currentUser={user}
-                          onFork={handleForkPrompt}
+                          onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
                           onLikeToggle={handleLikeToggle}
                           onAuthorClick={handleSelectAuthor}
+                          onViewDetails={setSelectedPublicPrompt}
+                          onSocialFavoriteToggle={handleToggleSocialFavorite}
+                          isSocialFavorite={socialFavoritePromptIds.has(p.id)}
                         />
                       </motion.div>
                     ))}
@@ -1762,6 +2080,37 @@ export default function App() {
             handleUsePrompt(sharedPrompt, "shared_prompt");
             handleCloseShared();
           }}
+          onSaveToLibrary={() => {
+            void resolvePublicSavePrompt(sharedPrompt);
+            handleCloseShared();
+          }}
+          isAuthenticated={Boolean(user)}
+        />
+      )}
+
+      {selectedPublicPrompt && (
+        <PublicPromptDetailModal
+          prompt={selectedPublicPrompt}
+          currentUser={user}
+          isSocialFavorite={socialFavoritePromptIds.has(selectedPublicPrompt.id)}
+          onClose={() => setSelectedPublicPrompt(null)}
+          onCopy={(prompt) => {
+            navigator.clipboard.writeText(prompt.promptText);
+            trackUserEvent("copy", prompt, { source: "public_prompt_detail" });
+            triggerNotification("Prompt copiado desde el detalle social.", "success");
+          }}
+          onUse={(prompt) => {
+            handleUsePrompt(prompt, "public_prompt_detail");
+            setSelectedPublicPrompt(null);
+          }}
+          onSaveToLibrary={(prompt) => {
+            void resolvePublicSavePrompt(prompt);
+            setSelectedPublicPrompt(null);
+          }}
+          onToggleFavorite={handleToggleSocialFavorite}
+          onLikeToggle={handleLikeToggle}
+          onAuthorClick={handleSelectAuthor}
+          onNotification={triggerNotification}
         />
       )}
       {/* Humble Footer */}

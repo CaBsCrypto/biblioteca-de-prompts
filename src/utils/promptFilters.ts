@@ -1,7 +1,8 @@
 import type { CategoryFilter, Prompt } from "../types";
 
 export type LibraryTab = "mi-biblioteca" | "comunidad";
-export type CommunityScope = "todos" | "siguiendo";
+export type CommunityScope = "todos" | "siguiendo" | "favoritos" | "remixeados";
+export type LibraryViewFilter = "todos" | "privados" | "publicados" | "remixes" | "favoritos";
 export type SelectedAuthor = { name: string; uid: string; avatar?: string } | null;
 
 interface BasePromptSelectionInput {
@@ -11,6 +12,9 @@ interface BasePromptSelectionInput {
   selectedAuthor: SelectedAuthor;
   communityScope: CommunityScope;
   followedCreatorUids: string[];
+  socialFavoritePromptIds?: Set<string>;
+  ownForkedSourceIds?: Set<string>;
+  libraryViewFilter?: LibraryViewFilter;
 }
 
 function selectPromptSource({
@@ -19,13 +23,31 @@ function selectPromptSource({
   currentTab,
   selectedAuthor,
   communityScope,
-  followedCreatorUids
+  followedCreatorUids,
+  socialFavoritePromptIds = new Set<string>(),
+  ownForkedSourceIds = new Set<string>(),
+  libraryViewFilter = "todos"
 }: BasePromptSelectionInput) {
   let targetSource = currentTab === "mi-biblioteca" ? prompts : communityPrompts;
-  if (currentTab === "comunidad" && selectedAuthor) {
+
+  if (currentTab === "mi-biblioteca") {
+    if (libraryViewFilter === "privados") {
+      targetSource = targetSource.filter((p) => !p.isShared);
+    } else if (libraryViewFilter === "publicados") {
+      targetSource = targetSource.filter((p) => p.isShared);
+    } else if (libraryViewFilter === "remixes") {
+      targetSource = targetSource.filter((p) => Boolean(p.forkedFromPromptId || p.forkedFrom));
+    } else if (libraryViewFilter === "favoritos") {
+      targetSource = targetSource.filter((p) => p.isFavorite);
+    }
+  } else if (selectedAuthor) {
     targetSource = targetSource.filter((p) => p.userId === selectedAuthor.uid);
-  } else if (currentTab === "comunidad" && communityScope === "siguiendo") {
+  } else if (communityScope === "siguiendo") {
     targetSource = targetSource.filter((p) => followedCreatorUids.includes(p.userId));
+  } else if (communityScope === "favoritos") {
+    targetSource = targetSource.filter((p) => socialFavoritePromptIds.has(p.id));
+  } else if (communityScope === "remixeados") {
+    targetSource = targetSource.filter((p) => ownForkedSourceIds.has(p.forkedFromPromptId || p.id));
   }
   return targetSource;
 }
@@ -46,7 +68,9 @@ export function filterPrompts(input: BasePromptSelectionInput & {
       }
     }
 
-    if (input.selectedCategory === "Favoritos") {
+    if (input.selectedCategory === "Favoritos" && input.currentTab === "comunidad") {
+      if (!input.socialFavoritePromptIds?.has(p.id)) return false;
+    } else if (input.selectedCategory === "Favoritos") {
       if (!p.isFavorite) return false;
     } else if (input.selectedCategory !== "Todas" && p.category !== input.selectedCategory) {
       return false;
@@ -119,4 +143,41 @@ export function getPublicFeaturedPrompts(communityPrompts: Prompt[]) {
     .filter((prompt) => prompt.isShared)
     .sort((a, b) => (b.likesCount || b.likedBy?.length || 0) - (a.likesCount || a.likedBy?.length || 0))
     .slice(0, 6);
+}
+
+export function getPublicShowcasePrompts({
+  prompts,
+  selectedCategory,
+  searchQuery,
+  limit = 12
+}: {
+  prompts: Prompt[];
+  selectedCategory: CategoryFilter;
+  searchQuery: string;
+  limit?: number;
+}) {
+  const cleanQuery = searchQuery.toLowerCase().trim();
+
+  return prompts
+    .filter((prompt) => {
+      if (!prompt.isShared) return false;
+      if (selectedCategory !== "Todas" && selectedCategory !== "Favoritos" && prompt.category !== selectedCategory) {
+        return false;
+      }
+      if (!cleanQuery) return true;
+
+      return Boolean(
+        prompt.title?.toLowerCase().includes(cleanQuery) ||
+        prompt.description?.toLowerCase().includes(cleanQuery) ||
+        prompt.promptText?.toLowerCase().includes(cleanQuery) ||
+        prompt.authorName?.toLowerCase().includes(cleanQuery) ||
+        prompt.tags?.some((tag) => tag.toLowerCase().includes(cleanQuery))
+      );
+    })
+    .sort((a, b) => {
+      const likeDiff = (b.likesCount || b.likedBy?.length || 0) - (a.likesCount || a.likedBy?.length || 0);
+      if (likeDiff !== 0) return likeDiff;
+      return a.title.localeCompare(b.title, "es");
+    })
+    .slice(0, limit);
 }

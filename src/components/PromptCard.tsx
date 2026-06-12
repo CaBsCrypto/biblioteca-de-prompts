@@ -21,6 +21,9 @@ interface PromptCardProps {
   onFork?: (prompt: Prompt) => void;
   onLikeToggle?: (prompt: Prompt) => void;
   onAuthorClick?: (author: { name: string; uid: string; avatar?: string }) => void;
+  onViewDetails?: (prompt: Prompt) => void;
+  onSocialFavoriteToggle?: (prompt: Prompt) => void;
+  isSocialFavorite?: boolean;
 }
 
 export default function PromptCard({
@@ -36,7 +39,10 @@ export default function PromptCard({
   currentUser = null,
   onFork,
   onLikeToggle,
-  onAuthorClick
+  onAuthorClick,
+  onViewDetails,
+  onSocialFavoriteToggle,
+  isSocialFavorite = false
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -64,6 +70,7 @@ export default function PromptCard({
 
   const isLiked = currentUser ? prompt.likedBy?.includes(currentUser.uid) : false;
   const likesCount = prompt.likesCount || prompt.likedBy?.length || 0;
+  const canForkPrompt = isCommunityView && onFork && (!currentUser || prompt.userId !== currentUser.uid);
 
   // Define styling based on category
   const getCategoryStyles = (category: string) => {
@@ -493,15 +500,30 @@ ${notesStr}
               </button>
             )}
 
+            {/* Private social favorite reference */}
+            {isCommunityView && onSocialFavoriteToggle && !isFounderPackPrompt && (
+              <button
+                onClick={() => onSocialFavoriteToggle(prompt)}
+                className={`p-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                  isSocialFavorite
+                    ? "text-amber-300 bg-amber-500/10 border border-amber-500/25"
+                    : "text-slate-500 hover:text-amber-300 hover:bg-amber-500/10"
+                }`}
+                title={isSocialFavorite ? "Quitar de favoritos sociales" : "Guardar como favorito social privado"}
+              >
+                <Star size={16} fill={isSocialFavorite ? "currentColor" : "none"} />
+              </button>
+            )}
+
             {/* Fork/Duplicate Button */}
-            {isCommunityView && onFork && currentUser && prompt.userId !== currentUser.uid && (
+            {canForkPrompt && (
               <button
                 onClick={() => onFork(prompt)}
                 className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all flex items-center gap-1.5"
-                title="Clonar a mi biblioteca personal (Bifurcar)"
+                title={currentUser ? "Clonar a mi biblioteca personal (Bifurcar)" : "Guardar este prompt iniciando sesion con Google"}
               >
                 <GitFork size={16} />
-                <span className="text-xs font-bold">Clonar</span>
+                <span className="text-xs font-bold">{currentUser ? "Clonar" : "Guardar"}</span>
               </button>
             )}
 
@@ -544,6 +566,18 @@ ${notesStr}
 
           {/* Right: Copy & Run Buttons */}
           <div className="grid grid-cols-1 min-[420px]:grid-cols-3 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            {isCommunityView && onViewDetails && (
+              <button
+                id={`btn-view-details-${prompt.id}`}
+                onClick={() => onViewDetails(prompt)}
+                className="px-3 py-2 sm:py-1.5 bg-slate-900/70 hover:bg-slate-800 text-slate-250 border border-slate-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                title="Ver objetivo, prompt completo y comentarios"
+              >
+                <Globe size={13} />
+                <span>Ver prompt</span>
+              </button>
+            )}
+
             <button
               id={`btn-copy-${prompt.id}`}
               onClick={handleCopy}

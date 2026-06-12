@@ -280,6 +280,12 @@ export default function PromptFormModal({
       isShared,
       notas: notas.trim(),
       suggestedVariables: variables.filter(v => v.name.trim() !== ""),
+      forkedFrom: prompt?.forkedFrom,
+      forkedFromPromptId: prompt?.forkedFromPromptId,
+      forkedFromUserId: prompt?.forkedFromUserId,
+      forkedFromAuthorName: prompt?.forkedFromAuthorName,
+      forkedFromAuthorHandle: prompt?.forkedFromAuthorHandle,
+      forkedFromTitle: prompt?.forkedFromTitle,
       folderId: folderId || null
     });
   };

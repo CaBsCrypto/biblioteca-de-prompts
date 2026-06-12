@@ -63,6 +63,11 @@ service cloud.firestore {
         && (!('likedBy' in data) || (data.likedBy is list && data.likedBy.size() <= 1000))
         && (!('likesCount' in data) || data.likesCount is int)
         && (!('forkedFrom' in data) || (data.forkedFrom is string && data.forkedFrom.size() <= 200))
+        && (!('forkedFromPromptId' in data) || (data.forkedFromPromptId is string && data.forkedFromPromptId.size() <= 128))
+        && (!('forkedFromUserId' in data) || (data.forkedFromUserId is string && data.forkedFromUserId.size() <= 128))
+        && (!('forkedFromAuthorName' in data) || (data.forkedFromAuthorName is string && data.forkedFromAuthorName.size() <= 200))
+        && (!('forkedFromAuthorHandle' in data) || (data.forkedFromAuthorHandle is string && data.forkedFromAuthorHandle.size() <= 40))
+        && (!('forkedFromTitle' in data) || (data.forkedFromTitle is string && data.forkedFromTitle.size() <= 200))
         && (!('suggestedVariables' in data) || data.suggestedVariables is list)
         && (!('folderId' in data) || ownsFolder(data.folderId));
     }
@@ -124,6 +129,30 @@ service cloud.firestore {
 
         allow update, delete: if false;
       }
+
+      match /favorites/{promptId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && isValidId(promptId)
+          && exists(/databases/$(database)/documents/prompts/$(promptId))
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true
+          && incoming().promptId == promptId
+          && incoming().promptTitle == get(/databases/$(database)/documents/prompts/$(promptId)).data.title
+          && incoming().promptCategory == get(/databases/$(database)/documents/prompts/$(promptId)).data.category
+          && incoming().promptAuthorUid == get(/databases/$(database)/documents/prompts/$(promptId)).data.userId
+          && incoming().promptTitle is string && incoming().promptTitle.size() > 0 && incoming().promptTitle.size() <= 150
+          && incoming().promptCategory is string && incoming().promptCategory.size() <= 50
+          && incoming().promptAuthorUid is string && incoming().promptAuthorUid.size() <= 128
+          && incoming().promptAuthorName is string && incoming().promptAuthorName.size() > 0 && incoming().promptAuthorName.size() <= 200
+          && (!('promptAuthorHandle' in incoming()) || (incoming().promptAuthorHandle is string && incoming().promptAuthorHandle.size() <= 40))
+          && incoming().createdAt == request.time;
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /folders/{folderId} {
@@ -178,7 +207,7 @@ service cloud.firestore {
             && isValidPrompt(incoming())
             && incoming().createdAt == existing().createdAt
             && incoming().updatedAt == request.time
-            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'updatedAt', 'folderId']))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'forkedFromPromptId', 'forkedFromUserId', 'forkedFromAuthorName', 'forkedFromAuthorHandle', 'forkedFromTitle', 'updatedAt', 'folderId']))
           ||
           // Case 2: Non-owner social interaction (liking/unliking shared prompts)
           (existing().isShared == true

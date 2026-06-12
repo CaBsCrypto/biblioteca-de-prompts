@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Prompt } from "../types";
 import { mapPromptDoc, sortCommunityPrompts } from "../utils/firestoreMappers";
@@ -106,10 +106,20 @@ export function useCommunity({
     setLoadingPrompts(true);
     try {
       const sourcePromptId = prompt.forkedFromPromptId || prompt.id;
-      const existingFork = prompts.find((candidate) =>
+      let existingFork = prompts.find((candidate) =>
         candidate.forkedFromPromptId === sourcePromptId ||
         (!candidate.forkedFromPromptId && candidate.forkedFrom === prompt.title)
       );
+
+      if (!existingFork) {
+        const ownPromptsSnapshot = await getDocs(query(collection(db, "prompts"), where("userId", "==", user.uid)));
+        existingFork = ownPromptsSnapshot.docs
+          .map(mapPromptDoc)
+          .find((candidate) =>
+            candidate.forkedFromPromptId === sourcePromptId ||
+            (!candidate.forkedFromPromptId && candidate.forkedFrom === prompt.title)
+          );
+      }
 
       if (existingFork) {
         setCurrentTab("mi-biblioteca");

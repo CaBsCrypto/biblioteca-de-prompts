@@ -60,6 +60,17 @@ export interface UserProfile {
   updatedAt: any; // Firestore Timestamp
 }
 
+export interface SocialFavorite {
+  id: string;
+  promptId: string;
+  promptTitle: string;
+  promptCategory: Prompt["category"];
+  promptAuthorUid: string;
+  promptAuthorName: string;
+  promptAuthorHandle?: string;
+  createdAt: any; // Firestore Timestamp
+}
+
 export interface UserEvent {
   id: string;
   type: "recommendation_open" | "recommendation_use" | "recommendation_copy" | "use" | "copy" | "edit";

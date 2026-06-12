@@ -1,4 +1,4 @@
-import { Copy, Globe, Play, Sparkles, StickyNote, X, Zap } from "lucide-react";
+import { Copy, GitFork, Globe, Play, Sparkles, StickyNote, X, Zap } from "lucide-react";
 import { Prompt } from "../types";
 
 interface SharedPromptModalProps {
@@ -6,13 +6,17 @@ interface SharedPromptModalProps {
   onClose: () => void;
   onCopy: () => void;
   onUse: () => void;
+  onSaveToLibrary: () => void;
+  isAuthenticated: boolean;
 }
 
 export default function SharedPromptModal({
   prompt,
   onClose,
   onCopy,
-  onUse
+  onUse,
+  onSaveToLibrary,
+  isAuthenticated
 }: SharedPromptModalProps) {
   const hasVariables = Boolean(prompt.suggestedVariables?.length);
 
@@ -109,10 +113,19 @@ export default function SharedPromptModal({
         <div className="px-6 py-5 border-t border-slate-700/60 bg-slate-900/40 flex items-center justify-between gap-3 shrink-0">
           <div className="hidden md:flex items-center gap-1 font-mono text-[9px] text-slate-400 select-none">
             <Zap size={10} className="text-yellow-405 fill-current" />
-            <span>¿Quieres guardar tus propios prompts? Conecta con Google.</span>
+            <span>{isAuthenticated ? "Guarda una copia privada para adaptarla a tu flujo." : "Conecta con Google para guardarlo como remix privado."}</span>
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex flex-wrap items-center justify-end gap-3 ml-auto">
+            <button
+              type="button"
+              onClick={onSaveToLibrary}
+              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-500/25 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <GitFork size={13} />
+              <span>Guardar en mi biblioteca</span>
+            </button>
+
             <button
               type="button"
               onClick={onCopy}
