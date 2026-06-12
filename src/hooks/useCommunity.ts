@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
-import type { Prompt } from "../types";
-import { mapPromptDoc, sortCommunityPrompts } from "../utils/firestoreMappers";
+import type { Folder, Prompt } from "../types";
+import { mapFolderDoc, mapPromptDoc, sortCommunityPrompts } from "../utils/firestoreMappers";
 import type { CommunityScope } from "../utils/promptFilters";
 
-export type CommunityAuthor = { name: string; uid: string; avatar?: string };
+export type CommunityAuthor = { name: string; uid: string; avatar?: string; handle?: string };
 
 interface UseCommunityOptions {
   user: User | null;
@@ -32,6 +32,7 @@ export function useCommunity({
   onNotification
 }: UseCommunityOptions) {
   const [communityPrompts, setCommunityPrompts] = useState<Prompt[]>([]);
+  const [communityFolders, setCommunityFolders] = useState<Folder[]>([]);
   const [loadingCommunityPrompts, setLoadingCommunityPrompts] = useState(false);
   const [communityScope, setCommunityScope] = useState<CommunityScope>("todos");
   const [selectedAuthor, setSelectedAuthor] = useState<CommunityAuthor | null>(null);
@@ -69,6 +70,21 @@ export function useCommunity({
       (error) => {
         console.error("Error subscribing to community prompts:", error);
         setLoadingCommunityPrompts(false);
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const foldersQuery = query(collection(db, "folders"), where("isShared", "==", true));
+    const unsubscribe = onSnapshot(
+      foldersQuery,
+      (snapshot) => {
+        setCommunityFolders(snapshot.docs.map(mapFolderDoc));
+      },
+      (error) => {
+        console.error("Error subscribing to community folders:", error);
       }
     );
 
@@ -213,6 +229,7 @@ export function useCommunity({
 
   return {
     communityPrompts,
+    communityFolders,
     loadingCommunityPrompts,
     communityScope,
     setCommunityScope,

@@ -50,6 +50,7 @@ import ShareFolderModal from "./components/ShareFolderModal";
 import SharedPromptModal from "./components/SharedPromptModal";
 import ActivationChecklist from "./components/ActivationChecklist";
 import PublicPromptDetailModal from "./components/PublicPromptDetailModal";
+import PublicProfileView, { type PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
@@ -98,6 +99,7 @@ export default function App() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [libraryViewFilter, setLibraryViewFilter] = useState<LibraryViewFilter>("todos");
+  const [publicProfileTab, setPublicProfileTab] = useState<PublicProfileTab>("publicados");
 
   // Close tag autocomplete dropdown on click outside
   useEffect(() => {
@@ -166,7 +168,11 @@ export default function App() {
       setSelectedCategory("Todas");
       setSearchQuery("");
       setLibraryViewFilter("todos");
+      setSelectedAuthor(null);
       setShowAIAssistant(false);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("user");
+      window.history.replaceState({}, "", url.toString());
     }
   });
 
@@ -232,6 +238,7 @@ export default function App() {
 
   const {
     communityPrompts,
+    communityFolders,
     loadingCommunityPrompts,
     communityScope,
     setCommunityScope,
@@ -240,8 +247,7 @@ export default function App() {
     followedCreatorUids,
     handleLikeToggle,
     handleForkPrompt,
-    handleToggleFollowCreator,
-    handleSelectAuthor
+    handleToggleFollowCreator
   } = useCommunity({
     user,
     prompts,
@@ -260,6 +266,35 @@ export default function App() {
     user,
     onNotification: triggerNotification
   });
+
+  const openPublicProfile = (author: { name: string; uid: string; avatar?: string }) => {
+    setCurrentTab("comunidad");
+    setSelectedAuthor(author);
+    setCommunityScope("todos");
+    setPublicProfileTab("publicados");
+    const url = new URL(window.location.href);
+    url.searchParams.set("user", author.uid);
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const closePublicProfile = () => {
+    setSelectedAuthor(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("user");
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const handleCopyPublicProfileLink = () => {
+    if (!selectedAuthor) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("user", selectedAuthor.uid);
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    navigator.clipboard.writeText(url.toString());
+    triggerNotification("Enlace del perfil copiado.", "success");
+  };
 
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
     if (!user) {
@@ -329,6 +364,25 @@ export default function App() {
     ];
   }, [communityPrompts, founderPackPrompts]);
 
+  useEffect(() => {
+    if (!selectedAuthor) return;
+    const authorPrompt = communityCatalogPrompts.find((prompt) => prompt.userId === selectedAuthor.uid);
+    if (!authorPrompt) return;
+    const nextAuthor = {
+      name: authorPrompt.authorName || selectedAuthor.name,
+      uid: selectedAuthor.uid,
+      avatar: authorPrompt.authorAvatar || selectedAuthor.avatar,
+      handle: authorPrompt.authorHandle
+    };
+    if (
+      nextAuthor.name !== selectedAuthor.name ||
+      nextAuthor.avatar !== selectedAuthor.avatar ||
+      nextAuthor.handle !== selectedAuthor.handle
+    ) {
+      setSelectedAuthor(nextAuthor);
+    }
+  }, [communityCatalogPrompts, selectedAuthor]);
+
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
   const [sharedPrompt, setSharedPrompt] = useState<Prompt | null>(null);
@@ -376,6 +430,13 @@ export default function App() {
       const searchParams = new URLSearchParams(window.location.search);
       const shareId = searchParams.get("share");
       const colId = searchParams.get("collection");
+      const userId = searchParams.get("user");
+
+      if (userId && !shareId && !colId) {
+        setCurrentTab("comunidad");
+        setSelectedAuthor({ name: "Creador", uid: userId });
+        setPublicProfileTab("publicados");
+      }
       
       if (shareId) {
         setSharedPromptId(shareId);
@@ -683,6 +744,16 @@ export default function App() {
     return getAuthorProfileStats(communityCatalogPrompts, selectedAuthor);
   }, [communityCatalogPrompts, selectedAuthor]);
 
+  const selectedAuthorPrompts = useMemo(() => {
+    if (!selectedAuthor) return [];
+    return communityCatalogPrompts.filter((prompt) => prompt.userId === selectedAuthor.uid);
+  }, [communityCatalogPrompts, selectedAuthor]);
+
+  const selectedAuthorFolders = useMemo(() => {
+    if (!selectedAuthor) return [];
+    return communityFolders.filter((folder) => folder.userId === selectedAuthor.uid);
+  }, [communityFolders, selectedAuthor]);
+
   const publicShowcasePrompts = useMemo(() => {
     return getPublicShowcasePrompts({
       prompts: communityCatalogPrompts,
@@ -898,7 +969,7 @@ export default function App() {
                     currentUser={user}
                     onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
                     onLikeToggle={handleLikeToggle}
-                    onAuthorClick={handleSelectAuthor}
+                    onAuthorClick={openPublicProfile}
                     onViewDetails={setSelectedPublicPrompt}
                     onSocialFavoriteToggle={handleToggleSocialFavorite}
                     isSocialFavorite={socialFavoritePromptIds.has(p.id)}
@@ -915,7 +986,30 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8">
           
           {/* Welcome Dashboard Block if offline/unauthenticated */}
-          {!user && !authLoading ? (
+          {!user && !authLoading && selectedAuthor ? (
+            <div className="max-w-7xl mx-auto w-full">
+              <PublicProfileView
+                author={selectedAuthor}
+                prompts={selectedAuthorPrompts}
+                folders={selectedAuthorFolders}
+                activeTab={publicProfileTab}
+                currentUser={user}
+                followedCreatorUids={followedCreatorUids}
+                socialFavoritePromptIds={socialFavoritePromptIds}
+                onTabChange={setPublicProfileTab}
+                onBack={closePublicProfile}
+                onCopyProfileLink={handleCopyPublicProfileLink}
+                onToggleFollow={handleToggleFollowCreator}
+                onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
+                onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
+                onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
+                onLikeToggle={handleLikeToggle}
+                onViewDetails={setSelectedPublicPrompt}
+                onSocialFavoriteToggle={handleToggleSocialFavorite}
+                onNotification={triggerNotification}
+              />
+            </div>
+          ) : !user && !authLoading ? (
             <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-4xl mx-auto">
               {/* background vector accent spheres */}
               <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-violet-600/10 blur-[80px] pointer-events-none"></div>
@@ -1129,7 +1223,7 @@ export default function App() {
                   onClick={() => {
                     setCurrentTab("mi-biblioteca");
                     setSelectedCategory("Todas");
-                    setSelectedAuthor(null);
+                    closePublicProfile();
                     setCommunityScope("todos");
                   }}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -1148,7 +1242,7 @@ export default function App() {
                   onClick={() => {
                     setCurrentTab("comunidad");
                     setSelectedCategory("Todas");
-                    setSelectedAuthor(null);
+                    closePublicProfile();
                     setCommunityScope("todos");
                   }}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -1238,12 +1332,12 @@ export default function App() {
                 </div>
               )}
 
-              {/* Author Community Profile Banner */}
-              {currentTab === "comunidad" && selectedAuthor && (
+              {/* Legacy author banner kept dormant while PublicProfileView owns the profile surface */}
+              {false && currentTab === "comunidad" && selectedAuthor && (
                 <div className="bg-gradient-to-r from-slate-900/60 via-indigo-950/20 to-slate-900/60 border border-indigo-500/25 p-6 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
                   <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                     <button 
-                      onClick={() => setSelectedAuthor(null)}
+                      onClick={closePublicProfile}
                       className="p-3 bg-slate-800/80 hover:bg-slate-700/80 text-indigo-400 hover:text-indigo-300 rounded-2xl border border-slate-700/50 transition-all cursor-pointer mr-1 flex items-center justify-center shrink-0"
                       title="Volver al feed general de la comunidad"
                     >
@@ -1320,13 +1414,36 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setSelectedAuthor(null)}
+                      onClick={closePublicProfile}
                       className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-755 text-slate-300 hover:text-white text-xs font-bold rounded-2xl border border-slate-700/80 transition-all cursor-pointer"
                     >
                       Volver al feed general
                     </button>
                   </div>
                 </div>
+              )}
+
+              {currentTab === "comunidad" && selectedAuthor && (
+                <PublicProfileView
+                  author={selectedAuthor}
+                  prompts={selectedAuthorPrompts}
+                  folders={selectedAuthorFolders}
+                  activeTab={publicProfileTab}
+                  currentUser={user}
+                  followedCreatorUids={followedCreatorUids}
+                  socialFavoritePromptIds={socialFavoritePromptIds}
+                  onTabChange={setPublicProfileTab}
+                  onBack={closePublicProfile}
+                  onCopyProfileLink={handleCopyPublicProfileLink}
+                  onToggleFollow={handleToggleFollowCreator}
+                  onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
+                  onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
+                  onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
+                  onLikeToggle={handleLikeToggle}
+                  onViewDetails={setSelectedPublicPrompt}
+                  onSocialFavoriteToggle={handleToggleSocialFavorite}
+                  onNotification={triggerNotification}
+                />
               )}
 
               {currentTab === "mi-biblioteca" && (
@@ -1910,7 +2027,7 @@ export default function App() {
                           currentUser={user}
                           onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
                           onLikeToggle={handleLikeToggle}
-                          onAuthorClick={handleSelectAuthor}
+                          onAuthorClick={openPublicProfile}
                           onViewDetails={setSelectedPublicPrompt}
                           onSocialFavoriteToggle={handleToggleSocialFavorite}
                           isSocialFavorite={socialFavoritePromptIds.has(p.id)}
@@ -2109,7 +2226,7 @@ export default function App() {
           }}
           onToggleFavorite={handleToggleSocialFavorite}
           onLikeToggle={handleLikeToggle}
-          onAuthorClick={handleSelectAuthor}
+          onAuthorClick={openPublicProfile}
           onNotification={triggerNotification}
         />
       )}
