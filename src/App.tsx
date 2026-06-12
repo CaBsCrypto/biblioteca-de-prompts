@@ -54,6 +54,7 @@ import { usePromptLibrary } from "./hooks/usePromptLibrary";
 import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
+import { DEFAULT_PROMPTS } from "./data";
 import {
   combineSearchablePrompts,
   filterPrompts,
@@ -395,6 +396,21 @@ export default function App() {
       selectedFolderId
     });
   }, [prompts, communityPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids]);
+
+  const defaultPromptTitles = useMemo(
+    () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
+    []
+  );
+  const existingDefaultPromptCount = useMemo(() => {
+    const matchedTitles = new Set(
+      prompts
+        .map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))
+        .filter((title) => defaultPromptTitles.has(title))
+    );
+
+    return matchedTitles.size;
+  }, [defaultPromptTitles, prompts]);
+  const missingDefaultPromptCount = Math.max(DEFAULT_PROMPTS.length - existingDefaultPromptCount, 0);
 
   const allAvailableTags = useMemo(() => {
     return getAvailableTags({
@@ -1046,7 +1062,7 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {prompts.length === 0 && (
+                  {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                     <button
                       id="btn-seed-defaults"
                       onClick={handleSeedDefaults}
@@ -1054,7 +1070,11 @@ export default function App() {
                       className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer animate-pulse"
                     >
                       <BookOpen size={14} />
-                      <span>Cargar Prompts Ejemplos</span>
+                      <span>
+                        {prompts.length === 0
+                          ? `Cargar ${DEFAULT_PROMPTS.length} prompts iniciales`
+                          : `Completar pack inicial (+${missingDefaultPromptCount})`}
+                      </span>
                     </button>
                   )}
 
@@ -1440,12 +1460,14 @@ export default function App() {
                       )}
                     </p>
                   </div>
-                  {currentTab === "mi-biblioteca" && prompts.length === 0 && (
+                  {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                     <button
                       onClick={handleSeedDefaults}
                       className="px-4 py-2 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
                     >
-                      Cargar Ejemplo de Prompts
+                      {prompts.length === 0
+                        ? `Cargar ${DEFAULT_PROMPTS.length} prompts iniciales`
+                        : `Completar pack inicial (+${missingDefaultPromptCount})`}
                     </button>
                   )}
                 </div>
