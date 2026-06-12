@@ -23,6 +23,8 @@ interface PublicProfileViewProps {
   onLikeToggle: (prompt: Prompt) => void;
   onViewDetails: (prompt: Prompt) => void;
   onSocialFavoriteToggle: (prompt: Prompt) => void;
+  onHidePrompt: (prompt: Prompt) => void;
+  onReportPrompt: (prompt: Prompt) => void;
   onNotification: (message: string, type: "success" | "info") => void;
 }
 
@@ -44,6 +46,8 @@ export default function PublicProfileView({
   onLikeToggle,
   onViewDetails,
   onSocialFavoriteToggle,
+  onHidePrompt,
+  onReportPrompt,
   onNotification
 }: PublicProfileViewProps) {
   const publicFolders = folders.filter((folder) => folder.userId === author.uid && folder.isShared);
@@ -195,6 +199,8 @@ export default function PublicProfileView({
                 onAuthorClick={() => {}}
                 onViewDetails={onViewDetails}
                 onSocialFavoriteToggle={onSocialFavoriteToggle}
+                onHidePrompt={onHidePrompt}
+                onReportPrompt={onReportPrompt}
                 isSocialFavorite={socialFavoritePromptIds.has(prompt.id)}
               />
             ))}

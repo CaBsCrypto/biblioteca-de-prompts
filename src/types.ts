@@ -71,6 +71,16 @@ export interface SocialFavorite {
   createdAt: any; // Firestore Timestamp
 }
 
+export interface HiddenPrompt {
+  id: string;
+  promptId: string;
+  promptTitle: string;
+  promptCategory: Prompt["category"];
+  promptAuthorUid: string;
+  promptAuthorName: string;
+  createdAt: any; // Firestore Timestamp
+}
+
 export interface UserEvent {
   id: string;
   type: "recommendation_open" | "recommendation_use" | "recommendation_copy" | "use" | "copy" | "edit";

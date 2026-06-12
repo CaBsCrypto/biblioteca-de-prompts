@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { Copy, Edit2, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork } from "lucide-react";
+import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork } from "lucide-react";
 import { Prompt, Folder as FolderType } from "../types";
 import { User } from "firebase/auth";
 import CommentsSection from "./CommentsSection";
@@ -23,6 +23,8 @@ interface PromptCardProps {
   onAuthorClick?: (author: { name: string; uid: string; avatar?: string }) => void;
   onViewDetails?: (prompt: Prompt) => void;
   onSocialFavoriteToggle?: (prompt: Prompt) => void;
+  onHidePrompt?: (prompt: Prompt) => void;
+  onReportPrompt?: (prompt: Prompt) => void;
   isSocialFavorite?: boolean;
 }
 
@@ -42,6 +44,8 @@ export default function PromptCard({
   onAuthorClick,
   onViewDetails,
   onSocialFavoriteToggle,
+  onHidePrompt,
+  onReportPrompt,
   isSocialFavorite = false
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
@@ -512,6 +516,26 @@ ${notesStr}
                 title={isSocialFavorite ? "Quitar de favoritos sociales" : "Guardar como favorito social privado"}
               >
                 <Star size={16} fill={isSocialFavorite ? "currentColor" : "none"} />
+              </button>
+            )}
+
+            {isCommunityView && onHidePrompt && (
+              <button
+                onClick={() => onHidePrompt(prompt)}
+                className="p-2 text-slate-500 hover:text-slate-200 hover:bg-slate-700/70 rounded-lg transition-all"
+                title="Ocultar este prompt de mi feed"
+              >
+                <EyeOff size={16} />
+              </button>
+            )}
+
+            {isCommunityView && onReportPrompt && !isFounderPackPrompt && prompt.userId !== currentUser?.uid && (
+              <button
+                onClick={() => onReportPrompt(prompt)}
+                className="p-2 text-slate-500 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-all"
+                title="Reportar este prompt"
+              >
+                <Flag size={16} />
               </button>
             )}
 

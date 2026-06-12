@@ -2,6 +2,7 @@ import type { CategoryFilter, Prompt } from "../types";
 
 export type LibraryTab = "mi-biblioteca" | "comunidad";
 export type CommunityScope = "todos" | "siguiendo" | "favoritos" | "remixeados";
+export type CommunitySort = "populares" | "recientes";
 export type LibraryViewFilter = "todos" | "privados" | "publicados" | "remixes" | "favoritos";
 export type SelectedAuthor = { name: string; uid: string; avatar?: string } | null;
 
@@ -13,7 +14,9 @@ interface BasePromptSelectionInput {
   communityScope: CommunityScope;
   followedCreatorUids: string[];
   socialFavoritePromptIds?: Set<string>;
+  hiddenPromptIds?: Set<string>;
   ownForkedSourceIds?: Set<string>;
+  communitySort?: CommunitySort;
   libraryViewFilter?: LibraryViewFilter;
 }
 
@@ -25,7 +28,9 @@ function selectPromptSource({
   communityScope,
   followedCreatorUids,
   socialFavoritePromptIds = new Set<string>(),
+  hiddenPromptIds = new Set<string>(),
   ownForkedSourceIds = new Set<string>(),
+  communitySort = "populares",
   libraryViewFilter = "todos"
 }: BasePromptSelectionInput) {
   let targetSource = currentTab === "mi-biblioteca" ? prompts : communityPrompts;
@@ -49,7 +54,19 @@ function selectPromptSource({
   } else if (communityScope === "remixeados") {
     targetSource = targetSource.filter((p) => ownForkedSourceIds.has(p.forkedFromPromptId || p.id));
   }
-  return targetSource;
+
+  if (currentTab !== "comunidad") return targetSource;
+
+  return targetSource
+    .filter((prompt) => !hiddenPromptIds.has(prompt.id))
+    .sort((a, b) => {
+      if (communitySort === "recientes") {
+        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      }
+      const likeDiff = (b.likesCount || b.likedBy?.length || 0) - (a.likesCount || a.likedBy?.length || 0);
+      if (likeDiff !== 0) return likeDiff;
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    });
 }
 
 export function filterPrompts(input: BasePromptSelectionInput & {

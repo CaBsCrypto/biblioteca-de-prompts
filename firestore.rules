@@ -153,6 +153,25 @@ service cloud.firestore {
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
+
+      match /hiddenPrompts/{promptId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && isValidId(promptId)
+          && incoming().promptId == promptId
+          && incoming().promptTitle is string && incoming().promptTitle.size() > 0 && incoming().promptTitle.size() <= 150
+          && incoming().promptCategory is string && incoming().promptCategory.size() <= 50
+          && incoming().promptAuthorUid is string && incoming().promptAuthorUid.size() <= 128
+          && incoming().promptAuthorName is string && incoming().promptAuthorName.size() > 0 && incoming().promptAuthorName.size() <= 200
+          && incoming().createdAt == request.time
+          && incoming().keys().hasOnly(['promptId', 'promptTitle', 'promptCategory', 'promptAuthorUid', 'promptAuthorName', 'createdAt']);
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /folders/{folderId} {
@@ -271,6 +290,23 @@ service cloud.firestore {
         allow delete: if isSignedIn()
           && (existing().userId == request.auth.uid
               || get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid);
+      }
+
+      match /reports/{reporterId} {
+        allow get, list: if false;
+
+        allow create: if isSignedIn()
+          && reporterId == request.auth.uid
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId != request.auth.uid
+          && incoming().reporterUid == request.auth.uid
+          && incoming().reason is string && incoming().reason.size() > 0 && incoming().reason.size() <= 80
+          && incoming().promptTitle == get(/databases/$(database)/documents/prompts/$(promptId)).data.title
+          && incoming().promptAuthorUid == get(/databases/$(database)/documents/prompts/$(promptId)).data.userId
+          && incoming().createdAt == request.time
+          && incoming().keys().hasOnly(['reporterUid', 'reason', 'promptTitle', 'promptAuthorUid', 'createdAt']);
+
+        allow update, delete: if false;
       }
 
       // Subcollection for version history

@@ -1,4 +1,4 @@
-import { Copy, GitFork, Globe, Heart, Play, Sparkles, Star, StickyNote, UserPlus, X } from "lucide-react";
+import { Copy, EyeOff, Flag, GitFork, Globe, Heart, Play, Sparkles, Star, StickyNote, UserPlus, X } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Prompt } from "../types";
 import CommentsSection from "./CommentsSection";
@@ -13,6 +13,8 @@ interface PublicPromptDetailModalProps {
   onSaveToLibrary: (prompt: Prompt) => void;
   onToggleFavorite: (prompt: Prompt) => void;
   onLikeToggle: (prompt: Prompt) => void;
+  onHidePrompt: (prompt: Prompt) => void;
+  onReportPrompt: (prompt: Prompt) => void;
   onAuthorClick?: (author: { name: string; uid: string; avatar?: string }) => void;
   onNotification?: (message: string, type: "success" | "info") => void;
 }
@@ -27,6 +29,8 @@ export default function PublicPromptDetailModal({
   onSaveToLibrary,
   onToggleFavorite,
   onLikeToggle,
+  onHidePrompt,
+  onReportPrompt,
   onAuthorClick,
   onNotification
 }: PublicPromptDetailModalProps) {
@@ -215,6 +219,28 @@ export default function PublicPromptDetailModal({
                     >
                       <Heart size={13} fill={isLiked ? "currentColor" : "none"} />
                       <span>Like</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onHidePrompt(prompt)}
+                    className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <EyeOff size={13} />
+                    <span>Ocultar</span>
+                  </button>
+
+                  {!isFounderPackPrompt && prompt.userId !== currentUser?.uid && (
+                    <button
+                      type="button"
+                      onClick={() => onReportPrompt(prompt)}
+                      className="px-3 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Flag size={13} />
+                      <span>Reportar</span>
                     </button>
                   )}
                 </div>

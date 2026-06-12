@@ -18,6 +18,7 @@ import {
   Youtube,
   BookOpen,
   Calendar,
+  Clock,
   Star,
   Users,
   ArrowRight,
@@ -31,7 +32,8 @@ import {
   ArrowLeft,
   UserCheck,
   UserPlus,
-  GitFork
+  GitFork,
+  TrendingUp
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -57,6 +59,7 @@ import { usePromptLibrary } from "./hooks/usePromptLibrary";
 import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
 import { useSocialFavorites } from "./hooks/useSocialFavorites";
+import { useContentSafety } from "./hooks/useContentSafety";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { DEFAULT_PROMPTS } from "./data";
@@ -67,6 +70,7 @@ import {
   getAvailableTags,
   getPublicShowcasePrompts,
   getTagSuggestions,
+  type CommunitySort,
   type LibraryViewFilter
 } from "./utils/promptFilters";
 
@@ -99,6 +103,7 @@ export default function App() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [libraryViewFilter, setLibraryViewFilter] = useState<LibraryViewFilter>("todos");
+  const [communitySort, setCommunitySort] = useState<CommunitySort>("populares");
   const [publicProfileTab, setPublicProfileTab] = useState<PublicProfileTab>("publicados");
 
   // Close tag autocomplete dropdown on click outside
@@ -267,6 +272,29 @@ export default function App() {
     onNotification: triggerNotification
   });
 
+  const {
+    hiddenPromptIds,
+    handleHidePrompt,
+    handleReportPrompt
+  } = useContentSafety({
+    user,
+    onNotification: triggerNotification
+  });
+
+  const handleHideCommunityPrompt = async (prompt: Prompt) => {
+    await handleHidePrompt(prompt);
+    if (selectedPublicPrompt?.id === prompt.id) {
+      setSelectedPublicPrompt(null);
+    }
+  };
+
+  const handleReportCommunityPrompt = async (prompt: Prompt) => {
+    await handleReportPrompt(prompt);
+    if (selectedPublicPrompt?.id === prompt.id) {
+      setSelectedPublicPrompt(null);
+    }
+  };
+
   const openPublicProfile = (author: { name: string; uid: string; avatar?: string }) => {
     setCurrentTab("comunidad");
     setSelectedAuthor(author);
@@ -364,9 +392,13 @@ export default function App() {
     ];
   }, [communityPrompts, founderPackPrompts]);
 
+  const visibleCommunityCatalogPrompts = useMemo(() => {
+    return communityCatalogPrompts.filter((prompt) => !hiddenPromptIds.has(prompt.id));
+  }, [communityCatalogPrompts, hiddenPromptIds]);
+
   useEffect(() => {
     if (!selectedAuthor) return;
-    const authorPrompt = communityCatalogPrompts.find((prompt) => prompt.userId === selectedAuthor.uid);
+    const authorPrompt = visibleCommunityCatalogPrompts.find((prompt) => prompt.userId === selectedAuthor.uid);
     if (!authorPrompt) return;
     const nextAuthor = {
       name: authorPrompt.authorName || selectedAuthor.name,
@@ -381,7 +413,7 @@ export default function App() {
     ) {
       setSelectedAuthor(nextAuthor);
     }
-  }, [communityCatalogPrompts, selectedAuthor]);
+  }, [visibleCommunityCatalogPrompts, selectedAuthor]);
 
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
@@ -604,7 +636,7 @@ export default function App() {
   const filteredPrompts = useMemo(() => {
     return filterPrompts({
       prompts,
-      communityPrompts: communityCatalogPrompts,
+      communityPrompts: visibleCommunityCatalogPrompts,
       currentTab,
       selectedAuthor,
       communityScope,
@@ -614,10 +646,12 @@ export default function App() {
       selectedTags,
       selectedFolderId,
       socialFavoritePromptIds,
+      hiddenPromptIds,
       ownForkedSourceIds,
+      communitySort,
       libraryViewFilter
     });
-  }, [prompts, communityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids, socialFavoritePromptIds, ownForkedSourceIds, libraryViewFilter]);
+  }, [prompts, visibleCommunityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids, socialFavoritePromptIds, hiddenPromptIds, ownForkedSourceIds, communitySort, libraryViewFilter]);
 
   const defaultPromptTitles = useMemo(
     () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
@@ -644,16 +678,18 @@ export default function App() {
   const allAvailableTags = useMemo(() => {
     return getAvailableTags({
       prompts,
-      communityPrompts: communityCatalogPrompts,
+      communityPrompts: visibleCommunityCatalogPrompts,
       currentTab,
       selectedAuthor,
       communityScope,
       followedCreatorUids,
       socialFavoritePromptIds,
+      hiddenPromptIds,
       ownForkedSourceIds,
+      communitySort,
       libraryViewFilter
     });
-  }, [prompts, communityCatalogPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids, socialFavoritePromptIds, ownForkedSourceIds, libraryViewFilter]);
+  }, [prompts, visibleCommunityCatalogPrompts, currentTab, selectedAuthor, communityScope, followedCreatorUids, socialFavoritePromptIds, hiddenPromptIds, ownForkedSourceIds, communitySort, libraryViewFilter]);
 
   const tagSuggestions = useMemo(() => {
     return getTagSuggestions(allAvailableTags, tagSearchInput, selectedTags);
@@ -737,17 +773,17 @@ export default function App() {
   };
 
   const allSearchablePrompts = useMemo(() => {
-    return combineSearchablePrompts(prompts, communityCatalogPrompts);
-  }, [prompts, communityCatalogPrompts]);
+    return combineSearchablePrompts(prompts, visibleCommunityCatalogPrompts);
+  }, [prompts, visibleCommunityCatalogPrompts]);
 
   const authorProfileStats = useMemo(() => {
-    return getAuthorProfileStats(communityCatalogPrompts, selectedAuthor);
-  }, [communityCatalogPrompts, selectedAuthor]);
+    return getAuthorProfileStats(visibleCommunityCatalogPrompts, selectedAuthor);
+  }, [visibleCommunityCatalogPrompts, selectedAuthor]);
 
   const selectedAuthorPrompts = useMemo(() => {
     if (!selectedAuthor) return [];
-    return communityCatalogPrompts.filter((prompt) => prompt.userId === selectedAuthor.uid);
-  }, [communityCatalogPrompts, selectedAuthor]);
+    return visibleCommunityCatalogPrompts.filter((prompt) => prompt.userId === selectedAuthor.uid);
+  }, [visibleCommunityCatalogPrompts, selectedAuthor]);
 
   const selectedAuthorFolders = useMemo(() => {
     if (!selectedAuthor) return [];
@@ -756,18 +792,18 @@ export default function App() {
 
   const publicShowcasePrompts = useMemo(() => {
     return getPublicShowcasePrompts({
-      prompts: communityCatalogPrompts,
+      prompts: visibleCommunityCatalogPrompts,
       selectedCategory: publicShowcaseCategory,
       searchQuery: publicShowcaseSearch
     });
-  }, [communityCatalogPrompts, publicShowcaseCategory, publicShowcaseSearch]);
+  }, [visibleCommunityCatalogPrompts, publicShowcaseCategory, publicShowcaseSearch]);
 
   const socialFavoritePrompts = useMemo(() => {
     return socialFavorites.map((favorite) => ({
       favorite,
-      prompt: communityCatalogPrompts.find((prompt) => prompt.id === favorite.promptId) || null
+      prompt: visibleCommunityCatalogPrompts.find((prompt) => prompt.id === favorite.promptId) || null
     }));
-  }, [socialFavorites, communityCatalogPrompts]);
+  }, [socialFavorites, visibleCommunityCatalogPrompts]);
 
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
@@ -972,6 +1008,8 @@ export default function App() {
                     onAuthorClick={openPublicProfile}
                     onViewDetails={setSelectedPublicPrompt}
                     onSocialFavoriteToggle={handleToggleSocialFavorite}
+                    onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+                    onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
                     isSocialFavorite={socialFavoritePromptIds.has(p.id)}
                   />
                 ))}
@@ -1006,6 +1044,8 @@ export default function App() {
                 onLikeToggle={handleLikeToggle}
                 onViewDetails={setSelectedPublicPrompt}
                 onSocialFavoriteToggle={handleToggleSocialFavorite}
+                onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+                onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
                 onNotification={triggerNotification}
               />
             </div>
@@ -1254,7 +1294,7 @@ export default function App() {
                   <Users size={13} />
                   <span>Red de la Comunidad</span>
                   <span className="text-[10px] bg-slate-900 text-pink-400 font-extrabold px-2 py-0.5 rounded-md font-mono animate-pulse">
-                    {communityCatalogPrompts.length}
+                    {visibleCommunityCatalogPrompts.length}
                   </span>
                 </button>
               </div>
@@ -1320,15 +1360,43 @@ export default function App() {
                     </button>
                   </div>
 
-                  <p className="text-[11px] text-slate-400 font-sans">
-                    {communityScope === "siguiendo"
-                      ? "Mostrando prompts de creadores que sigues."
-                      : communityScope === "favoritos"
-                      ? "Tus favoritos sociales guardados como referencia."
-                      : communityScope === "remixeados"
-                      ? "Prompts que ya convertiste en remixes editables."
-                      : "Explora prompts publicos de toda la comunidad."}
-                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <p className="text-[11px] text-slate-400 font-sans">
+                      {communityScope === "siguiendo"
+                        ? "Mostrando prompts de creadores que sigues."
+                        : communityScope === "favoritos"
+                        ? "Tus favoritos sociales guardados como referencia."
+                        : communityScope === "remixeados"
+                        ? "Prompts que ya convertiste en remixes editables."
+                        : "Explora prompts publicos de toda la comunidad."}
+                    </p>
+                    <div className="flex items-center gap-1 rounded-xl bg-slate-950/50 p-1 border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setCommunitySort("populares")}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          communitySort === "populares"
+                            ? "bg-pink-600 text-white"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        }`}
+                      >
+                        <TrendingUp size={12} />
+                        <span>Populares</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCommunitySort("recientes")}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          communitySort === "recientes"
+                            ? "bg-indigo-600 text-white"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        }`}
+                      >
+                        <Clock size={12} />
+                        <span>Recientes</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1442,6 +1510,8 @@ export default function App() {
                   onLikeToggle={handleLikeToggle}
                   onViewDetails={setSelectedPublicPrompt}
                   onSocialFavoriteToggle={handleToggleSocialFavorite}
+                  onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+                  onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
                   onNotification={triggerNotification}
                 />
               )}
@@ -1907,7 +1977,7 @@ export default function App() {
                             >
                               <span className="font-bold text-pink-400">#{tag}</span>
                               <span className="text-[9px] font-mono text-slate-400 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded-md">
-                                {(currentTab === "mi-biblioteca" ? prompts : communityCatalogPrompts).filter(p => p.tags?.some(t => t.toLowerCase() === tag.toLowerCase())).length}
+                                {(currentTab === "mi-biblioteca" ? prompts : visibleCommunityCatalogPrompts).filter(p => p.tags?.some(t => t.toLowerCase() === tag.toLowerCase())).length}
                               </span>
                             </button>
                           ))
@@ -1979,7 +2049,7 @@ export default function App() {
                           ? "Todavia no guardaste favoritos sociales. Abre un prompt publico y marca Favorito para guardarlo como referencia privada."
                           : communityScope === "remixeados"
                           ? "Todavia no tienes remixes creados desde la comunidad. Usa Guardar en mi biblioteca para adaptar prompts de otros creadores."
-                          : communityCatalogPrompts.length === 0
+                          : visibleCommunityCatalogPrompts.length === 0
                           ? "Aun no hay prompts publicos publicados en la comunidad. Se el primero compartiendo una de tus plantillas personales activando el interruptor Hacer publico."
                           : "No se encontraron prompts publicos que coincidan con los filtros de busqueda o categoria en la comunidad."
                       )}
@@ -2030,6 +2100,8 @@ export default function App() {
                           onAuthorClick={openPublicProfile}
                           onViewDetails={setSelectedPublicPrompt}
                           onSocialFavoriteToggle={handleToggleSocialFavorite}
+                          onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+                          onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
                           isSocialFavorite={socialFavoritePromptIds.has(p.id)}
                         />
                       </motion.div>
@@ -2226,6 +2298,8 @@ export default function App() {
           }}
           onToggleFavorite={handleToggleSocialFavorite}
           onLikeToggle={handleLikeToggle}
+          onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+          onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
           onAuthorClick={openPublicProfile}
           onNotification={triggerNotification}
         />

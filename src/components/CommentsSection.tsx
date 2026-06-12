@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { User } from "firebase/auth";
-import { MessageSquare, Send, Trash2, ShieldAlert } from "lucide-react";
+import { MessageSquare, Send, Trash2 } from "lucide-react";
 
 interface Comment {
   id: string;
@@ -61,7 +61,7 @@ export default function CommentsSection({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
-      if (onNotification) onNotification("Debes iniciar sesión para comentar.", "info");
+      if (onNotification) onNotification("Debes iniciar sesion para aportar sugerencias.", "info");
       return;
     }
     if (!newComment.trim()) return;
@@ -77,10 +77,10 @@ export default function CommentsSection({
         createdAt: serverTimestamp()
       });
       setNewComment("");
-      if (onNotification) onNotification("Comentario publicado.", "success");
+      if (onNotification) onNotification("Sugerencia publicada.", "success");
     } catch (err) {
       console.error("Error creating comment:", err);
-      if (onNotification) onNotification("Error al enviar el comentario.", "info");
+      if (onNotification) onNotification("Error al enviar la sugerencia.", "info");
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +109,7 @@ export default function CommentsSection({
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare size={14} className="text-indigo-400" />
         <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-          Comentarios ({loading ? "..." : comments.length})
+          Sugerencias ({loading ? "..." : comments.length})
         </span>
       </div>
 
@@ -121,7 +121,7 @@ export default function CommentsSection({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             disabled={submitting}
-            placeholder="Escribe un comentario o sugerencia..."
+            placeholder="Sugiere una mejora, variante o caso de uso..."
             className="flex-1 text-xs bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-sans"
           />
           <button
@@ -134,16 +134,16 @@ export default function CommentsSection({
         </form>
       ) : (
         <p className="text-[11px] text-slate-500 mb-4 bg-slate-900/35 border border-slate-800 p-2.5 rounded-xl text-center">
-          Inicia sesión para aportar tus comentarios a este prompt.
+          Inicia sesion para sugerir mejoras o formas de usar este prompt.
         </p>
       )}
 
       {/* List comments */}
       {loading ? (
-        <div className="text-center py-2 text-[11px] text-slate-500">Cargando comentarios...</div>
+        <div className="text-center py-2 text-[11px] text-slate-500">Cargando sugerencias...</div>
       ) : comments.length === 0 ? (
         <p className="text-[11px] text-slate-550 italic text-center py-2">
-          Sin comentarios aún. ¡Sé el primero en aconsejar o calibrar este prompt!
+          Sin sugerencias aun. Se el primero en proponer una mejora o variante.
         </p>
       ) : (
         <div className="space-y-3 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
