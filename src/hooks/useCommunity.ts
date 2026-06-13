@@ -140,7 +140,7 @@ export function useCommunity({
       if (existingFork) {
         setCurrentTab("mi-biblioteca");
         onOpenEdit(existingFork);
-        onNotification("Ya tenias este prompt en tu biblioteca. Abrimos tu copia para editar.", "info");
+        onNotification("Ya tenias este prompt en tu biblioteca. Abrimos tu copia: editala, usala o publicala cuando este lista.", "info");
         return;
       }
 
@@ -178,7 +178,7 @@ export function useCommunity({
 
       setCurrentTab("mi-biblioteca");
       onOpenEdit(editableFork);
-      onNotification(`Prompt "${prompt.title}" clonado a tu biblioteca para editar.`, "success");
+      onNotification(`Remix guardado. Editalo ahora, usalo en tu flujo o publicalo cuando este listo.`, "success");
     } catch (err) {
       console.error("Error forking prompt:", err);
       onNotification("No se pudo clonar el prompt de la comunidad.", "info");

@@ -53,6 +53,8 @@ import SharedPromptModal from "./components/SharedPromptModal";
 import ActivationChecklist from "./components/ActivationChecklist";
 import PublicPromptDetailModal from "./components/PublicPromptDetailModal";
 import PublicProfileView, { type PublicProfileTab } from "./components/PublicProfileView";
+import CommunityExplore from "./components/CommunityExplore";
+import DailyWorkspace from "./components/DailyWorkspace";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
@@ -62,6 +64,7 @@ import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { useContentSafety } from "./hooks/useContentSafety";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
+import { buildCommunityExploreSections, buildDailyWorkspaceState } from "./utils/dailyLoop";
 import { DEFAULT_PROMPTS } from "./data";
 import {
   combineSearchablePrompts,
@@ -805,6 +808,18 @@ export default function App() {
     }));
   }, [socialFavorites, visibleCommunityCatalogPrompts]);
 
+  const communityExploreSections = useMemo(() => buildCommunityExploreSections({
+    prompts: visibleCommunityCatalogPrompts,
+    socialFavoritePromptIds,
+    ownForkedSourceIds
+  }), [visibleCommunityCatalogPrompts, socialFavoritePromptIds, ownForkedSourceIds]);
+
+  const dailyWorkspaceState = useMemo(() => buildDailyWorkspaceState({
+    prompts,
+    userEvents,
+    socialFavoritePrompts
+  }), [prompts, userEvents, socialFavoritePrompts]);
+
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
   const youtubeCount = useMemo(() => prompts.filter((p) => p.category === "YouTube").length, [prompts]);
@@ -1159,6 +1174,13 @@ export default function App() {
                   </div>
                 </div>
 
+                <CommunityExplore
+                  sections={communityExploreSections}
+                  onView={setSelectedPublicPrompt}
+                  onUse={(prompt) => handleUsePrompt(prompt, "public_explore")}
+                  onSave={(prompt) => void resolvePublicSavePrompt(prompt)}
+                />
+
                 {loadingCommunityPrompts ? (
                   <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-8 text-center">
                     <div className="w-7 h-7 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin mx-auto"></div>
@@ -1400,6 +1422,15 @@ export default function App() {
                 </div>
               )}
 
+              {currentTab === "comunidad" && !selectedAuthor && communityScope === "todos" && (
+                <CommunityExplore
+                  sections={communityExploreSections}
+                  onView={setSelectedPublicPrompt}
+                  onUse={(prompt) => handleUsePrompt(prompt, "community_explore")}
+                  onSave={(prompt) => void resolvePublicSavePrompt(prompt)}
+                />
+              )}
+
               {/* Legacy author banner kept dormant while PublicProfileView owns the profile surface */}
               {false && currentTab === "comunidad" && selectedAuthor && (
                 <div className="bg-gradient-to-r from-slate-900/60 via-indigo-950/20 to-slate-900/60 border border-indigo-500/25 p-6 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1520,6 +1551,22 @@ export default function App() {
                 <ActivationChecklist
                   state={activationChecklistState}
                   onAction={handleActivationAction}
+                />
+              )}
+
+              {user && currentTab === "mi-biblioteca" && (
+                <DailyWorkspace
+                  state={dailyWorkspaceState}
+                  onEdit={handleOpenEdit}
+                  onUse={(prompt) => handleUsePrompt(prompt, "daily_workspace")}
+                  onViewSocial={setSelectedPublicPrompt}
+                  onSaveSocial={(prompt) => void resolvePublicSavePrompt(prompt)}
+                  onOpenSocialFavorites={() => {
+                    setCurrentTab("comunidad");
+                    setCommunityScope("favoritos");
+                    setSelectedAuthor(null);
+                    setSelectedCategory("Todas");
+                  }}
                 />
               )}
 

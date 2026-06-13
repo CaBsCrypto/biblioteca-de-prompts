@@ -108,6 +108,16 @@ export default function PublicProfileView({
           </div>
 
           <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 shrink-0">
+            {prompts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onFork(prompts[0])}
+                className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
+              >
+                <GitFork size={14} />
+                <span>Guardar un prompt</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onToggleFollow(author.uid)}
@@ -247,17 +257,29 @@ export default function PublicProfileView({
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
                   <span>{count} prompts visibles</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(publicLink);
-                      onNotification("Enlace de coleccion copiado.", "success");
-                    }}
-                    className="text-indigo-300 hover:text-indigo-200 font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Copy size={11} />
-                    Copiar enlace
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = publicLink;
+                      }}
+                      className="text-emerald-300 hover:text-emerald-200 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <FolderOpen size={11} />
+                      Explorar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(publicLink);
+                        onNotification("Enlace de coleccion copiado.", "success");
+                      }}
+                      className="text-indigo-300 hover:text-indigo-200 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy size={11} />
+                      Copiar
+                    </button>
+                  </div>
                 </div>
               </div>
             );
