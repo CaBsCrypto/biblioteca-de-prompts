@@ -175,7 +175,7 @@ service cloud.firestore {
     }
 
     match /folders/{folderId} {
-      allow list: if existing().isShared == true || (isSignedIn() && existing().userId == request.auth.uid);
+      allow list: if resource.data.isShared == true || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
       allow get: if (isSignedIn() && existing().userId == request.auth.uid) || (existing().isShared == true);
       

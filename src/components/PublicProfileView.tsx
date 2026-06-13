@@ -1,9 +1,9 @@
-import { ArrowLeft, Copy, FolderOpen, Globe, Heart, Share2, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, Copy, FolderOpen, GitFork, Globe, Share2, UserCheck, UserPlus } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Folder, Prompt } from "../types";
 import PromptCard from "./PromptCard";
 
-export type PublicProfileTab = "publicados" | "colecciones";
+export type PublicProfileTab = "prompts" | "colecciones" | "remixes";
 
 interface PublicProfileViewProps {
   author: { name: string; uid: string; avatar?: string; handle?: string };
@@ -51,8 +51,9 @@ export default function PublicProfileView({
   onNotification
 }: PublicProfileViewProps) {
   const publicFolders = folders.filter((folder) => folder.userId === author.uid && folder.isShared);
+  const remixPrompts = prompts.filter((prompt) => Boolean(prompt.forkedFromPromptId || prompt.forkedFrom));
+  const visiblePrompts = activeTab === "remixes" ? remixPrompts : prompts;
   const likesCount = prompts.reduce((sum, prompt) => sum + (prompt.likesCount || prompt.likedBy?.length || 0), 0);
-  const remixableCount = prompts.filter((prompt) => prompt.userId !== currentUser?.uid).length;
   const isFollowing = followedCreatorUids.includes(author.uid);
   const displayHandle = author.handle || prompts.find((prompt) => prompt.authorHandle)?.authorHandle || "";
 
@@ -144,22 +145,22 @@ export default function PublicProfileView({
             <p className="text-[10px] text-slate-500 uppercase font-bold">colecciones</p>
           </div>
           <div className="rounded-2xl bg-slate-950/45 border border-slate-800 p-4">
-            <p className="text-2xl font-black text-amber-300 font-mono">{remixableCount}</p>
-            <p className="text-[10px] text-slate-500 uppercase font-bold">remixeables</p>
+            <p className="text-2xl font-black text-amber-300 font-mono">{remixPrompts.length}</p>
+            <p className="text-[10px] text-slate-500 uppercase font-bold">remixes</p>
           </div>
         </div>
       </section>
 
-      <div className="flex items-center gap-1.5 rounded-2xl bg-slate-950/55 p-1 border border-slate-800 w-fit">
+      <div className="flex items-center gap-1.5 rounded-2xl bg-slate-950/55 p-1 border border-slate-800 w-fit max-w-full overflow-x-auto no-scrollbar">
         <button
           type="button"
-          onClick={() => onTabChange("publicados")}
+          onClick={() => onTabChange("prompts")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeTab === "publicados" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"
+            activeTab === "prompts" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"
           }`}
         >
           <Globe size={13} />
-          <span>Publicados</span>
+          <span>Prompts</span>
         </button>
         <button
           type="button"
@@ -171,17 +172,31 @@ export default function PublicProfileView({
           <FolderOpen size={13} />
           <span>Colecciones</span>
         </button>
+        <button
+          type="button"
+          onClick={() => onTabChange("remixes")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            activeTab === "remixes" ? "bg-pink-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"
+          }`}
+        >
+          <GitFork size={13} />
+          <span>Remixes publicados</span>
+        </button>
       </div>
 
-      {activeTab === "publicados" ? (
-        prompts.length === 0 ? (
+      {activeTab === "prompts" || activeTab === "remixes" ? (
+        visiblePrompts.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/35 p-12 text-center">
-            <p className="text-sm font-bold text-white">Este creador aun no tiene prompts publicos.</p>
-            <p className="text-xs text-slate-500 mt-1">Cuando publique, sus posts apareceran aqui.</p>
+            <p className="text-sm font-bold text-white">
+              {activeTab === "remixes" ? "Este creador aun no publico remixes." : "Este creador aun no tiene prompts publicos."}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {activeTab === "remixes" ? "Cuando comparta adaptaciones, apareceran aqui." : "Cuando publique, sus posts apareceran aqui."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {prompts.map((prompt) => (
+            {visiblePrompts.map((prompt) => (
               <PromptCard
                 key={prompt.id}
                 prompt={prompt}

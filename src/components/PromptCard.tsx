@@ -328,6 +328,12 @@ ${notesStr}
         {/* Header: Category & Favorite Button */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 flex-wrap">
+            {isCommunityView && (
+              <span className="text-[10px] uppercase tracking-wider bg-slate-950/55 text-emerald-300 border border-emerald-500/20 font-black px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                <Globe size={11} />
+                Post social
+              </span>
+            )}
             <span
               id={`category-badge-${prompt.id}`}
               className={`text-[11px] font-bold px-3 py-1 rounded-full border ${getCategoryStyles(
@@ -348,6 +354,20 @@ ${notesStr}
                 <Globe size={11} className="animate-pulse" />
                 <span>En Comunidad</span>
               </span>
+            )}
+            {isCommunityView && (
+              <>
+                <span className="text-[10px] bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                  <Heart size={11} fill={likesCount > 0 ? "currentColor" : "none"} />
+                  <span>{likesCount} likes</span>
+                </span>
+                {isSocialFavorite && (
+                  <span className="text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                    <Star size={11} fill="currentColor" />
+                    <span>Favorito</span>
+                  </span>
+                )}
+              </>
             )}
           </div>
           
@@ -410,9 +430,16 @@ ${notesStr}
         </h3>
 
         {/* Description */}
+        {isCommunityView && (
+          <span className="text-[10px] uppercase tracking-wider text-indigo-300 font-black block mb-1.5">
+            Objetivo / caso de uso
+          </span>
+        )}
         <p
           id={`prompt-desc-${prompt.id}`}
-          className="text-sm text-slate-400 mb-5 font-sans leading-relaxed line-clamp-3"
+          className={`text-sm text-slate-400 mb-5 font-sans leading-relaxed line-clamp-3 ${
+            isCommunityView ? "rounded-2xl border border-slate-700/70 bg-slate-950/30 p-3.5" : ""
+          }`}
         >
           {prompt.description || "Sin descripción proporcionada."}
         </p>
@@ -499,7 +526,7 @@ ${notesStr}
               >
                 <MessageSquare size={16} />
                 <span className="text-xs font-bold font-mono">
-                  {commentCount !== null && commentCount > 0 ? `Comentarios (${commentCount})` : "Sugerencias"}
+                  {commentCount !== null && commentCount > 0 ? `Sugerencias (${commentCount})` : "Sugerencias"}
                 </span>
               </button>
             )}
@@ -536,18 +563,6 @@ ${notesStr}
                 title="Reportar este prompt"
               >
                 <Flag size={16} />
-              </button>
-            )}
-
-            {/* Fork/Duplicate Button */}
-            {canForkPrompt && (
-              <button
-                onClick={() => onFork(prompt)}
-                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all flex items-center gap-1.5"
-                title={currentUser ? "Clonar a mi biblioteca personal (Bifurcar)" : "Guardar este prompt iniciando sesion con Google"}
-              >
-                <GitFork size={16} />
-                <span className="text-xs font-bold">{currentUser ? "Clonar" : "Guardar"}</span>
               </button>
             )}
 
@@ -589,7 +604,18 @@ ${notesStr}
           </div>
 
           {/* Right: Copy & Run Buttons */}
-          <div className="grid grid-cols-1 min-[420px]:grid-cols-3 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 min-[640px]:grid-cols-4 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            {canForkPrompt && (
+              <button
+                onClick={() => onFork(prompt)}
+                className="px-3 py-2 sm:py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-white border border-emerald-500/25 hover:border-emerald-400/50 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                title={currentUser ? "Guardar como remix privado editable" : "Guardar este prompt iniciando sesion con Google"}
+              >
+                <GitFork size={13} />
+                <span>{currentUser ? "Guardar remix" : "Guardar"}</span>
+              </button>
+            )}
+
             {isCommunityView && onViewDetails && (
               <button
                 id={`btn-view-details-${prompt.id}`}

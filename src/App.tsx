@@ -89,7 +89,7 @@ const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
   { id: "privados", label: "Privados" },
   { id: "publicados", label: "Publicados" },
   { id: "remixes", label: "Remixes" },
-  { id: "favoritos", label: "Favoritos" }
+  { id: "favoritos", label: "Favoritos propios" }
 ];
 
 export default function App() {
@@ -104,7 +104,7 @@ export default function App() {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [libraryViewFilter, setLibraryViewFilter] = useState<LibraryViewFilter>("todos");
   const [communitySort, setCommunitySort] = useState<CommunitySort>("populares");
-  const [publicProfileTab, setPublicProfileTab] = useState<PublicProfileTab>("publicados");
+  const [publicProfileTab, setPublicProfileTab] = useState<PublicProfileTab>("prompts");
 
   // Close tag autocomplete dropdown on click outside
   useEffect(() => {
@@ -299,7 +299,7 @@ export default function App() {
     setCurrentTab("comunidad");
     setSelectedAuthor(author);
     setCommunityScope("todos");
-    setPublicProfileTab("publicados");
+    setPublicProfileTab("prompts");
     const url = new URL(window.location.href);
     url.searchParams.set("user", author.uid);
     url.searchParams.delete("share");
@@ -467,7 +467,7 @@ export default function App() {
       if (userId && !shareId && !colId) {
         setCurrentTab("comunidad");
         setSelectedAuthor({ name: "Creador", uid: userId });
-        setPublicProfileTab("publicados");
+        setPublicProfileTab("prompts");
       }
       
       if (shareId) {
@@ -1641,7 +1641,7 @@ export default function App() {
                     <div>
                       <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">Vista de mi biblioteca</h3>
                       <p className="text-[11px] text-slate-500 font-sans mt-0.5">
-                        Separa tus prompts privados, publicaciones, remixes y favoritos propios.
+                        Separa privados, publicaciones, remixes, favoritos propios y referencias sociales guardadas.
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
@@ -1672,6 +1672,44 @@ export default function App() {
                           </button>
                         );
                       })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentTab("comunidad");
+                          setCommunityScope("favoritos");
+                          setSelectedAuthor(null);
+                          setSelectedCategory("Todas");
+                        }}
+                        className="px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer bg-amber-500/10 text-amber-300 border-amber-500/25 hover:bg-amber-500/20"
+                        title="Ver favoritos sociales guardados como referencias privadas"
+                      >
+                        <Star size={12} fill={socialFavorites.length > 0 ? "currentColor" : "none"} />
+                        <span>Favoritos sociales</span>
+                        <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{socialFavorites.length}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                      <p className="text-lg font-black text-slate-100 font-mono">{prompts.filter((prompt) => !prompt.isShared).length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">privados</p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
+                      <p className="text-lg font-black text-emerald-300 font-mono">{prompts.filter((prompt) => prompt.isShared).length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">publicados</p>
+                    </div>
+                    <div className="rounded-xl border border-pink-500/15 bg-pink-500/5 p-3">
+                      <p className="text-lg font-black text-pink-300 font-mono">{prompts.filter((prompt) => prompt.forkedFromPromptId || prompt.forkedFrom).length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">remixes</p>
+                    </div>
+                    <div className="rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3">
+                      <p className="text-lg font-black text-indigo-300 font-mono">{prompts.filter((prompt) => prompt.isFavorite).length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">favoritos propios</p>
+                    </div>
+                    <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 p-3">
+                      <p className="text-lg font-black text-amber-300 font-mono">{socialFavorites.length}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">favoritos sociales</p>
                     </div>
                   </div>
                 </div>
