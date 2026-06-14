@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import {
   addDoc,
   collection,
   doc,
   getDoc,
+  onSnapshot,
+  query,
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  where
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Briefing, BriefingItem, NewsCategory, NewsItem } from "../typesCommunity";
@@ -53,6 +56,39 @@ function toBriefingItem(item: NewsItem): BriefingItem {
 
 export function useBriefings({ user, getAuthorIdentity, onNotification }: UseBriefingsOptions) {
   const [loadingSharedBriefing, setLoadingSharedBriefing] = useState(false);
+  const [publicBriefings, setPublicBriefings] = useState<Briefing[]>([]);
+  const [loadingPublicBriefings, setLoadingPublicBriefings] = useState(false);
+
+  useEffect(() => {
+    setLoadingPublicBriefings(true);
+    const briefingsQuery = query(collection(db, "briefings"), where("isPublished", "==", true));
+    const unsubscribe = onSnapshot(
+      briefingsQuery,
+      (snapshot) => {
+        setPublicBriefings(snapshot.docs.map(mapBriefingDoc));
+        setLoadingPublicBriefings(false);
+      },
+      (error) => {
+        console.error("Error subscribing to public briefings:", error);
+        setLoadingPublicBriefings(false);
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  const recentPublicBriefings = useMemo(() => {
+    const toMillis = (value: any) => {
+      if (!value) return 0;
+      if (typeof value.toMillis === "function") return value.toMillis();
+      if (typeof value.toDate === "function") return value.toDate().getTime();
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
+    return [...publicBriefings]
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
+      .slice(0, 6);
+  }, [publicBriefings]);
 
   const createBriefingFromNews = async (items: NewsItem[], category: NewsCategory, isPublished = true) => {
     if (!user) {
@@ -131,6 +167,8 @@ export function useBriefings({ user, getAuthorIdentity, onNotification }: UseBri
     createBriefingFromNews,
     loadBriefing,
     loadingSharedBriefing,
+    publicBriefings: recentPublicBriefings,
+    loadingPublicBriefings,
     unpublishBriefing
   };
 }

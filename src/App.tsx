@@ -342,7 +342,9 @@ export default function App() {
   const {
     createBriefingFromNews,
     loadBriefing,
-    loadingSharedBriefing
+    loadingSharedBriefing,
+    publicBriefings,
+    loadingPublicBriefings
   } = useBriefings({
     user,
     getAuthorIdentity,
@@ -975,6 +977,23 @@ export default function App() {
     const url = new URL(window.location.href);
     url.searchParams.delete("briefing");
     window.history.replaceState({}, "", url.toString());
+  };
+
+  const openPublicBriefing = (briefing: Briefing) => {
+    setSharedBriefing(briefing);
+    setSharedBriefingId(briefing.id);
+    setSharedPrompt(null);
+    setSharedPromptId(null);
+    setSharedCollection(null);
+    setSharedCollectionId(null);
+    setSelectedAuthor(null);
+    const url = new URL(window.location.href);
+    url.searchParams.set("briefing", briefing.id);
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    url.searchParams.delete("user");
+    window.history.replaceState({}, "", url.toString());
+    triggerNotification("Briefing publico cargado.", "success");
   };
 
   const handleUsePrompt = (prompt: Prompt, source = "library") => {
@@ -1737,6 +1756,89 @@ export default function App() {
                     Usa Gemini integrado para crear prompts profesionales desde cero o pulir los básicos.
                   </p>
                 </div>
+              </div>
+
+              <div className="relative z-10 pt-6 border-t border-slate-700/60 space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-full">
+                      Briefings para compartir
+                    </span>
+                    <h3 className="text-lg font-extrabold text-white mt-3">Empieza por un radar curado</h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                      Abre un briefing publico, guarda una idea y conviertela en prompt o conversacion para la comunidad.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSectionChange("noticias")}
+                    className="px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/25 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer w-fit"
+                  >
+                    <Newspaper size={13} />
+                    <span>Crear briefing</span>
+                  </button>
+                </div>
+
+                {loadingPublicBriefings ? (
+                  <div className="rounded-2xl border border-slate-700/60 bg-slate-900/35 p-6 text-center">
+                    <div className="w-7 h-7 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin mx-auto"></div>
+                    <p className="text-xs text-slate-400 mt-3">Cargando briefings publicos...</p>
+                  </div>
+                ) : publicBriefings.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-cyan-500/20 bg-cyan-500/5 p-5">
+                    <p className="text-sm font-black text-cyan-100">Todavia no hay briefings publicados.</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                      Ve a Noticias, filtra una categoria y pulsa Briefing publico para crear el primer recurso compartible.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleSectionChange("noticias")}
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-black text-slate-950 transition-all hover:bg-cyan-400 cursor-pointer"
+                    >
+                      <Newspaper size={13} />
+                      Abrir Noticias
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {publicBriefings.slice(0, 3).map((briefing) => (
+                      <article key={briefing.id} className="rounded-2xl border border-cyan-500/15 bg-slate-950/35 p-4 flex flex-col gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-black text-cyan-300">
+                            {briefing.items.length} fuentes
+                          </span>
+                          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+                            {briefing.language.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="line-clamp-2 text-sm font-extrabold leading-tight text-white">{briefing.title}</h4>
+                          <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-400">{briefing.intro}</p>
+                          <p className="mt-2 text-[10px] font-bold text-slate-500">
+                            por {briefing.authorName}{briefing.authorHandle ? ` @${briefing.authorHandle}` : ""}
+                          </p>
+                        </div>
+                        {briefing.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {briefing.tags.slice(0, 4).map((tag) => (
+                              <span key={tag} className="text-[10px] text-slate-300 bg-slate-800 border border-slate-700/70 px-2 py-0.5 rounded-lg">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openPublicBriefing(briefing)}
+                          className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-300 transition-all hover:bg-cyan-500/15 cursor-pointer"
+                        >
+                          <BookOpen size={13} />
+                          Abrir briefing
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="relative z-10 pt-6 border-t border-slate-700/60 space-y-4">
