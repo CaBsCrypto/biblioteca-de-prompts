@@ -1,4 +1,4 @@
-import { Eye, GitFork, History, Pencil, Play, Star } from "lucide-react";
+import { Eye, GitFork, History, Pencil, Play, Share2, Star } from "lucide-react";
 import type { Prompt } from "../types";
 import type { DailyWorkspaceState } from "../utils/dailyLoop";
 
@@ -16,13 +16,14 @@ interface QuickSection {
   title: string;
   description: string;
   prompts: Prompt[];
-  icon: "history" | "star" | "fork";
+  icon: "history" | "star" | "fork" | "share";
   mode: "library" | "social";
 }
 
 function SectionIcon({ icon }: { icon: QuickSection["icon"] }) {
   if (icon === "star") return <Star size={14} fill="currentColor" className="text-amber-300" />;
   if (icon === "fork") return <GitFork size={14} className="text-pink-300" />;
+  if (icon === "share") return <Share2 size={14} className="text-emerald-300" />;
   return <History size={14} className="text-indigo-300" />;
 }
 
@@ -59,6 +60,14 @@ export default function DailyWorkspace({
       description: "Copias privadas creadas desde la comunidad.",
       prompts: state.recentRemixes,
       icon: "fork",
+      mode: "library"
+    },
+    {
+      id: "publish",
+      title: "Listos para publicar",
+      description: "Prompts privados con potencial para sumar al feed social.",
+      prompts: state.publishCandidates,
+      icon: "share",
       mode: "library"
     },
     {

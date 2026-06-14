@@ -40,21 +40,12 @@ import { auth, db } from "./firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { Prompt, CategoryFilter, Folder } from "./types";
 import PromptCard from "./components/PromptCard";
-import PromptFormModal from "./components/PromptFormModal";
-import PromptFillerModal from "./components/PromptFillerModal";
-import CopyFilledModal from "./components/CopyFilledModal";
-import AIHelperPanel from "./components/AIHelperPanel";
-import QuickSwitcherModal from "./components/QuickSwitcherModal";
-import RecommendationModal, { GeminiRecommendationResult } from "./components/RecommendationModal";
-import ProfileModal from "./components/ProfileModal";
-import CreateFolderModal from "./components/CreateFolderModal";
-import ShareFolderModal from "./components/ShareFolderModal";
-import SharedPromptModal from "./components/SharedPromptModal";
 import ActivationChecklist from "./components/ActivationChecklist";
-import PublicPromptDetailModal from "./components/PublicPromptDetailModal";
-import PublicProfileView, { type PublicProfileTab } from "./components/PublicProfileView";
 import CommunityExplore from "./components/CommunityExplore";
 import DailyWorkspace from "./components/DailyWorkspace";
+import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
+import type { GeminiRecommendationResult } from "./components/RecommendationModal";
+import type { PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
@@ -64,7 +55,7 @@ import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { useContentSafety } from "./hooks/useContentSafety";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
-import { buildCommunityExploreSections, buildDailyWorkspaceState } from "./utils/dailyLoop";
+import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
 import { DEFAULT_PROMPTS } from "./data";
 import {
   combineSearchablePrompts,
@@ -298,7 +289,7 @@ export default function App() {
     }
   };
 
-  const openPublicProfile = (author: { name: string; uid: string; avatar?: string }) => {
+  const openPublicProfile = (author: { name: string; uid: string; avatar?: string; handle?: string }) => {
     setCurrentTab("comunidad");
     setSelectedAuthor(author);
     setCommunityScope("todos");
@@ -810,9 +801,48 @@ export default function App() {
 
   const communityExploreSections = useMemo(() => buildCommunityExploreSections({
     prompts: visibleCommunityCatalogPrompts,
+    ownPrompts: prompts,
+    followedCreatorUids,
     socialFavoritePromptIds,
-    ownForkedSourceIds
-  }), [visibleCommunityCatalogPrompts, socialFavoritePromptIds, ownForkedSourceIds]);
+    ownForkedSourceIds,
+    currentUserId: user?.uid || null
+  }), [visibleCommunityCatalogPrompts, prompts, followedCreatorUids, socialFavoritePromptIds, ownForkedSourceIds, user]);
+
+  const suggestedCreators = useMemo(() => buildSuggestedCreators({
+    prompts: visibleCommunityCatalogPrompts,
+    followedCreatorUids,
+    currentUserId: user?.uid || null
+  }), [visibleCommunityCatalogPrompts, followedCreatorUids, user]);
+
+  const selectedPublicPromptResourceContext = useMemo(() => {
+    if (!selectedPublicPrompt) {
+      return {
+        remixCount: 0,
+        hasOwnRemix: false,
+        originalPrompt: null as Prompt | null
+      };
+    }
+
+    const sourceId = selectedPublicPrompt.forkedFromPromptId || selectedPublicPrompt.id;
+    const allKnownPrompts = [...visibleCommunityCatalogPrompts, ...prompts];
+    const originalPrompt = selectedPublicPrompt.forkedFromPromptId
+      ? allKnownPrompts.find((prompt) => prompt.id === selectedPublicPrompt.forkedFromPromptId) || null
+      : null;
+    const isKnownRemix = (candidate: Prompt) => {
+      if (candidate.id === selectedPublicPrompt.id) return false;
+      return (
+        candidate.forkedFromPromptId === sourceId ||
+        candidate.forkedFromPromptId === selectedPublicPrompt.id ||
+        (!candidate.forkedFromPromptId && candidate.forkedFrom === selectedPublicPrompt.title)
+      );
+    };
+
+    return {
+      remixCount: allKnownPrompts.filter(isKnownRemix).length,
+      hasOwnRemix: prompts.some(isKnownRemix),
+      originalPrompt
+    };
+  }, [selectedPublicPrompt, visibleCommunityCatalogPrompts, prompts]);
 
   const dailyWorkspaceState = useMemo(() => buildDailyWorkspaceState({
     prompts,
@@ -1041,9 +1071,10 @@ export default function App() {
           {/* Welcome Dashboard Block if offline/unauthenticated */}
           {!user && !authLoading && selectedAuthor ? (
             <div className="max-w-7xl mx-auto w-full">
-              <PublicProfileView
+              <PublicProfileSurface
                 author={selectedAuthor}
                 prompts={selectedAuthorPrompts}
+                allCommunityPrompts={visibleCommunityCatalogPrompts}
                 folders={selectedAuthorFolders}
                 activeTab={publicProfileTab}
                 currentUser={user}
@@ -1176,9 +1207,12 @@ export default function App() {
 
                 <CommunityExplore
                   sections={communityExploreSections}
+                  suggestedCreators={suggestedCreators}
                   onView={setSelectedPublicPrompt}
                   onUse={(prompt) => handleUsePrompt(prompt, "public_explore")}
                   onSave={(prompt) => void resolvePublicSavePrompt(prompt)}
+                  onOpenCreator={(creator) => openPublicProfile(creator)}
+                  onFollowCreator={(creator) => void handleToggleFollowCreator(creator.uid, creator)}
                 />
 
                 {loadingCommunityPrompts ? (
@@ -1425,9 +1459,12 @@ export default function App() {
               {currentTab === "comunidad" && !selectedAuthor && communityScope === "todos" && (
                 <CommunityExplore
                   sections={communityExploreSections}
+                  suggestedCreators={suggestedCreators}
                   onView={setSelectedPublicPrompt}
                   onUse={(prompt) => handleUsePrompt(prompt, "community_explore")}
                   onSave={(prompt) => void resolvePublicSavePrompt(prompt)}
+                  onOpenCreator={(creator) => openPublicProfile(creator)}
+                  onFollowCreator={(creator) => void handleToggleFollowCreator(creator.uid, creator)}
                 />
               )}
 
@@ -1523,9 +1560,10 @@ export default function App() {
               )}
 
               {currentTab === "comunidad" && selectedAuthor && (
-                <PublicProfileView
+                <PublicProfileSurface
                   author={selectedAuthor}
                   prompts={selectedAuthorPrompts}
+                  allCommunityPrompts={visibleCommunityCatalogPrompts}
                   folders={selectedAuthorFolders}
                   activeTab={publicProfileTab}
                   currentUser={user}
@@ -2202,193 +2240,138 @@ export default function App() {
 
         {/* Right Side: Gemini Engineering and Prompt optimization assistant slide panel */}
         {showAIAssistant && (
-          <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-[420px] lg:relative lg:inset-auto lg:w-[420px] lg:border-t-0 lg:border-l border-[#334155]/60 bg-[#1e293b]/95 lg:bg-[#1e293b]/70 backdrop-blur-md flex flex-col h-full overflow-hidden shrink-0 animate-in slide-in-from-right duration-300 shadow-2xl lg:shadow-none">
-            <div className="flex-1 p-4 overflow-y-auto h-full">
-              <AIHelperPanel
-                presetTextToOptimize={presetAItext}
-                onImportToLibrary={handleImportFromAI}
-                onClose={() => {
-                  setPresetAItext("");
-                  setShowAIAssistant(false);
-                }}
-              />
-            </div>
-          </aside>
+          <AIAssistantAside
+            presetAItext={presetAItext}
+            onImportToLibrary={handleImportFromAI}
+            onClose={() => {
+              setPresetAItext("");
+              setShowAIAssistant(false);
+            }}
+          />
         )}
 
       </div>
       )}
 
-      {/* Manual Add / Edit properties form Modal */}
-      {showFormModal && (
-        <PromptFormModal
-          prompt={editingPrompt}
-          folders={folders}
-          onSave={handleSavePrompt}
-          onClose={() => {
-            setShowFormModal(false);
-            setEditingPrompt(null);
-          }}
-          onOptimizeWithAI={handleOptimizeWithAIDirect}
-          onNotification={triggerNotification}
-        />
-      )}
-
-      {/* Interactive prompt fillers modal */}
-      {usingPrompt && (
-        <PromptFillerModal
-          prompt={usingPrompt}
-          onClose={() => setUsingPrompt(null)}
-        />
-      )}
-
-      {/* Copy with variables filled mini-dialog */}
-      {copyingFilledPrompt && (
-        <CopyFilledModal
-          prompt={copyingFilledPrompt}
-          onClose={() => setCopyingFilledPrompt(null)}
-          onNotification={triggerNotification}
-        />
-      )}
-
-      {/* Quick Switcher Modal (triggered by Cmd/Ctrl+J) */}
-      <QuickSwitcherModal
-        prompts={allSearchablePrompts}
-        isOpen={showQuickSwitcher}
-        onClose={() => setShowQuickSwitcher(false)}
-        onUse={(p) => handleUsePrompt(p, "quick_switcher")}
-        onCopyFilled={(p) => handleCopyFilledPrompt(p)}
-        onEdit={(p) => handleOpenEdit(p)}
+      <AppModalLayer
+        showFormModal={showFormModal}
+        editingPrompt={editingPrompt}
+        folders={folders}
+        onSavePrompt={handleSavePrompt}
+        onCloseForm={() => {
+          setShowFormModal(false);
+          setEditingPrompt(null);
+        }}
+        onOptimizeWithAI={handleOptimizeWithAIDirect}
         onNotification={triggerNotification}
+        usingPrompt={usingPrompt}
+        onCloseUsingPrompt={() => setUsingPrompt(null)}
+        copyingFilledPrompt={copyingFilledPrompt}
+        onCloseCopyingFilledPrompt={() => setCopyingFilledPrompt(null)}
+        showQuickSwitcher={showQuickSwitcher}
+        allSearchablePrompts={allSearchablePrompts}
+        onCloseQuickSwitcher={() => setShowQuickSwitcher(false)}
+        onQuickUse={(prompt) => handleUsePrompt(prompt, "quick_switcher")}
+        onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
+        onOpenEdit={(prompt) => handleOpenEdit(prompt)}
+        showRecommendationModal={showRecommendationModal}
+        prompts={prompts}
+        recommendationGoal={recommendationGoal}
+        setRecommendationGoal={setRecommendationGoal}
+        recommendedPrompts={recommendedPrompts}
+        geminiRecommendation={geminiRecommendation}
+        geminiRecommendationLoading={geminiRecommendationLoading}
+        geminiRecommendationError={geminiRecommendationError}
+        onImproveWithGemini={handleImproveRecommendationsWithGemini}
+        onRecommendationUse={(prompt) => {
+          handleUsePrompt(prompt, "recommendation");
+          setShowRecommendationModal(false);
+        }}
+        onRecommendationCopy={(prompt) => {
+          navigator.clipboard.writeText(prompt.promptText);
+          trackUserEvent("recommendation_copy", prompt, { source: "recommendation" });
+          triggerNotification("Prompt recomendado copiado.", "success");
+        }}
+        onRecommendationEdit={(prompt) => {
+          handleOpenEdit(prompt);
+          setShowRecommendationModal(false);
+        }}
+        onCopySuggestedPrompt={(promptText) => {
+          navigator.clipboard.writeText(promptText);
+          triggerNotification("Sugerencia Gemini copiada.", "success");
+        }}
+        onCloseRecommendation={() => setShowRecommendationModal(false)}
+        showProfileModal={showProfileModal}
+        user={user}
+        currentUserProfile={currentUserProfile}
+        profileNameInput={profileNameInput}
+        profileHandleInput={profileHandleInput}
+        profileBioInput={profileBioInput}
+        isSavingProfile={isSavingProfile}
+        setProfileNameInput={setProfileNameInput}
+        setProfileHandleInput={setProfileHandleInput}
+        setProfileBioInput={setProfileBioInput}
+        normalizeProfileHandle={normalizeProfileHandle}
+        onSaveProfile={handleSaveProfile}
+        onCloseProfile={() => setShowProfileModal(false)}
+        showCreateFolder={showCreateFolder}
+        newFolderName={newFolderName}
+        newFolderDesc={newFolderDesc}
+        isSavingFolder={isSavingFolder}
+        setNewFolderName={setNewFolderName}
+        setNewFolderDesc={setNewFolderDesc}
+        onCreateFolder={handleCreateFolder}
+        onCloseCreateFolder={closeCreateFolderModal}
+        showShareFolderModal={showShareFolderModal}
+        isFolderSharedInput={isFolderSharedInput}
+        publishFolderPromptsInput={publishFolderPromptsInput}
+        isSavingFolderShare={isSavingFolderShare}
+        setIsFolderSharedInput={setIsFolderSharedInput}
+        setPublishFolderPromptsInput={setPublishFolderPromptsInput}
+        onSaveFolderShareSettings={handleSaveFolderShareSettings}
+        onCloseShareFolder={() => setShowShareFolderModal(null)}
+        sharedPrompt={sharedPrompt}
+        onCloseSharedPrompt={handleCloseShared}
+        onCopySharedPrompt={() => {
+          if (!sharedPrompt) return;
+          navigator.clipboard.writeText(sharedPrompt.promptText);
+          trackUserEvent("copy", sharedPrompt, { source: "shared_prompt" });
+          triggerNotification("Contenido del prompt copiado con exito.", "success");
+        }}
+        onUseSharedPrompt={() => {
+          if (!sharedPrompt) return;
+          handleUsePrompt(sharedPrompt, "shared_prompt");
+          handleCloseShared();
+        }}
+        onSaveSharedPromptToLibrary={() => {
+          if (!sharedPrompt) return;
+          void resolvePublicSavePrompt(sharedPrompt);
+          handleCloseShared();
+        }}
+        selectedPublicPrompt={selectedPublicPrompt}
+        publicPromptResourceContext={selectedPublicPromptResourceContext}
+        currentUser={user}
+        socialFavoritePromptIds={socialFavoritePromptIds}
+        onClosePublicPrompt={() => setSelectedPublicPrompt(null)}
+        onCopyPublicPrompt={(prompt) => {
+          navigator.clipboard.writeText(prompt.promptText);
+          trackUserEvent("copy", prompt, { source: "public_prompt_detail" });
+          triggerNotification("Prompt copiado desde el detalle social.", "success");
+        }}
+        onUsePublicPrompt={(prompt) => {
+          handleUsePrompt(prompt, "public_prompt_detail");
+          setSelectedPublicPrompt(null);
+        }}
+        onSavePublicPromptToLibrary={(prompt) => {
+          void resolvePublicSavePrompt(prompt);
+          setSelectedPublicPrompt(null);
+        }}
+        onToggleSocialFavorite={handleToggleSocialFavorite}
+        onLikeToggle={handleLikeToggle}
+        onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
+        onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
+        onAuthorClick={openPublicProfile}
       />
-
-      {/* Modal - Recomendador Local */}
-      {showRecommendationModal && (
-        <RecommendationModal
-          prompts={prompts}
-          recommendationGoal={recommendationGoal}
-          setRecommendationGoal={setRecommendationGoal}
-          recommendedPrompts={recommendedPrompts}
-          geminiRecommendation={geminiRecommendation}
-          geminiRecommendationLoading={geminiRecommendationLoading}
-          geminiRecommendationError={geminiRecommendationError}
-          onImproveWithGemini={handleImproveRecommendationsWithGemini}
-          onUse={(prompt) => {
-            handleUsePrompt(prompt, "recommendation");
-            setShowRecommendationModal(false);
-          }}
-          onCopy={(prompt) => {
-            navigator.clipboard.writeText(prompt.promptText);
-            trackUserEvent("recommendation_copy", prompt, { source: "recommendation" });
-            triggerNotification("Prompt recomendado copiado.", "success");
-          }}
-          onEdit={(prompt) => {
-            handleOpenEdit(prompt);
-            setShowRecommendationModal(false);
-          }}
-          onCopySuggestedPrompt={(promptText) => {
-            navigator.clipboard.writeText(promptText);
-            triggerNotification("Sugerencia Gemini copiada.", "success");
-          }}
-          onClose={() => setShowRecommendationModal(false)}
-        />
-      )}
-
-      {/* Modal - Editar Perfil Publico */}
-      {showProfileModal && user && (
-        <ProfileModal
-          user={user}
-          currentUserProfile={currentUserProfile}
-          profileNameInput={profileNameInput}
-          profileHandleInput={profileHandleInput}
-          profileBioInput={profileBioInput}
-          isSavingProfile={isSavingProfile}
-          setProfileNameInput={setProfileNameInput}
-          setProfileHandleInput={setProfileHandleInput}
-          setProfileBioInput={setProfileBioInput}
-          normalizeProfileHandle={normalizeProfileHandle}
-          onSave={handleSaveProfile}
-          onClose={() => setShowProfileModal(false)}
-        />
-      )}
-
-      {/* Modal - Crear Nueva Carpeta */}
-      {showCreateFolder && (
-        <CreateFolderModal
-          newFolderName={newFolderName}
-          newFolderDesc={newFolderDesc}
-          isSavingFolder={isSavingFolder}
-          setNewFolderName={setNewFolderName}
-          setNewFolderDesc={setNewFolderDesc}
-          onCreate={handleCreateFolder}
-          onClose={closeCreateFolderModal}
-        />
-      )}
-
-      {/* Modal - Configurar Compartido de la Carpeta/Coleccion */}
-      {showShareFolderModal && (
-        <ShareFolderModal
-          folder={showShareFolderModal}
-          prompts={prompts}
-          isFolderSharedInput={isFolderSharedInput}
-          publishFolderPromptsInput={publishFolderPromptsInput}
-          isSavingFolderShare={isSavingFolderShare}
-          setIsFolderSharedInput={setIsFolderSharedInput}
-          setPublishFolderPromptsInput={setPublishFolderPromptsInput}
-          onSave={handleSaveFolderShareSettings}
-          onClose={() => setShowShareFolderModal(null)}
-          onNotification={triggerNotification}
-        />
-      )}
-      {/* Public Shared Prompt Modal Viewer Overlay */}
-      {sharedPrompt && (
-        <SharedPromptModal
-          prompt={sharedPrompt}
-          onClose={handleCloseShared}
-          onCopy={() => {
-            navigator.clipboard.writeText(sharedPrompt.promptText);
-            trackUserEvent("copy", sharedPrompt, { source: "shared_prompt" });
-            triggerNotification("Contenido del prompt copiado con exito.", "success");
-          }}
-          onUse={() => {
-            handleUsePrompt(sharedPrompt, "shared_prompt");
-            handleCloseShared();
-          }}
-          onSaveToLibrary={() => {
-            void resolvePublicSavePrompt(sharedPrompt);
-            handleCloseShared();
-          }}
-          isAuthenticated={Boolean(user)}
-        />
-      )}
-
-      {selectedPublicPrompt && (
-        <PublicPromptDetailModal
-          prompt={selectedPublicPrompt}
-          currentUser={user}
-          isSocialFavorite={socialFavoritePromptIds.has(selectedPublicPrompt.id)}
-          onClose={() => setSelectedPublicPrompt(null)}
-          onCopy={(prompt) => {
-            navigator.clipboard.writeText(prompt.promptText);
-            trackUserEvent("copy", prompt, { source: "public_prompt_detail" });
-            triggerNotification("Prompt copiado desde el detalle social.", "success");
-          }}
-          onUse={(prompt) => {
-            handleUsePrompt(prompt, "public_prompt_detail");
-            setSelectedPublicPrompt(null);
-          }}
-          onSaveToLibrary={(prompt) => {
-            void resolvePublicSavePrompt(prompt);
-            setSelectedPublicPrompt(null);
-          }}
-          onToggleFavorite={handleToggleSocialFavorite}
-          onLikeToggle={handleLikeToggle}
-          onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
-          onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
-          onAuthorClick={openPublicProfile}
-          onNotification={triggerNotification}
-        />
-      )}
       {/* Humble Footer */}
       <footer className="bg-[#0f172a]/95 border-t border-[#334155]/50 py-5 px-6 md:px-12 text-center text-[10px] text-slate-450 shrink-0 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 select-none">
         <p>© {new Date().getFullYear()} Biblioteca de Prompts — Diseñado para creadores de YouTube de Inteligencia Artificial.</p>

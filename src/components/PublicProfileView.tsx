@@ -1,4 +1,4 @@
-import { ArrowLeft, Copy, FolderOpen, GitFork, Globe, Share2, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, Copy, FolderOpen, GitFork, Globe, Heart, Layers3, Share2, Sparkles, Tags, TrendingUp, UserCheck, UserPlus } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Folder, Prompt } from "../types";
 import PromptCard from "./PromptCard";
@@ -8,6 +8,7 @@ export type PublicProfileTab = "prompts" | "colecciones" | "remixes";
 interface PublicProfileViewProps {
   author: { name: string; uid: string; avatar?: string; handle?: string };
   prompts: Prompt[];
+  allCommunityPrompts: Prompt[];
   folders: Folder[];
   activeTab: PublicProfileTab;
   currentUser: User | null;
@@ -31,6 +32,7 @@ interface PublicProfileViewProps {
 export default function PublicProfileView({
   author,
   prompts,
+  allCommunityPrompts,
   folders,
   activeTab,
   currentUser,
@@ -56,6 +58,45 @@ export default function PublicProfileView({
   const likesCount = prompts.reduce((sum, prompt) => sum + (prompt.likesCount || prompt.likedBy?.length || 0), 0);
   const isFollowing = followedCreatorUids.includes(author.uid);
   const displayHandle = author.handle || prompts.find((prompt) => prompt.authorHandle)?.authorHandle || "";
+  const sourceIds = new Set(prompts.map((prompt) => prompt.forkedFromPromptId || prompt.id));
+  const knownRemixCount = allCommunityPrompts.filter((prompt) =>
+    prompt.userId !== author.uid && sourceIds.has(prompt.forkedFromPromptId || "")
+  ).length;
+  const popularPrompts = [...prompts]
+    .sort((a, b) => {
+      const likeDiff = (b.likesCount || b.likedBy?.length || 0) - (a.likesCount || a.likedBy?.length || 0);
+      if (likeDiff !== 0) return likeDiff;
+      return (b.updatedAt?.seconds || b.createdAt?.seconds || 0) - (a.updatedAt?.seconds || a.createdAt?.seconds || 0);
+    })
+    .slice(0, 3);
+  const remixedSources = prompts
+    .map((prompt) => ({
+      prompt,
+      remixes: allCommunityPrompts.filter((candidate) => candidate.forkedFromPromptId === (prompt.forkedFromPromptId || prompt.id)).length
+    }))
+    .filter((item) => item.remixes > 0)
+    .sort((a, b) => b.remixes - a.remixes)
+    .slice(0, 3);
+  const categoryCounts = prompts.reduce((map, prompt) => {
+    map.set(prompt.category, (map.get(prompt.category) || 0) + 1);
+    return map;
+  }, new Map<Prompt["category"], number>());
+  const topCategories = Array.from(categoryCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+  const topTags = Array.from(
+    prompts
+      .flatMap((prompt) => prompt.tags || [])
+      .reduce((map, tag) => {
+        const cleanTag = tag.trim();
+        if (cleanTag) map.set(cleanTag, (map.get(cleanTag) || 0) + 1);
+        return map;
+      }, new Map<string, number>())
+      .entries()
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const highlightedPrompt = popularPrompts[0] || prompts[0] || null;
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-250">
@@ -102,7 +143,7 @@ export default function PublicProfileView({
                 {displayHandle ? `@${displayHandle}` : "Creador de la comunidad"}
               </p>
               <p className="mt-3 text-xs text-slate-400 max-w-2xl leading-relaxed font-sans">
-                Prompts publicados, colecciones compartidas y recursos que puedes guardar como remix editable en tu propia biblioteca.
+                Hub publico con prompts, colecciones y remixes. Guarda cualquier recurso como remix editable para adaptarlo a tu propio flujo.
               </p>
             </div>
           </div>
@@ -155,9 +196,142 @@ export default function PublicProfileView({
             <p className="text-[10px] text-slate-500 uppercase font-bold">colecciones</p>
           </div>
           <div className="rounded-2xl bg-slate-950/45 border border-slate-800 p-4">
-            <p className="text-2xl font-black text-amber-300 font-mono">{remixPrompts.length}</p>
+            <p className="text-2xl font-black text-amber-300 font-mono">{remixPrompts.length + knownRemixCount}</p>
             <p className="text-[10px] text-slate-500 uppercase font-bold">remixes</p>
           </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+        <div className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/55 p-4 md:p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <Sparkles size={15} className="text-pink-300" />
+                Recursos destacados
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">Lo mas fuerte de este creador para guardar, probar o remixear.</p>
+            </div>
+            {highlightedPrompt && (
+              <button
+                type="button"
+                onClick={() => onFork(highlightedPrompt)}
+                className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <GitFork size={12} />
+                Guardar destacado
+              </button>
+            )}
+          </div>
+
+          {popularPrompts.length === 0 ? (
+            <p className="text-xs text-slate-500 rounded-2xl border border-dashed border-slate-800 p-5 text-center">
+              Cuando publique prompts, sus recursos destacados apareceran aqui.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {popularPrompts.map((prompt) => {
+                const promptLikes = prompt.likesCount || prompt.likedBy?.length || 0;
+                return (
+                  <article key={`featured-${prompt.id}`} className="rounded-2xl border border-slate-800/80 bg-slate-950/25 p-3.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] uppercase tracking-wider text-indigo-300 font-black truncate">{prompt.category}</span>
+                      <span className="text-[10px] text-pink-300 flex items-center gap-1 font-mono">
+                        <Heart size={10} fill={promptLikes > 0 ? "currentColor" : "none"} />
+                        {promptLikes}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-extrabold text-white mt-2 line-clamp-2">{prompt.title}</h4>
+                    <p className="text-[10px] text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">{prompt.description || "Prompt publico listo para adaptar."}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => onViewDetails(prompt)}
+                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold cursor-pointer"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onFork(prompt)}
+                        className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-lg text-[10px] font-bold cursor-pointer"
+                      >
+                        Remix
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/55 p-4 md:p-5 space-y-4">
+          <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <Layers3 size={15} className="text-emerald-300" />
+            Mapa del creador
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-slate-950/35 border border-slate-800 p-3">
+              <p className="text-lg font-black text-indigo-300 font-mono">{topCategories.length}</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold">categorias</p>
+            </div>
+            <div className="rounded-xl bg-slate-950/35 border border-slate-800 p-3">
+              <p className="text-lg font-black text-emerald-300 font-mono">{knownRemixCount}</p>
+              <p className="text-[10px] text-slate-500 uppercase font-bold">remixes conocidos</p>
+            </div>
+          </div>
+          {topCategories.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black flex items-center gap-1.5">
+                <TrendingUp size={11} />
+                Temas principales
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {topCategories.map(([category, count]) => (
+                  <span key={category} className="text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-lg">
+                    {category} · {count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {topTags.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black flex items-center gap-1.5">
+                <Tags size={11} />
+                Tags frecuentes
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {topTags.map(([tag, count]) => (
+                  <span key={tag} className="text-[10px] text-slate-300 bg-slate-800 border border-slate-700/70 px-2 py-0.5 rounded-lg">
+                    #{tag} · {count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {remixedSources.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black flex items-center gap-1.5">
+                <GitFork size={11} />
+                Mas remixeados
+              </p>
+              <div className="space-y-1.5">
+                {remixedSources.map(({ prompt, remixes }) => (
+                  <button
+                    key={`remixed-source-${prompt.id}`}
+                    type="button"
+                    onClick={() => onViewDetails(prompt)}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/25 p-2.5 text-left hover:border-indigo-500/30 hover:bg-slate-900/60 transition-all cursor-pointer"
+                  >
+                    <p className="text-[11px] font-bold text-slate-200 line-clamp-1">{prompt.title}</p>
+                    <p className="text-[10px] text-emerald-300 mt-0.5">{remixes} remixes conocidos</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

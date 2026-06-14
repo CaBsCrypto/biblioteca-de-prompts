@@ -187,7 +187,7 @@ export function useCommunity({
     }
   };
 
-  const handleToggleFollowCreator = async (creatorUid: string) => {
+  const handleToggleFollowCreator = async (creatorUid: string, creator?: CommunityAuthor) => {
     if (!user) {
       onNotification("Inicia sesion para seguir creadores.", "info");
       return;
@@ -204,11 +204,12 @@ export function useCommunity({
       if (isFollowing) {
         await deleteDoc(followRef);
       } else {
-        const targetProfile = selectedAuthor?.uid === creatorUid ? selectedAuthor : null;
+        const targetProfile = creator || (selectedAuthor?.uid === creatorUid ? selectedAuthor : null);
         await setDoc(followRef, {
           targetUid: creatorUid,
           targetName: targetProfile?.name || "Creador",
           targetAvatar: targetProfile?.avatar || "",
+          targetHandle: targetProfile?.handle || "",
           createdAt: serverTimestamp()
         });
       }
