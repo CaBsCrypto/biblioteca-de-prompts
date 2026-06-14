@@ -85,41 +85,50 @@ interface NewsItemPayload {
 
 const newsQueries: Record<NewsCategory, { hn: string; gnews: string; tags: string[]; spanishContext: string }> = {
   ai: {
-    hn: "artificial intelligence OR generative AI OR agents OR LLM",
+    hn: "artificial intelligence",
     gnews: "artificial intelligence OR generative AI OR AI agents",
     tags: ["ia", "llm", "agentes"],
     spanishContext: "Inteligencia artificial, modelos generativos, agentes o automatizacion."
   },
   tech: {
-    hn: "technology OR software OR product",
+    hn: "technology software",
     gnews: "technology OR software OR product",
     tags: ["tech", "producto"],
     spanishContext: "Tecnologia, software, producto o tendencias digitales."
   },
   startups: {
-    hn: "startup OR founder OR venture capital",
+    hn: "startup founder",
     gnews: "startup OR founder OR venture capital",
     tags: ["startups", "negocio"],
     spanishContext: "Startups, founders, inversion o nuevas empresas tecnologicas."
   },
   devtools: {
-    hn: "developer tools OR open source OR API OR framework",
+    hn: "developer tools",
     gnews: "developer tools OR open source OR API OR framework",
     tags: ["devtools", "codigo"],
     spanishContext: "Herramientas para desarrolladores, APIs, frameworks u open source."
   },
   design: {
-    hn: "design tools OR UX OR product design OR creative AI",
+    hn: "design tools",
     gnews: "design tools OR UX OR product design OR creative AI",
     tags: ["diseno", "ux", "creatividad"],
     spanishContext: "Diseno, UX, herramientas creativas o contenido visual con IA."
   },
   hackathons: {
-    hn: "hackathon OR builders OR developer challenge OR AI competition",
+    hn: "hackathon",
     gnews: "hackathon OR developer challenge OR AI competition",
     tags: ["hackathon", "oportunidades"],
     spanishContext: "Hackathons, retos para builders, competencias o oportunidades para crear equipo."
   }
+};
+
+const hnFallbackQueries: Record<NewsCategory, string> = {
+  ai: "AI",
+  tech: "software",
+  startups: "startup",
+  devtools: "API",
+  design: "UX",
+  hackathons: "developer challenge"
 };
 
 function decodeBase64Url(input: string) {
@@ -369,20 +378,29 @@ function normalizeNewsUrl(url: unknown) {
 
 async function fetchHackerNewsItems(category: NewsCategory): Promise<NewsItemPayload[]> {
   const queryConfig = newsQueries[category];
-  const url = new URL("https://hn.algolia.com/api/v1/search_by_date");
-  url.searchParams.set("query", queryConfig.hn);
-  url.searchParams.set("tags", "story");
-  url.searchParams.set("hitsPerPage", "24");
+  const fetchHits = async (searchTerm: string) => {
+    const url = new URL("https://hn.algolia.com/api/v1/search_by_date");
+    url.searchParams.set("query", searchTerm);
+    url.searchParams.set("tags", "story");
+    url.searchParams.set("hitsPerPage", "24");
 
-  const response = await fetch(url, {
-    headers: { "User-Agent": "biblioteca-de-prompts-news/1.0" }
-  });
-  if (!response.ok) {
-    throw new Error(`Hacker News respondio ${response.status}`);
+    const response = await fetch(url, {
+      headers: { "User-Agent": "biblioteca-de-prompts-news/1.0" }
+    });
+    if (!response.ok) {
+      throw new Error(`Hacker News respondio ${response.status}`);
+    }
+
+    const payload = await response.json() as { hits?: Array<Record<string, unknown>> };
+    return payload.hits || [];
+  };
+
+  let hits = await fetchHits(queryConfig.hn);
+  if (hits.length === 0) {
+    hits = await fetchHits(hnFallbackQueries[category]);
   }
 
-  const payload = await response.json() as { hits?: Array<Record<string, unknown>> };
-  return (payload.hits || [])
+  return hits
     .map((hit) => {
       const title = typeof hit.title === "string" ? hit.title.trim() : "";
       const storyUrl = normalizeNewsUrl(hit.url);
