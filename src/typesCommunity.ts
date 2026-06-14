@@ -87,6 +87,13 @@ export interface Briefing {
   items: BriefingItem[];
   tags: string[];
   language: NewsLanguage | "all";
+  stats?: {
+    opens?: number;
+    linkCopies?: number;
+    ideaSaves?: number;
+    promptCreates?: number;
+    forumPosts?: number;
+  };
   authorUid: string;
   authorName: string;
   authorHandle?: string;

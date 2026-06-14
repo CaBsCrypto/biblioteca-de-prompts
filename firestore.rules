@@ -85,7 +85,7 @@ service cloud.firestore {
         && data.tags is list && data.tags.size() <= 12
         && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
         && (!('linkUrl' in data) || (data.linkUrl is string && data.linkUrl.size() <= 1000))
-        && data.authorUid == request.auth.uid
+        && data.authorUid is string && data.authorUid.size() <= 128
         && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 200
         && (!('authorHandle' in data) || (data.authorHandle is string && data.authorHandle.size() <= 40))
         && (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 1000))
@@ -128,11 +128,22 @@ service cloud.firestore {
         && data.items is list && data.items.size() > 0 && data.items.size() <= 8
         && data.tags is list && data.tags.size() <= 12
         && data.language in ['en', 'es', 'unknown', 'all']
+        && (!('stats' in data) || isValidBriefingStats(data.stats))
         && data.authorUid == request.auth.uid
         && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 200
         && (!('authorHandle' in data) || (data.authorHandle is string && data.authorHandle.size() <= 40))
         && data.isPublished is bool
-        && data.keys().hasOnly(['title', 'intro', 'items', 'tags', 'language', 'authorUid', 'authorName', 'authorHandle', 'isPublished', 'createdAt', 'updatedAt']);
+        && data.keys().hasOnly(['title', 'intro', 'items', 'tags', 'language', 'stats', 'authorUid', 'authorName', 'authorHandle', 'isPublished', 'createdAt', 'updatedAt']);
+    }
+
+    function isValidBriefingStats(stats) {
+      return stats is map
+        && (!('opens' in stats) || (stats.opens is int && stats.opens >= 0))
+        && (!('linkCopies' in stats) || (stats.linkCopies is int && stats.linkCopies >= 0))
+        && (!('ideaSaves' in stats) || (stats.ideaSaves is int && stats.ideaSaves >= 0))
+        && (!('promptCreates' in stats) || (stats.promptCreates is int && stats.promptCreates >= 0))
+        && (!('forumPosts' in stats) || (stats.forumPosts is int && stats.forumPosts >= 0))
+        && stats.keys().hasOnly(['opens', 'linkCopies', 'ideaSaves', 'promptCreates', 'forumPosts']);
     }
 
     match /briefings/{briefingId} {
@@ -141,20 +152,42 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && isValidId(briefingId)
+        && incoming().authorUid == request.auth.uid
         && isValidBriefing(incoming())
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
 
       allow update: if isSignedIn()
         && isValidId(briefingId)
-        && existing().authorUid == request.auth.uid
-        && incoming().authorUid == existing().authorUid
-        && incoming().authorName == existing().authorName
-        && incoming().authorHandle == existing().authorHandle
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && isValidBriefing(incoming())
-        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'intro', 'items', 'tags', 'language', 'isPublished', 'updatedAt']);
+        && (
+          (
+            existing().authorUid == request.auth.uid
+            && incoming().authorUid == existing().authorUid
+            && incoming().authorName == existing().authorName
+            && incoming().authorHandle == existing().authorHandle
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && isValidBriefing(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'intro', 'items', 'tags', 'language', 'isPublished', 'stats', 'updatedAt'])
+          )
+          ||
+          (
+            existing().isPublished == true
+            && incoming().title == existing().title
+            && incoming().intro == existing().intro
+            && incoming().items == existing().items
+            && incoming().tags == existing().tags
+            && incoming().language == existing().language
+            && incoming().authorUid == existing().authorUid
+            && incoming().authorName == existing().authorName
+            && incoming().authorHandle == existing().authorHandle
+            && incoming().isPublished == existing().isPublished
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && isValidBriefing(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly(['stats', 'updatedAt'])
+          )
+        );
 
       allow delete: if isSignedIn() && existing().authorUid == request.auth.uid;
     }

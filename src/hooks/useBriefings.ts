@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -33,6 +34,13 @@ function mapBriefingDoc<T extends { id: string; data: () => unknown }>(docSnap: 
     items: data.items || [],
     tags: data.tags || [],
     language: data.language || "all",
+    stats: {
+      opens: data.stats?.opens || 0,
+      linkCopies: data.stats?.linkCopies || 0,
+      ideaSaves: data.stats?.ideaSaves || 0,
+      promptCreates: data.stats?.promptCreates || 0,
+      forumPosts: data.stats?.forumPosts || 0
+    },
     authorUid: data.authorUid || "",
     authorName: data.authorName || "Creador",
     authorHandle: data.authorHandle || "",
@@ -118,6 +126,13 @@ export function useBriefings({ user, getAuthorIdentity, onNotification }: UseBri
         authorName: author.authorName,
         authorHandle: author.authorHandle,
         isPublished,
+        stats: {
+          opens: 0,
+          linkCopies: 0,
+          ideaSaves: 0,
+          promptCreates: 0,
+          forumPosts: 0
+        },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -145,6 +160,18 @@ export function useBriefings({ user, getAuthorIdentity, onNotification }: UseBri
     }
   };
 
+  const incrementBriefingStat = async (briefingId: string, stat: "opens" | "linkCopies" | "ideaSaves" | "promptCreates" | "forumPosts") => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "briefings", briefingId), {
+        [`stats.${stat}`]: increment(1),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error updating briefing stats:", error);
+    }
+  };
+
   const unpublishBriefing = async (briefing: Briefing) => {
     if (!user || briefing.authorUid !== user.uid) {
       onNotification("Solo puedes editar tus briefings.", "info");
@@ -169,6 +196,7 @@ export function useBriefings({ user, getAuthorIdentity, onNotification }: UseBri
     loadingSharedBriefing,
     publicBriefings: recentPublicBriefings,
     loadingPublicBriefings,
+    incrementBriefingStat,
     unpublishBriefing
   };
 }

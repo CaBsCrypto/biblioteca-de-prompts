@@ -344,7 +344,8 @@ export default function App() {
     loadBriefing,
     loadingSharedBriefing,
     publicBriefings,
-    loadingPublicBriefings
+    loadingPublicBriefings,
+    incrementBriefingStat
   } = useBriefings({
     user,
     getAuthorIdentity,
@@ -472,6 +473,19 @@ export default function App() {
     source: item?.source || "",
     url: item?.url || ""
   });
+
+  const bumpSharedBriefingStat = (stat: "opens" | "linkCopies" | "ideaSaves" | "promptCreates" | "forumPosts") => {
+    setSharedBriefing((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        stats: {
+          ...(current.stats || {}),
+          [stat]: (current.stats?.[stat] || 0) + 1
+        }
+      };
+    });
+  };
 
   const openNewsInAssistant = (item: NewsItem, mode: "prompt" | "summary" | "translation" | "opportunity") => {
     const context = `Titulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nResumen/contexto disponible: ${item.summaryEs || item.summary || "Sin resumen disponible."}`;
@@ -626,6 +640,10 @@ export default function App() {
 
     await saveIdeaFromNews(briefingItemToNewsItem(item));
     void trackUserEvent("briefing_idea_save", undefined, buildBriefingEventMetadata(item));
+    if (sharedBriefing?.id) {
+      bumpSharedBriefingStat("ideaSaves");
+      void incrementBriefingStat(sharedBriefing.id, "ideaSaves");
+    }
   };
 
   const handleCreatePromptFromBriefingItem = async (item: BriefingItem) => {
@@ -637,6 +655,10 @@ export default function App() {
     }
 
     void trackUserEvent("briefing_prompt_create", undefined, buildBriefingEventMetadata(item));
+    if (sharedBriefing?.id) {
+      bumpSharedBriefingStat("promptCreates");
+      void incrementBriefingStat(sharedBriefing.id, "promptCreates");
+    }
     openNewsInAssistant(briefingItemToNewsItem(item), "prompt");
   };
 
@@ -649,6 +671,10 @@ export default function App() {
     }
 
     void trackUserEvent("briefing_forum_post", undefined, buildBriefingEventMetadata(item));
+    if (sharedBriefing?.id) {
+      bumpSharedBriefingStat("forumPosts");
+      void incrementBriefingStat(sharedBriefing.id, "forumPosts");
+    }
     handleCreateForumPostFromNews(briefingItemToNewsItem(item), "question");
   };
 
@@ -661,6 +687,8 @@ export default function App() {
     url.searchParams.delete("user");
     await navigator.clipboard.writeText(url.toString());
     void trackUserEvent("briefing_link_copy", undefined, buildBriefingEventMetadata());
+    bumpSharedBriefingStat("linkCopies");
+    void incrementBriefingStat(sharedBriefing.id, "linkCopies");
     triggerNotification("Link del briefing copiado.", "success");
   };
 
@@ -730,6 +758,8 @@ export default function App() {
     if (trackedBriefingOpenRef.current.has(trackingKey)) return;
     trackedBriefingOpenRef.current.add(trackingKey);
     void trackUserEvent("briefing_open", undefined, buildBriefingEventMetadata());
+    bumpSharedBriefingStat("opens");
+    void incrementBriefingStat(sharedBriefing.id, "opens");
   }, [user, sharedBriefing]);
 
   useEffect(() => {
@@ -1817,6 +1847,20 @@ export default function App() {
                           <p className="mt-2 text-[10px] font-bold text-slate-500">
                             por {briefing.authorName}{briefing.authorHandle ? ` @${briefing.authorHandle}` : ""}
                           </p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div className="rounded-lg border border-slate-800 bg-slate-950/45 px-2 py-1.5">
+                            <p className="text-xs font-black text-white">{briefing.stats?.ideaSaves || 0}</p>
+                            <p className="text-[9px] font-bold uppercase text-slate-500">Ideas</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-800 bg-slate-950/45 px-2 py-1.5">
+                            <p className="text-xs font-black text-white">{briefing.stats?.promptCreates || 0}</p>
+                            <p className="text-[9px] font-bold uppercase text-slate-500">Prompts</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-800 bg-slate-950/45 px-2 py-1.5">
+                            <p className="text-xs font-black text-white">{briefing.stats?.forumPosts || 0}</p>
+                            <p className="text-[9px] font-bold uppercase text-slate-500">Posts</p>
+                          </div>
                         </div>
                         {briefing.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">

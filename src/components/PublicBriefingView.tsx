@@ -29,6 +29,9 @@ export default function PublicBriefingView({
   onCreatePrompt,
   onCreateForumPost
 }: PublicBriefingViewProps) {
+  const stats = briefing.stats || {};
+  const savedAndCreatedCount = (stats.ideaSaves || 0) + (stats.promptCreates || 0) + (stats.forumPosts || 0);
+
   return (
     <main className="mx-auto flex-1 w-full max-w-6xl space-y-6 overflow-y-auto px-4 py-8 md:px-12 md:py-12">
       <button
@@ -97,6 +100,20 @@ export default function PublicBriefingView({
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
               Este briefing funciona como punto de partida: guarda una senal, abre un prompt editable o crea una conversacion para construir con otros.
             </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Aperturas", value: stats.opens || 0 },
+              { label: "Links copiados", value: stats.linkCopies || 0 },
+              { label: "Acciones", value: savedAndCreatedCount },
+              { label: "Posts", value: stats.forumPosts || 0 }
+            ].map((metric) => (
+              <div key={metric.label} className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                <p className="text-lg font-black text-white">{metric.value}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{metric.label}</p>
+              </div>
+            ))}
           </div>
 
           {briefing.tags.length > 0 && (
