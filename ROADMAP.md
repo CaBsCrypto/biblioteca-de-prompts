@@ -9,7 +9,8 @@
 - El feed social ya incluye `Para ti`, `Creadores para seguir`, `Destacados`, `Recientes`, `Mas guardados` y `Remixeables`.
 - Mi Biblioteca ya funciona como workspace diario con accesos rapidos, remixes recientes, favoritos y candidatos para publicar.
 - El detalle publico presenta el prompt como `Recurso vivo`, con original conocido, remixes conocidos y estado de copia propia.
-- El perfil publico funciona como hub de creador con recursos destacados, mapa del creador, colecciones y remixes publicados.
+- El perfil publico funciona como hub de creador con CTA de seguir, mejores recursos para empezar, rutas por categoria, colecciones y remixes publicados.
+- Los enlaces `?share=` explican que guardar crea un remix privado editable y que publicar sigue siendo manual.
 - El bundle inicial ya fue reducido con lazy loading de superficies grandes y chunks manuales de Firebase/vendors.
 
 ## Prioridad 1 - Producto confiable
@@ -22,11 +23,9 @@
 
 ## Prioridad 2 - Red social de prompts
 
-- Mejorar la narrativa publica: guardar, remixear, publicar y seguir creadores.
-- Hacer mas visible el grafo ligero de remixes sin crear router nuevo.
-- Separar mejor en perfiles: prompts originales, colecciones y remixes publicados.
-- Facilitar que un visitante entienda que `Guardar` crea un remix privado editable.
-- Pulir perfiles como hubs de creador antes de abrir una red social masiva.
+- Seguir puliendo la narrativa publica: guardar, remixear, publicar y seguir creadores.
+- Mejorar enlaces compartibles por perfil, prompt y coleccion sin crear router nuevo.
+- Preparar el siguiente paso de moderacion founder sin cambiar el flujo de creadores.
 
 ## Prioridad 3 - Workspace diario
 

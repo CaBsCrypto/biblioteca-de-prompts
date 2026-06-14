@@ -188,3 +188,29 @@ Estado: implementado.
 - `npm run qa`.
 - `npm run smoke:vercel -- https://biblioteca-de-prompts-ashen.vercel.app` despues de deploy.
 - Prueba manual de visitante, login, guardar remix, reporte/ocultar, centro de confianza y perfil publico.
+
+## Sprint 8 - Creator Hub V2
+
+Estado: implementado.
+
+### Completado
+
+- Perfil publico convertido en mini-home de creador mas clara:
+  - CTA principal `Seguir creador`,
+  - CTA secundario para guardar un prompt inicial,
+  - bloque `Mejores recursos para empezar`,
+  - rutas por categorias frecuentes,
+  - copy para visitantes explicando remix privado.
+- Los enlaces directos `?share=` muestran un modal de recurso publico con:
+  - autor,
+  - estado de remix,
+  - pasos probar / guardar remix privado / publicar si aporta,
+  - aviso de que guardar no modifica el original.
+- La vitrina publica refuerza que guardar crea una copia privada editable.
+- Se mantiene el modelo Firestore actual, sin router nuevo, sin IA nueva y sin cambios de monetizacion.
+
+### Validacion esperada
+
+- `npm run qa`.
+- `npm run smoke:vercel -- https://biblioteca-de-prompts-ashen.vercel.app` despues de deploy.
+- Prueba manual de visitante: home publica, perfil `?user=uid`, prompt `?share=promptId`, guardar remix y vista movil.

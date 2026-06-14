@@ -10,6 +10,7 @@ Aplicacion full-stack para guardar, clasificar, compartir y optimizar prompts co
 - Vitrina publica para explorar prompts antes de iniciar sesion.
 - Perfil publico tipo hub de creador con prompts originales, colecciones y remixes publicados.
 - Detalle social de prompt como recurso vivo, con original conocido y remixes relacionados.
+- Creator Hub con mejores recursos para empezar, rutas por categoria y CTA claro para seguir/guardar remix.
 - Centro de confianza para revisar publicaciones propias, reportes recibidos y prompts ocultos del feed.
 - Enlaces publicos para prompts y colecciones compartidas.
 - Relleno interactivo de variables `{{variable}}`.

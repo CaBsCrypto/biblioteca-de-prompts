@@ -1,4 +1,4 @@
-import { ArrowLeft, Copy, FolderOpen, GitFork, Globe, Heart, Layers3, Share2, Sparkles, Tags, TrendingUp, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, Copy, FolderOpen, GitFork, Globe, Heart, Layers3, Share2, Sparkles, Tags, TrendingUp, UserCheck, UserPlus } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Folder, Prompt } from "../types";
 import PromptCard from "./PromptCard";
@@ -96,6 +96,18 @@ export default function PublicProfileView({
   const topCategories = Array.from(categoryCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4);
+  const categorySections = topCategories.map(([category, count]) => ({
+    category,
+    count,
+    prompts: prompts
+      .filter((prompt) => prompt.category === category)
+      .sort((a, b) => {
+        const likeDiff = (b.likesCount || b.likedBy?.length || 0) - (a.likesCount || a.likedBy?.length || 0);
+        if (likeDiff !== 0) return likeDiff;
+        return (b.updatedAt?.seconds || b.createdAt?.seconds || 0) - (a.updatedAt?.seconds || a.createdAt?.seconds || 0);
+      })
+      .slice(0, 3)
+  }));
   const topTags = Array.from(
     prompts
       .flatMap((prompt) => prompt.tags || [])
@@ -109,6 +121,7 @@ export default function PublicProfileView({
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
   const highlightedPrompt = popularPrompts[0] || prompts[0] || null;
+  const starterPrompts = popularPrompts.length > 0 ? popularPrompts : prompts.slice(0, 3);
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-250">
@@ -155,34 +168,34 @@ export default function PublicProfileView({
                 {displayHandle ? `@${displayHandle}` : "Creador de la comunidad"}
               </p>
               <p className="mt-3 text-xs text-slate-400 max-w-2xl leading-relaxed font-sans">
-                Hub publico con prompts originales, colecciones y remixes publicados. Guarda cualquier recurso como remix editable para adaptarlo a tu propio flujo.
+                Mini-home publica para descubrir prompts originales, colecciones y remixes. Guarda un recurso como remix privado, adaptalo a tu flujo y publica tu version solo cuando este lista.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 shrink-0">
-            {prompts.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onFork(prompts[0])}
-                className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
-              >
-                <GitFork size={14} />
-                <span>Guardar un prompt</span>
-              </button>
-            )}
+          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-2 shrink-0 min-w-[220px]">
             <button
               type="button"
               onClick={() => onToggleFollow(author.uid)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+              className={`px-5 py-3 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer border shadow-lg ${
                 isFollowing
-                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
-                  : "bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500"
+                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 shadow-emerald-900/10"
+                  : "bg-gradient-to-r from-indigo-600 to-pink-600 hover:opacity-95 text-white border-indigo-500/40 shadow-indigo-900/20"
               }`}
             >
               {isFollowing ? <UserCheck size={14} /> : <UserPlus size={14} />}
               <span>{isFollowing ? "Siguiendo" : "Seguir creador"}</span>
             </button>
+            {highlightedPrompt && (
+              <button
+                type="button"
+                onClick={() => onFork(highlightedPrompt)}
+                className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
+              >
+                <GitFork size={14} />
+                <span>Guardar prompt inicial</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onCopyProfileLink}
@@ -213,6 +226,87 @@ export default function PublicProfileView({
           </div>
         </div>
       </section>
+
+      {!currentUser && prompts.length > 0 && (
+        <section className="rounded-2xl md:rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-4 md:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-white flex items-center gap-2">
+              <GitFork size={15} className="text-emerald-300" />
+              Guarda sin tocar el original
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-3xl">
+              Cuando pulses guardar, la app crea una copia privada en tu biblioteca. Puedes editarla, usarla y decidir despues si publicas tu version como remix.
+            </p>
+          </div>
+          {highlightedPrompt && (
+            <button
+              type="button"
+              onClick={() => onFork(highlightedPrompt)}
+              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <GitFork size={13} />
+              Crear mi primer remix
+            </button>
+          )}
+        </section>
+      )}
+
+      {starterPrompts.length > 0 && (
+        <section className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/55 p-4 md:p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <BookOpen size={15} className="text-emerald-300" />
+                Mejores recursos para empezar
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Una ruta corta para probar el estilo de este creador antes de explorar todo su catalogo.
+              </p>
+            </div>
+            {highlightedPrompt && (
+              <button
+                type="button"
+                onClick={() => onViewDetails(highlightedPrompt)}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Globe size={12} />
+                Ver recurso principal
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {starterPrompts.map((prompt, index) => (
+              <article key={`starter-${prompt.id}`} className="rounded-2xl border border-slate-800/80 bg-slate-950/25 p-4 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[9px] uppercase tracking-wider text-emerald-300 font-black">Paso {index + 1}</span>
+                  <span className="text-[9px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-lg font-bold truncate">
+                    {prompt.category}
+                  </span>
+                </div>
+                <h4 className="text-sm font-extrabold text-white mt-3 line-clamp-2">{prompt.title}</h4>
+                <p className="text-[11px] text-slate-400 mt-2 line-clamp-3 leading-relaxed">{prompt.description || "Recurso publico listo para adaptar."}</p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => onViewDetails(prompt)}
+                    className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-[10px] font-bold cursor-pointer"
+                  >
+                    Ver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onFork(prompt)}
+                    className="px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-xl text-[10px] font-bold cursor-pointer"
+                  >
+                    Guardar remix
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
         <div className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/55 p-4 md:p-5 space-y-4">
@@ -346,6 +440,60 @@ export default function PublicProfileView({
           )}
         </div>
       </section>
+
+      {categorySections.length > 0 && (
+        <section className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/55 p-4 md:p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <Tags size={15} className="text-indigo-300" />
+              Explorar por categoria
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Entra por el tema que mas te sirve y guarda una base editable para tu proyecto.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {categorySections.map(({ category, count, prompts: categoryPrompts }) => (
+              <article key={`category-section-${category}`} className="rounded-2xl border border-slate-800 bg-slate-950/25 p-3.5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-100 line-clamp-1">{category}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{count} recurso{count === 1 ? "" : "s"} publicado{count === 1 ? "" : "s"}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-2 py-0.5">
+                    {categoryPrompts.length}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {categoryPrompts.map((prompt) => (
+                    <div key={`category-prompt-${prompt.id}`} className="rounded-xl border border-slate-800/80 bg-[#1e293b]/70 p-3">
+                      <p className="text-[11px] font-extrabold text-white line-clamp-1">{prompt.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{prompt.description || "Prompt publico listo para adaptar."}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        <button
+                          type="button"
+                          onClick={() => onViewDetails(prompt)}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold cursor-pointer"
+                        >
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onFork(prompt)}
+                          className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-lg text-[10px] font-bold cursor-pointer"
+                        >
+                          Guardar remix
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="flex items-center gap-1.5 rounded-2xl bg-slate-950/55 p-1 border border-slate-800 w-fit max-w-full overflow-x-auto no-scrollbar">
         <button

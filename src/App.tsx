@@ -475,6 +475,9 @@ export default function App() {
       
       if (shareId) {
         setSharedPromptId(shareId);
+        setSelectedAuthor(null);
+        setSharedCollection(null);
+        setSharedCollectionId(null);
         setLoadingSharedPrompt(true);
         try {
           const docRef = doc(db, "prompts", shareId);
@@ -487,7 +490,7 @@ export default function App() {
                 id: docSnap.id,
                 ...data
               } as Prompt);
-              triggerNotification("Prompt compartido cargado.", "success");
+              triggerNotification("Recurso publico cargado. Puedes probarlo o guardarlo como remix privado.", "success");
             } else {
               triggerNotification("Este prompt no está marcado como público.", "info");
               setSharedPrompt(null);
@@ -506,6 +509,9 @@ export default function App() {
 
       if (colId) {
         setSharedCollectionId(colId);
+        setSharedPrompt(null);
+        setSharedPromptId(null);
+        setSelectedAuthor(null);
         setLoadingSharedCollection(true);
         try {
           const docRef = doc(db, "folders", colId);
@@ -1195,7 +1201,7 @@ export default function App() {
                     </span>
                     <h3 className="text-lg font-extrabold text-white mt-3">Explora prompts publicos antes de iniciar sesion</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                      Prueba plantillas del Pack Fundador y de la comunidad. Cuando quieras adaptarlas, guardalas como remix privado en tu biblioteca.
+                      Descubre, prueba y guarda recursos como remixes privados. Tu copia queda editable y solo se publica si decides compartir tu version.
                     </p>
                   </div>
                   <button
@@ -1301,7 +1307,7 @@ export default function App() {
                             className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <GitFork size={12} />
-                            <span>Guardar</span>
+                            <span>Guardar remix</span>
                           </button>
                           {prompt.userId !== FOUNDER_PACK_USER_ID && (
                             <button

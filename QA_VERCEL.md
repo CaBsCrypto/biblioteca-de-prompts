@@ -70,6 +70,9 @@ vercel logs <deployment-url> --no-follow --since 30m --level error --expand
 - Visitante sin login ve la vitrina publica.
 - Visitante puede copiar o usar prompts publicos.
 - Visitante entiende que `Guardar` crea un remix privado editable despues de login.
+- Perfil publico muestra CTA claro para seguir creador y guardar un prompt inicial.
+- Perfil publico muestra `Mejores recursos para empezar` y rutas por categorias cuando hay prompts.
+- Enlace `?share=<promptId>` explica probar, guardar remix privado y publicar manualmente si aporta.
 - Login con Google funciona.
 - Editar perfil actualiza nombre, handle y bio.
 - Crear prompt privado.
