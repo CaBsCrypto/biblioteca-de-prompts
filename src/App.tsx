@@ -44,6 +44,10 @@ import ActivationChecklist from "./components/ActivationChecklist";
 import CommunityExplore from "./components/CommunityExplore";
 import DailyWorkspace from "./components/DailyWorkspace";
 import TrustModerationPanel from "./components/TrustModerationPanel";
+import AppTopNav from "./components/AppTopNav";
+import ForumSection from "./components/ForumSection";
+import HackathonsSection from "./components/HackathonsSection";
+import ShowcaseSection from "./components/ShowcaseSection";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -55,6 +59,9 @@ import { useCommunity } from "./hooks/useCommunity";
 import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { useContentSafety } from "./hooks/useContentSafety";
 import { useModerationReview } from "./hooks/useModerationReview";
+import { useCommunityPosts } from "./hooks/useCommunityPosts";
+import { useHackathons } from "./hooks/useHackathons";
+import type { AppSection } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
@@ -91,6 +98,7 @@ const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
 export default function App() {
   // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad">("mi-biblioteca");
+  const [currentSection, setCurrentSection] = useState<AppSection>("inicio");
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Todas");
@@ -284,6 +292,40 @@ export default function App() {
     hasPermissionIssue: hasModerationPermissionIssue
   } = useModerationReview(user, prompts);
 
+  const {
+    posts: communityPosts,
+    loadingPosts,
+    savePost,
+    deletePost,
+    togglePostLike
+  } = useCommunityPosts({
+    user,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const {
+    hackathons,
+    loadingHackathons,
+    saveHackathon,
+    deleteHackathon
+  } = useHackathons({
+    user,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  // Shared public prompt state managers
+  const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
+  const [sharedPrompt, setSharedPrompt] = useState<Prompt | null>(null);
+  const [loadingSharedPrompt, setLoadingSharedPrompt] = useState(false);
+
+  // Shared collections states
+  const [sharedCollectionId, setSharedCollectionId] = useState<string | null>(null);
+  const [sharedCollection, setSharedCollection] = useState<Folder | null>(null);
+  const [sharedCollectionPrompts, setSharedCollectionPrompts] = useState<Prompt[]>([]);
+  const [loadingSharedCollection, setLoadingSharedCollection] = useState(false);
+
   const handleHideCommunityPrompt = async (prompt: Prompt) => {
     await handleHidePrompt(prompt);
     if (selectedPublicPrompt?.id === prompt.id) {
@@ -299,6 +341,7 @@ export default function App() {
   };
 
   const openPublicProfile = (author: { name: string; uid: string; avatar?: string; handle?: string }) => {
+    setCurrentSection("prompts");
     setCurrentTab("comunidad");
     setSelectedAuthor(author);
     setCommunityScope("todos");
@@ -314,6 +357,35 @@ export default function App() {
     setSelectedAuthor(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("user");
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const handleSectionChange = (section: AppSection) => {
+    setCurrentSection(section);
+    setSelectedCategory("Todas");
+    setSearchQuery("");
+    setSelectedTags([]);
+    setSelectedFolderId(null);
+    setCommunityScope("todos");
+    setSelectedAuthor(null);
+    setSharedPrompt(null);
+    setSharedPromptId(null);
+    setSharedCollection(null);
+    setSharedCollectionId(null);
+    setSharedCollectionPrompts([]);
+
+    if (section === "prompts") {
+      setCurrentTab("comunidad");
+    }
+
+    if (section === "mi-biblioteca" || section === "inicio") {
+      setCurrentTab("mi-biblioteca");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("user");
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -337,6 +409,7 @@ export default function App() {
 
     if (prompt.userId === user.uid && prompt.userId !== FOUNDER_PACK_USER_ID) {
       const ownPrompt = prompts.find((candidate) => candidate.id === prompt.id) || prompt;
+      setCurrentSection("mi-biblioteca");
       setCurrentTab("mi-biblioteca");
       handleOpenEdit(ownPrompt);
       triggerNotification("Este prompt ya es tuyo. Abrimos el editor directamente.", "info");
@@ -344,6 +417,7 @@ export default function App() {
     }
 
     await handleForkPrompt(prompt);
+    setCurrentSection("mi-biblioteca");
   };
 
   useEffect(() => {
@@ -418,17 +492,6 @@ export default function App() {
     }
   }, [visibleCommunityCatalogPrompts, selectedAuthor]);
 
-  // Shared public prompt state managers
-  const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
-  const [sharedPrompt, setSharedPrompt] = useState<Prompt | null>(null);
-  const [loadingSharedPrompt, setLoadingSharedPrompt] = useState(false);
-
-  // Shared collections states
-  const [sharedCollectionId, setSharedCollectionId] = useState<string | null>(null);
-  const [sharedCollection, setSharedCollection] = useState<Folder | null>(null);
-  const [sharedCollectionPrompts, setSharedCollectionPrompts] = useState<Prompt[]>([]);
-  const [loadingSharedCollection, setLoadingSharedCollection] = useState(false);
-
   // Global Keyboard Shortcuts (Ctrl+K/Cmd+K for AI Helper, Ctrl+J/Cmd+J for Quick Switcher)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -468,12 +531,14 @@ export default function App() {
       const userId = searchParams.get("user");
 
       if (userId && !shareId && !colId) {
+        setCurrentSection("prompts");
         setCurrentTab("comunidad");
         setSelectedAuthor({ name: "Creador", uid: userId });
         setPublicProfileTab("prompts");
       }
       
       if (shareId) {
+        setCurrentSection("prompts");
         setSharedPromptId(shareId);
         setSelectedAuthor(null);
         setSharedCollection(null);
@@ -508,6 +573,7 @@ export default function App() {
       }
 
       if (colId) {
+        setCurrentSection("prompts");
         setSharedCollectionId(colId);
         setSharedPrompt(null);
         setSharedPromptId(null);
@@ -599,6 +665,7 @@ export default function App() {
     }
 
     if (stepId === "use") {
+      setCurrentSection("mi-biblioteca");
       setCurrentTab("mi-biblioteca");
       setSelectedCategory("Todas");
       setSelectedFolderId(null);
@@ -607,6 +674,7 @@ export default function App() {
     }
 
     if (stepId === "remix") {
+      setCurrentSection("prompts");
       setCurrentTab("comunidad");
       setSelectedCategory("Todas");
       setSelectedAuthor(null);
@@ -616,12 +684,14 @@ export default function App() {
     }
 
     if (stepId === "folder") {
+      setCurrentSection("mi-biblioteca");
       setCurrentTab("mi-biblioteca");
       setShowCreateFolder(true);
       return;
     }
 
     if (stepId === "share") {
+      setCurrentSection("mi-biblioteca");
       setCurrentTab("mi-biblioteca");
       const promptToShare = prompts.find((prompt) => !prompt.isShared) || prompts[0];
       if (promptToShare) {
@@ -894,6 +964,8 @@ export default function App() {
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
   const youtubeCount = useMemo(() => prompts.filter((p) => p.category === "YouTube").length, [prompts]);
+  const forumPostsCount = useMemo(() => communityPosts.filter((post) => post.type !== "showcase").length, [communityPosts]);
+  const showcasePostsCount = useMemo(() => communityPosts.filter((post) => post.type === "showcase").length, [communityPosts]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200">
@@ -1010,6 +1082,16 @@ export default function App() {
         </div>
       </header>
 
+      <AppTopNav
+        currentSection={currentSection}
+        promptsCount={visibleCommunityCatalogPrompts.length}
+        libraryCount={prompts.length}
+        postsCount={forumPostsCount}
+        hackathonsCount={hackathons.length}
+        showcasesCount={showcasePostsCount}
+        onSectionChange={handleSectionChange}
+      />
+
       {/* Main Core Area layout */}
       {sharedCollection ? (
         <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
@@ -1108,6 +1190,37 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8">
+          {currentSection === "foro" ? (
+            <ForumSection
+              posts={communityPosts}
+              loading={loadingPosts}
+              currentUser={user}
+              onSignIn={handleSignIn}
+              onSave={savePost}
+              onDelete={deletePost}
+              onLike={togglePostLike}
+            />
+          ) : currentSection === "hackathons" ? (
+            <HackathonsSection
+              hackathons={hackathons}
+              loading={loadingHackathons}
+              currentUser={user}
+              onSignIn={handleSignIn}
+              onSave={saveHackathon}
+              onDelete={deleteHackathon}
+            />
+          ) : currentSection === "galeria" ? (
+            <ShowcaseSection
+              posts={communityPosts}
+              loading={loadingPosts}
+              currentUser={user}
+              onSignIn={handleSignIn}
+              onSave={savePost}
+              onDelete={deletePost}
+              onLike={togglePostLike}
+            />
+          ) : (
+            <>
           
           {/* Welcome Dashboard Block if offline/unauthenticated */}
           {!user && !authLoading && selectedAuthor ? (
@@ -1358,6 +1471,7 @@ export default function App() {
               <div className="flex items-center gap-1 p-1 bg-[#0f172a]/65 rounded-2xl border border-slate-800/80 w-fit">
                 <button
                   onClick={() => {
+                    setCurrentSection("mi-biblioteca");
                     setCurrentTab("mi-biblioteca");
                     setSelectedCategory("Todas");
                     closePublicProfile();
@@ -1377,6 +1491,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    setCurrentSection("prompts");
                     setCurrentTab("comunidad");
                     setSelectedCategory("Todas");
                     closePublicProfile();
@@ -1641,6 +1756,7 @@ export default function App() {
                   onViewSocial={setSelectedPublicPrompt}
                   onSaveSocial={(prompt) => void resolvePublicSavePrompt(prompt)}
                   onOpenSocialFavorites={() => {
+                    setCurrentSection("prompts");
                     setCurrentTab("comunidad");
                     setCommunityScope("favoritos");
                     setSelectedAuthor(null);
@@ -1819,6 +1935,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => {
+                          setCurrentSection("prompts");
                           setCurrentTab("comunidad");
                           setCommunityScope("favoritos");
                           setSelectedAuthor(null);
@@ -1874,6 +1991,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
+                        setCurrentSection("prompts");
                         setCurrentTab("comunidad");
                         setCommunityScope("favoritos");
                         setSelectedAuthor(null);
@@ -2296,6 +2414,8 @@ export default function App() {
             </div>
           )}
 
+            </>
+          )}
         </main>
 
         {/* Right Side: Gemini Engineering and Prompt optimization assistant slide panel */}

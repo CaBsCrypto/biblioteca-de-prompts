@@ -78,6 +78,117 @@ service cloud.firestore {
         && (!('folderId' in data) || ownsFolder(data.folderId));
     }
 
+    function isValidCommunityPost(data) {
+      return data.type in ['idea', 'question', 'team', 'showcase']
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 140
+        && data.body is string && data.body.size() > 0 && data.body.size() <= 4000
+        && data.tags is list && data.tags.size() <= 12
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
+        && (!('linkUrl' in data) || (data.linkUrl is string && data.linkUrl.size() <= 1000))
+        && data.authorUid == request.auth.uid
+        && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 200
+        && (!('authorHandle' in data) || (data.authorHandle is string && data.authorHandle.size() <= 40))
+        && (!('authorAvatar' in data) || (data.authorAvatar is string && data.authorAvatar.size() <= 1000))
+        && data.likesCount is int && data.likesCount >= 0
+        && data.likedBy is list && data.likedBy.size() <= 1000
+        && data.keys().hasOnly(['type', 'title', 'body', 'tags', 'imageUrl', 'linkUrl', 'authorUid', 'authorName', 'authorHandle', 'authorAvatar', 'likesCount', 'likedBy', 'createdAt', 'updatedAt']);
+    }
+
+    function isValidHackathon(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 160
+        && data.description is string && data.description.size() > 0 && data.description.size() <= 2500
+        && data.url is string && data.url.size() > 0 && data.url.size() <= 1000
+        && data.deadline is string && data.deadline.size() <= 40
+        && data.mode is string && data.mode.size() > 0 && data.mode.size() <= 40
+        && data.tags is list && data.tags.size() <= 12
+        && data.rolesNeeded is list && data.rolesNeeded.size() <= 8
+        && data.authorUid == request.auth.uid
+        && (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 200))
+        && (!('authorHandle' in data) || (data.authorHandle is string && data.authorHandle.size() <= 40))
+        && data.keys().hasOnly(['title', 'description', 'url', 'deadline', 'mode', 'tags', 'rolesNeeded', 'authorUid', 'authorName', 'authorHandle', 'createdAt', 'updatedAt']);
+    }
+
+    match /communityPosts/{postId} {
+      allow get, list: if true;
+
+      allow create: if isSignedIn()
+        && isValidId(postId)
+        && isValidCommunityPost(incoming())
+        && incoming().likesCount == 0
+        && incoming().likedBy.size() == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isValidId(postId)
+        && (
+          (
+            existing().authorUid == request.auth.uid
+            && incoming().authorUid == existing().authorUid
+            && incoming().authorName == existing().authorName
+            && incoming().authorHandle == existing().authorHandle
+            && incoming().authorAvatar == existing().authorAvatar
+            && incoming().likedBy == existing().likedBy
+            && incoming().likesCount == existing().likesCount
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && isValidCommunityPost(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly(['type', 'title', 'body', 'tags', 'imageUrl', 'linkUrl', 'updatedAt'])
+          )
+          ||
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['likedBy', 'likesCount', 'updatedAt'])
+            && incoming().updatedAt == request.time
+            && incoming().likedBy is list
+            && incoming().likedBy.size() <= 1000
+            && incoming().likesCount is int
+            && incoming().likesCount == incoming().likedBy.size()
+            && (
+              (
+                !(request.auth.uid in existing().likedBy)
+                && request.auth.uid in incoming().likedBy
+                && incoming().likedBy.size() == existing().likedBy.size() + 1
+                && incoming().likedBy.hasAll(existing().likedBy)
+              )
+              ||
+              (
+                request.auth.uid in existing().likedBy
+                && !(request.auth.uid in incoming().likedBy)
+                && incoming().likedBy.size() == existing().likedBy.size() - 1
+                && existing().likedBy.hasAll(incoming().likedBy)
+              )
+            )
+          )
+        );
+
+      allow delete: if isSignedIn()
+        && existing().authorUid == request.auth.uid;
+    }
+
+    match /hackathons/{hackathonId} {
+      allow get, list: if true;
+
+      allow create: if isSignedIn()
+        && isValidId(hackathonId)
+        && isValidHackathon(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isValidId(hackathonId)
+        && existing().authorUid == request.auth.uid
+        && incoming().authorUid == existing().authorUid
+        && incoming().authorName == existing().authorName
+        && incoming().authorHandle == existing().authorHandle
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isValidHackathon(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'url', 'deadline', 'mode', 'tags', 'rolesNeeded', 'updatedAt']);
+
+      allow delete: if isSignedIn()
+        && existing().authorUid == request.auth.uid;
+    }
+
     match /users/{userId} {
       allow get, list: if existing().status == 'active' || (isSignedIn() && request.auth.uid == userId);
 
