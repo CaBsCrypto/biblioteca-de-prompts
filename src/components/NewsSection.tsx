@@ -1,7 +1,7 @@
-import { Copy, ExternalLink, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Send, Sparkles, Wand2 } from "lucide-react";
+import { Bookmark, Copy, ExternalLink, FileText, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNews, type NewsLanguageFilter } from "../hooks/useNews";
-import type { NewsCategory, NewsItem } from "../typesCommunity";
+import type { NewsCategory, NewsItem, SavedIdea } from "../typesCommunity";
 
 const CATEGORIES: Array<{ id: NewsCategory; label: string; helper: string }> = [
   { id: "ai", label: "IA", helper: "Modelos, agentes y automatizacion" },
@@ -41,20 +41,36 @@ function languageLabel(item: NewsItem) {
 }
 
 interface NewsSectionProps {
+  savedIdeas: SavedIdea[];
+  savedIdeaIds: Set<string>;
+  loadingSavedIdeas: boolean;
   onCreatePromptFromNews: (item: NewsItem) => void;
   onCreateForumPostFromNews: (item: NewsItem, intent?: "idea" | "question" | "team") => void;
   onCreateForumDigest: (items: NewsItem[], category: NewsCategory) => void;
+  onCreatePublicBriefing: (items: NewsItem[], category: NewsCategory) => void;
   onCreateNewsletterFromNews: (items: NewsItem[], category: NewsCategory) => void;
+  onSaveIdeaFromNews: (item: NewsItem) => void;
+  onDeleteSavedIdea: (idea: SavedIdea) => void;
+  onCreatePromptFromSavedIdea: (idea: SavedIdea) => void;
+  onCreateForumPostFromSavedIdea: (idea: SavedIdea, intent?: "idea" | "question" | "team") => void;
   onSummarizeNews: (item: NewsItem) => void;
   onTranslateNews: (item: NewsItem) => void;
   onDetectHackathonOpportunity: (item: NewsItem) => void;
 }
 
 export default function NewsSection({
+  savedIdeas,
+  savedIdeaIds,
+  loadingSavedIdeas,
   onCreatePromptFromNews,
   onCreateForumPostFromNews,
   onCreateForumDigest,
+  onCreatePublicBriefing,
   onCreateNewsletterFromNews,
+  onSaveIdeaFromNews,
+  onDeleteSavedIdea,
+  onCreatePromptFromSavedIdea,
+  onCreateForumPostFromSavedIdea,
   onSummarizeNews,
   onTranslateNews,
   onDetectHackathonOpportunity
@@ -197,7 +213,7 @@ export default function NewsSection({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 lg:w-auto">
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 lg:w-auto xl:grid-cols-4">
               <button
                 type="button"
                 onClick={handleCopyDigest}
@@ -213,6 +229,14 @@ export default function NewsSection({
               >
                 <Send size={13} />
                 Foro
+              </button>
+              <button
+                type="button"
+                onClick={() => onCreatePublicBriefing(digestItems, category)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs font-black text-emerald-300 transition-all hover:bg-emerald-500/15 cursor-pointer"
+              >
+                <FileText size={13} />
+                Briefing publico
               </button>
               <button
                 type="button"
@@ -237,6 +261,73 @@ export default function NewsSection({
                 <p className="line-clamp-2 text-[11px] font-black leading-snug text-slate-200">{item.title}</p>
                 <p className="mt-2 text-[10px] font-bold text-slate-500">{item.source}</p>
               </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {savedIdeas.length > 0 && (
+        <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                <Bookmark size={12} />
+                Ideas guardadas
+              </span>
+              <h3 className="mt-3 text-lg font-black leading-tight text-white">Tu radar personal para volver y construir.</h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                Convierte cualquier idea guardada en prompt, conversacion o busqueda de equipo.
+              </p>
+            </div>
+            <span className="w-fit rounded-full border border-slate-800 bg-slate-950/50 px-3 py-1 text-[10px] font-black text-slate-400">
+              {loadingSavedIdeas ? "Sincronizando..." : `${savedIdeas.length} ideas`}
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            {savedIdeas.slice(0, 6).map((idea) => (
+              <article key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 text-xs font-black leading-snug text-white">{idea.title}</p>
+                    <p className="mt-1 text-[10px] font-bold text-slate-500">{idea.source}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteSavedIdea(idea)}
+                    className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/10 p-1.5 text-red-300 transition-colors hover:bg-red-500/20 cursor-pointer"
+                    title="Eliminar idea"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-slate-400">{idea.summary}</p>
+                <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => onCreatePromptFromSavedIdea(idea)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-pink-500/25 bg-pink-500/10 px-2.5 py-2 text-[11px] font-black text-pink-300 cursor-pointer"
+                  >
+                    <Sparkles size={11} />
+                    Prompt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCreateForumPostFromSavedIdea(idea, "question")}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-2 text-[11px] font-black text-indigo-300 cursor-pointer"
+                  >
+                    <MessageSquare size={11} />
+                    Foro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCreateForumPostFromSavedIdea(idea, "team")}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2 text-[11px] font-black text-emerald-300 cursor-pointer"
+                  >
+                    Equipo
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
         </section>
@@ -340,6 +431,18 @@ export default function NewsSection({
                   >
                     <Lightbulb size={13} />
                     Idea
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSaveIdeaFromNews(item)}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-all cursor-pointer ${
+                      savedIdeaIds.has(item.id.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96))
+                        ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                        : "border-amber-500/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15"
+                    }`}
+                  >
+                    <Bookmark size={13} fill={savedIdeaIds.has(item.id.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96)) ? "currentColor" : "none"} />
+                    Guardar
                   </button>
                 </div>
 

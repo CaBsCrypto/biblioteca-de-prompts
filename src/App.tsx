@@ -49,6 +49,7 @@ import ForumSection from "./components/ForumSection";
 import HackathonsSection from "./components/HackathonsSection";
 import ShowcaseSection from "./components/ShowcaseSection";
 import NewsSection from "./components/NewsSection";
+import PublicBriefingView from "./components/PublicBriefingView";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -63,7 +64,9 @@ import { useModerationReview } from "./hooks/useModerationReview";
 import { useCommunityPosts } from "./hooks/useCommunityPosts";
 import type { CommunityPostInput } from "./hooks/useCommunityPosts";
 import { useHackathons } from "./hooks/useHackathons";
-import type { AppSection, NewsCategory, NewsItem } from "./typesCommunity";
+import { useSavedIdeas } from "./hooks/useSavedIdeas";
+import { useBriefings } from "./hooks/useBriefings";
+import type { AppSection, Briefing, BriefingItem, NewsCategory, NewsItem, SavedIdea } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
@@ -145,6 +148,8 @@ export default function App() {
   const [pendingPublicSavePrompt, setPendingPublicSavePrompt] = useState<Prompt | null>(null);
   const [isResolvingPendingPublicSave, setIsResolvingPendingPublicSave] = useState(false);
   const [pendingForumDraft, setPendingForumDraft] = useState<CommunityPostInput | null>(null);
+  const [pendingSaveIdeaItem, setPendingSaveIdeaItem] = useState<NewsItem | null>(null);
+  const [pendingBriefingDraft, setPendingBriefingDraft] = useState<{ items: NewsItem[]; category: NewsCategory } | null>(null);
 
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
@@ -318,10 +323,34 @@ export default function App() {
     onNotification: triggerNotification
   });
 
+  const {
+    savedIdeas,
+    savedIdeaIds,
+    loadingSavedIdeas,
+    saveIdeaFromNews,
+    deleteSavedIdea
+  } = useSavedIdeas({
+    user,
+    onNotification: triggerNotification
+  });
+
+  const {
+    createBriefingFromNews,
+    loadBriefing,
+    loadingSharedBriefing
+  } = useBriefings({
+    user,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
   const [sharedPrompt, setSharedPrompt] = useState<Prompt | null>(null);
   const [loadingSharedPrompt, setLoadingSharedPrompt] = useState(false);
+
+  const [sharedBriefingId, setSharedBriefingId] = useState<string | null>(null);
+  const [sharedBriefing, setSharedBriefing] = useState<Briefing | null>(null);
 
   // Shared collections states
   const [sharedCollectionId, setSharedCollectionId] = useState<string | null>(null);
@@ -353,6 +382,7 @@ export default function App() {
     url.searchParams.set("user", author.uid);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
+    url.searchParams.delete("briefing");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -376,6 +406,8 @@ export default function App() {
     setSharedCollection(null);
     setSharedCollectionId(null);
     setSharedCollectionPrompts([]);
+    setSharedBriefing(null);
+    setSharedBriefingId(null);
 
     if (section === "prompts") {
       setCurrentTab("comunidad");
@@ -389,6 +421,7 @@ export default function App() {
     url.searchParams.delete("user");
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
+    url.searchParams.delete("briefing");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -401,6 +434,29 @@ export default function App() {
     navigator.clipboard.writeText(url.toString());
     triggerNotification("Enlace del perfil copiado.", "success");
   };
+
+  const briefingItemToNewsItem = (item: BriefingItem): NewsItem => ({
+    id: item.url || item.title,
+    title: item.title,
+    summary: item.summary,
+    url: item.url,
+    source: item.source,
+    language: item.language,
+    category: item.category,
+    tags: item.tags || []
+  });
+
+  const savedIdeaToNewsItem = (idea: SavedIdea): NewsItem => ({
+    id: idea.id,
+    title: idea.title,
+    summary: idea.summary,
+    url: idea.url,
+    source: idea.source,
+    imageUrl: idea.imageUrl,
+    language: idea.language,
+    category: idea.category,
+    tags: idea.tags || []
+  });
 
   const openNewsInAssistant = (item: NewsItem, mode: "prompt" | "summary" | "translation" | "opportunity") => {
     const context = `Titulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nResumen/contexto disponible: ${item.summaryEs || item.summary || "Sin resumen disponible."}`;
@@ -502,6 +558,61 @@ export default function App() {
     triggerNotification("Abrimos el asistente para preparar newsletter.", "success");
   };
 
+  const handleCreatePublicBriefing = async (items: NewsItem[], category: NewsCategory) => {
+    if (!user) {
+      setPendingBriefingDraft({ items, category });
+      triggerNotification("Conecta con Google y publicaremos este briefing.", "info");
+      await handleSignIn();
+      return;
+    }
+
+    const briefingId = await createBriefingFromNews(items, category, true);
+    if (!briefingId) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("briefing", briefingId);
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    url.searchParams.delete("user");
+    window.history.replaceState({}, "", url.toString());
+    setSharedBriefingId(briefingId);
+    const loadedBriefing = await loadBriefing(briefingId);
+    if (loadedBriefing) {
+      setSharedBriefing(loadedBriefing);
+      triggerNotification("Briefing listo para compartir.", "success");
+    }
+  };
+
+  const handleSaveIdeaFromNews = async (item: NewsItem) => {
+    if (!user) {
+      setPendingSaveIdeaItem(item);
+      triggerNotification("Conecta con Google y guardaremos esta idea.", "info");
+      await handleSignIn();
+      return;
+    }
+    await saveIdeaFromNews(item);
+  };
+
+  const handleCreatePromptFromSavedIdea = (idea: SavedIdea) => {
+    openNewsInAssistant(savedIdeaToNewsItem(idea), "prompt");
+  };
+
+  const handleCreateForumPostFromSavedIdea = (idea: SavedIdea, intent: "idea" | "question" | "team" = "idea") => {
+    handleCreateForumPostFromNews(savedIdeaToNewsItem(idea), intent);
+  };
+
+  const handleSaveBriefingItem = async (item: BriefingItem) => {
+    await handleSaveIdeaFromNews(briefingItemToNewsItem(item));
+  };
+
+  const handleCreatePromptFromBriefingItem = (item: BriefingItem) => {
+    openNewsInAssistant(briefingItemToNewsItem(item), "prompt");
+  };
+
+  const handleCreateForumPostFromBriefingItem = (item: BriefingItem) => {
+    handleCreateForumPostFromNews(briefingItemToNewsItem(item), "question");
+  };
+
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
     if (!user) {
       setPendingPublicSavePrompt(prompt);
@@ -547,6 +658,20 @@ export default function App() {
       cancelled = true;
     };
   }, [user, pendingPublicSavePrompt, loadingPrompts, isResolvingPendingPublicSave]);
+
+  useEffect(() => {
+    if (!user || !pendingSaveIdeaItem) return;
+    const itemToSave = pendingSaveIdeaItem;
+    setPendingSaveIdeaItem(null);
+    void saveIdeaFromNews(itemToSave);
+  }, [user, pendingSaveIdeaItem, saveIdeaFromNews]);
+
+  useEffect(() => {
+    if (!user || !pendingBriefingDraft) return;
+    const draftToPublish = pendingBriefingDraft;
+    setPendingBriefingDraft(null);
+    void handleCreatePublicBriefing(draftToPublish.items, draftToPublish.category);
+  }, [user, pendingBriefingDraft]);
 
   const founderPackPrompts = useMemo<Prompt[]>(() => {
     return DEFAULT_PROMPTS.map((prompt, index) => ({
@@ -632,8 +757,26 @@ export default function App() {
       const shareId = searchParams.get("share");
       const colId = searchParams.get("collection");
       const userId = searchParams.get("user");
+      const briefingId = searchParams.get("briefing");
 
-      if (userId && !shareId && !colId) {
+      if (briefingId && !shareId && !colId) {
+        setSharedBriefingId(briefingId);
+        setSharedPrompt(null);
+        setSharedPromptId(null);
+        setSharedCollection(null);
+        setSharedCollectionId(null);
+        setSelectedAuthor(null);
+        const loadedBriefing = await loadBriefing(briefingId);
+        if (loadedBriefing) {
+          setSharedBriefing(loadedBriefing);
+          triggerNotification("Briefing publico cargado.", "success");
+        } else {
+          setSharedBriefing(null);
+          triggerNotification("El briefing no existe o no esta publicado.", "info");
+        }
+      }
+
+      if (userId && !shareId && !colId && !briefingId) {
         setCurrentSection("prompts");
         setCurrentTab("comunidad");
         setSelectedAuthor({ name: "Creador", uid: userId });
@@ -646,6 +789,8 @@ export default function App() {
         setSelectedAuthor(null);
         setSharedCollection(null);
         setSharedCollectionId(null);
+        setSharedBriefing(null);
+        setSharedBriefingId(null);
         setLoadingSharedPrompt(true);
         try {
           const docRef = doc(db, "prompts", shareId);
@@ -681,6 +826,8 @@ export default function App() {
         setSharedPrompt(null);
         setSharedPromptId(null);
         setSelectedAuthor(null);
+        setSharedBriefing(null);
+        setSharedBriefingId(null);
         setLoadingSharedCollection(true);
         try {
           const docRef = doc(db, "folders", colId);
@@ -741,6 +888,14 @@ export default function App() {
     // Clean query parameter from address bar without reloading
     const url = new URL(window.location.href);
     url.searchParams.delete("share");
+    window.history.replaceState({}, "", url.toString());
+  };
+
+  const handleCloseBriefing = () => {
+    setSharedBriefing(null);
+    setSharedBriefingId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("briefing");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -1192,12 +1347,22 @@ export default function App() {
         postsCount={forumPostsCount}
         hackathonsCount={hackathons.length}
         showcasesCount={showcasePostsCount}
-        newsCount={0}
+        newsCount={savedIdeas.length}
         onSectionChange={handleSectionChange}
       />
 
       {/* Main Core Area layout */}
-      {sharedCollection ? (
+      {sharedBriefing ? (
+        <PublicBriefingView
+          briefing={sharedBriefing}
+          loading={loadingSharedBriefing}
+          onBack={handleCloseBriefing}
+          onSignIn={handleSignIn}
+          onSaveItem={(item) => void handleSaveBriefingItem(item)}
+          onCreatePrompt={handleCreatePromptFromBriefingItem}
+          onCreateForumPost={handleCreateForumPostFromBriefingItem}
+        />
+      ) : sharedCollection ? (
         <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
           {/* Header of the Shared Collection */}
           <div className="bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
@@ -1328,10 +1493,18 @@ export default function App() {
             />
           ) : currentSection === "noticias" ? (
             <NewsSection
+              savedIdeas={savedIdeas}
+              savedIdeaIds={savedIdeaIds}
+              loadingSavedIdeas={loadingSavedIdeas}
               onCreatePromptFromNews={handleCreatePromptFromNews}
               onCreateForumPostFromNews={handleCreateForumPostFromNews}
               onCreateForumDigest={handleCreateForumDigest}
+              onCreatePublicBriefing={(items, category) => void handleCreatePublicBriefing(items, category)}
               onCreateNewsletterFromNews={handleCreateNewsletterFromNews}
+              onSaveIdeaFromNews={(item) => void handleSaveIdeaFromNews(item)}
+              onDeleteSavedIdea={(idea) => void deleteSavedIdea(idea)}
+              onCreatePromptFromSavedIdea={handleCreatePromptFromSavedIdea}
+              onCreateForumPostFromSavedIdea={handleCreateForumPostFromSavedIdea}
               onSummarizeNews={(item) => openNewsInAssistant(item, "summary")}
               onTranslateNews={(item) => openNewsInAssistant(item, "translation")}
               onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}

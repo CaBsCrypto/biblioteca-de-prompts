@@ -54,4 +54,45 @@ export interface NewsItem {
   tags: string[];
 }
 
+export type SavedIdeaSource = "news" | "hackathon" | "manual";
+
+export interface SavedIdea {
+  id: string;
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  language: NewsLanguage;
+  category: NewsCategory;
+  tags: string[];
+  imageUrl?: string;
+  savedAt: any;
+  createdFrom: SavedIdeaSource;
+}
+
+export interface BriefingItem {
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  language: NewsLanguage;
+  category: NewsCategory;
+  tags: string[];
+}
+
+export interface Briefing {
+  id: string;
+  title: string;
+  intro: string;
+  items: BriefingItem[];
+  tags: string[];
+  language: NewsLanguage | "all";
+  authorUid: string;
+  authorName: string;
+  authorHandle?: string;
+  isPublished: boolean;
+  createdAt: any;
+  updatedAt: any;
+}
+
 export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca";
