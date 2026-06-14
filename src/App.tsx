@@ -33,7 +33,8 @@ import {
   UserCheck,
   UserPlus,
   GitFork,
-  TrendingUp
+  TrendingUp,
+  Newspaper
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -1618,36 +1619,100 @@ export default function App() {
               />
             </div>
           ) : !user && !authLoading ? (
-            <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-4xl mx-auto">
-              {/* background vector accent spheres */}
-              <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-violet-600/10 blur-[80px] pointer-events-none"></div>
-              <div className="absolute left-1/3 bottom-0 w-60 h-60 rounded-full bg-pink-500/5 blur-[60px] pointer-events-none"></div>
-
-              <div className="space-y-3 relative z-10 max-w-2xl">
-                <span className="font-extrabold uppercase tracking-widest text-[9px] text-pink-400 bg-pink-500/10 px-3 py-1 rounded-full border border-pink-500/20 shadow-[0_0_15px_rgba(236,72,153,0.15)]">
-                  Herramienta de Canal Educativo
+            <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
+              <div className="space-y-3 relative z-10 max-w-3xl">
+                <span className="font-extrabold uppercase tracking-widest text-[9px] text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20 shadow-[0_0_15px_rgba(34,211,238,0.12)]">
+                  Radar social para creadores IA
                 </span>
-                <h2 className="text-2xl md:text-3.5xl font-extrabold tracking-tight leading-tight">
-                  Tu biblioteca integrada para Almacenar, Rellenar y Crear Prompts Inteligentes
+                <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
+                  Convierte tendencias IA en ideas guardadas, prompts remixables y briefings compartibles.
                 </h2>
-                <p className="text-slate-350 text-sm leading-relaxed font-sans">
+                <p className="hidden text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
                   ¿Vas a enseñar Inteligencia Artificial en YouTube? Esta biblioteca te permite tener todas las plantillas de instrucciones organizadas en un solo lugar. Rellena variables en vivo para tus espectadores y optimiza cualquier prompt básico al instante mediante el Asistente IA de Gemini.
+                </p>
+                <p className="text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
+                  Descubre noticias, hackathons y recursos de la comunidad. Guarda lo importante en tu biblioteca, transforma cada senal en un prompt editable y comparte briefings para atraer otros creadores.
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-4 pt-2 relative z-10">
+              <div className="grid grid-cols-1 gap-3 pt-2 relative z-10 min-[430px]:grid-cols-2 md:flex md:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleSectionChange("noticias")}
+                  className="px-5 py-3 bg-cyan-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-600/10 active:scale-[0.98] cursor-pointer"
+                >
+                  <Newspaper size={14} />
+                  <span>Explorar radar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSectionChange("prompts")}
+                  className="px-5 py-3 bg-slate-900/70 hover:bg-slate-800 text-slate-100 border border-slate-700 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <GitFork size={14} />
+                  <span>Remixear prompts</span>
+                </button>
                 <button
                   id="btn-callout-login"
                   onClick={handleSignIn}
-                  className="px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] text-white font-bold rounded-xl text-xs flex items-center gap-2 hover:opacity-95 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer"
+                  className="px-5 py-3 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer min-[430px]:col-span-2 md:col-span-1"
                 >
-                  <span>Empezar con Google</span>
+                  <span>Crear mi biblioteca</span>
                   <ArrowRight size={14} className="text-white" />
                 </button>
               </div>
 
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-5 border-t border-slate-700/60 relative z-10">
+                {[
+                  { label: "Prompts publicos", value: visibleCommunityCatalogPrompts.length },
+                  { label: "Posts de comunidad", value: forumPostsCount },
+                  { label: "Hackathons", value: hackathons.length },
+                  { label: "Galeria", value: showcasePostsCount }
+                ].map((metric) => (
+                  <div key={metric.label} className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3">
+                    <p className="text-xl font-black text-white">{metric.value}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{metric.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700/60 relative z-10 text-xs">
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-cyan-300 flex items-center gap-1">
+                    <TrendingUp size={14} /> 1. Detecta senales
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed font-sans">
+                    Lee tendencias IA, devtools, diseno y hackathons desde el radar.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-amber-300 flex items-center gap-1">
+                    <StickyNote size={14} /> 2. Guarda ideas
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed font-sans">
+                    Conserva oportunidades para volver cuando quieras crear contenido.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-pink-400 flex items-center gap-1">
+                    <Sparkles size={14} /> 3. Crea prompts
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed font-sans">
+                    Convierte cada noticia o recurso en instrucciones reutilizables.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-emerald-300 flex items-center gap-1">
+                    <Share2 size={14} /> 4. Comparte briefings
+                  </h4>
+                  <p className="text-slate-400 leading-relaxed font-sans">
+                    Publica links que otros pueden leer, guardar y comentar.
+                  </p>
+                </div>
+              </div>
+
               {/* Bento Row points */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t border-slate-700/60 relative z-10 text-xs">
+              <div className="hidden grid-cols-1 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700/60 relative z-10 text-xs">
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-indigo-400 flex items-center gap-1">
                     <Zap size={14} fill="currentColor" /> 1. Guarda Prompts
@@ -1678,11 +1743,11 @@ export default function App() {
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full">
-                      Biblioteca gratuita de prompts
+                      Red social de prompts y briefings
                     </span>
-                    <h3 className="text-lg font-extrabold text-white mt-3">Explora prompts publicos antes de iniciar sesion</h3>
+                    <h3 className="text-lg font-extrabold text-white mt-3">Explora recursos publicos y guarda tu version privada</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                      Descubre, prueba y guarda recursos como remixes privados. Tu copia queda editable y solo se publica si decides compartir tu version.
+                      Empieza por un prompt, una idea o un briefing. Guardar crea tu copia privada para adaptarla antes de publicar algo a la comunidad.
                     </p>
                   </div>
                   <button
