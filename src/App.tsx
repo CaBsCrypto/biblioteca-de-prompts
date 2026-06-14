@@ -43,6 +43,7 @@ import { Prompt, CategoryFilter, Folder } from "./types";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
 import CommunityExplore from "./components/CommunityExplore";
+import CreatorGrowthPanel from "./components/CreatorGrowthPanel";
 import DailyWorkspace from "./components/DailyWorkspace";
 import TrustModerationPanel from "./components/TrustModerationPanel";
 import AppTopNav from "./components/AppTopNav";
@@ -1346,6 +1347,16 @@ export default function App() {
     socialFavoritePrompts
   }), [prompts, userEvents, socialFavoritePrompts]);
 
+  const ownPublicBriefings = useMemo(() => {
+    if (!user) return [];
+    return publicBriefings.filter((briefing) => briefing.authorUid === user.uid);
+  }, [publicBriefings, user]);
+
+  const ownPublicPrompts = useMemo(() => {
+    if (!user) return [];
+    return prompts.filter((prompt) => prompt.isShared);
+  }, [prompts, user]);
+
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
   const youtubeCount = useMemo(() => prompts.filter((p) => p.category === "YouTube").length, [prompts]);
@@ -2324,6 +2335,25 @@ export default function App() {
                 <ActivationChecklist
                   state={activationChecklistState}
                   onAction={handleActivationAction}
+                />
+              )}
+
+              {user && currentTab === "mi-biblioteca" && (
+                <CreatorGrowthPanel
+                  briefings={ownPublicBriefings}
+                  publicPrompts={ownPublicPrompts}
+                  publishCandidates={dailyWorkspaceState.publishCandidates}
+                  userEvents={userEvents}
+                  onOpenBriefing={openPublicBriefing}
+                  onEditPrompt={handleOpenEdit}
+                  onOpenNews={() => handleSectionChange("noticias")}
+                  onOpenCommunity={() => {
+                    setCurrentSection("prompts");
+                    setCurrentTab("comunidad");
+                    setCommunityScope("todos");
+                    setSelectedAuthor(null);
+                    setSelectedCategory("Todas");
+                  }}
                 />
               )}
 
