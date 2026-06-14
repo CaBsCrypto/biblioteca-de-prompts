@@ -63,7 +63,7 @@ import { useModerationReview } from "./hooks/useModerationReview";
 import { useCommunityPosts } from "./hooks/useCommunityPosts";
 import type { CommunityPostInput } from "./hooks/useCommunityPosts";
 import { useHackathons } from "./hooks/useHackathons";
-import type { AppSection, NewsItem } from "./typesCommunity";
+import type { AppSection, NewsCategory, NewsItem } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
@@ -446,6 +446,60 @@ export default function App() {
       return;
     }
     triggerNotification("Preparamos un borrador en el foro.", "success");
+  };
+
+  const buildNewsDigestLines = (items: NewsItem[]) => {
+    return items.slice(0, 5).map((item, index) => {
+      const context = item.summaryEs || item.summary || "Sin resumen disponible.";
+      return `${index + 1}. ${item.title}\nFuente: ${item.source}\n${context}\n${item.url}`;
+    }).join("\n\n");
+  };
+
+  const handleCreateForumDigest = (items: NewsItem[], category: NewsCategory) => {
+    if (items.length === 0) return;
+    setPendingForumDraft({
+      type: "idea",
+      title: `Briefing radar ${category.toUpperCase()}`.slice(0, 140),
+      body: [
+        "Comparto un briefing rapido del radar para detectar prompts, ideas de contenido y oportunidades de proyecto.",
+        "",
+        buildNewsDigestLines(items),
+        "",
+        "Que tendencia deberiamos convertir en prompt, demo o hackathon?"
+      ].join("\n"),
+      tags: Array.from(new Set(["radar", "newsletter", category, ...items.flatMap((item) => item.tags || [])])).slice(0, 10),
+      linkUrl: items[0]?.url || "",
+      imageUrl: items.find((item) => item.imageUrl)?.imageUrl || ""
+    });
+    setCurrentSection("foro");
+    setCurrentTab("comunidad");
+    if (!user) {
+      triggerNotification("Conecta con Google y abriremos el briefing en el foro.", "info");
+      void handleSignIn();
+      return;
+    }
+    triggerNotification("Briefing preparado como borrador de foro.", "success");
+  };
+
+  const handleCreateNewsletterFromNews = (items: NewsItem[], category: NewsCategory) => {
+    if (items.length === 0) return;
+    setPresetAItext([
+      `Crea una edicion de newsletter en espanol neutro para una comunidad de creadores IA.`,
+      `Categoria del radar: ${category}`,
+      "",
+      "Noticias seleccionadas:",
+      buildNewsDigestLines(items),
+      "",
+      "Formato esperado:",
+      "1. Titulo atractivo.",
+      "2. Resumen editorial breve.",
+      "3. 5 bullets con lo importante.",
+      "4. Ideas de prompts accionables.",
+      "5. Oportunidades de hackathon o equipo.",
+      "6. CTA para comentar en comunidad."
+    ].join("\n"));
+    setShowAIAssistant(true);
+    triggerNotification("Abrimos el asistente para preparar newsletter.", "success");
   };
 
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
@@ -1276,6 +1330,8 @@ export default function App() {
             <NewsSection
               onCreatePromptFromNews={handleCreatePromptFromNews}
               onCreateForumPostFromNews={handleCreateForumPostFromNews}
+              onCreateForumDigest={handleCreateForumDigest}
+              onCreateNewsletterFromNews={handleCreateNewsletterFromNews}
               onSummarizeNews={(item) => openNewsInAssistant(item, "summary")}
               onTranslateNews={(item) => openNewsInAssistant(item, "translation")}
               onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}

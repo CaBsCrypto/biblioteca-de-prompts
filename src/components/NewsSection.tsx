@@ -1,4 +1,4 @@
-import { ExternalLink, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Sparkles, Wand2 } from "lucide-react";
+import { Copy, ExternalLink, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Send, Sparkles, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNews, type NewsLanguageFilter } from "../hooks/useNews";
 import type { NewsCategory, NewsItem } from "../typesCommunity";
@@ -18,6 +18,15 @@ const LANGUAGE_FILTERS: Array<{ id: NewsLanguageFilter; label: string }> = [
   { id: "en", label: "EN" }
 ];
 
+const CATEGORY_LABELS: Record<NewsCategory, string> = {
+  ai: "IA",
+  tech: "Tech",
+  startups: "Startups",
+  devtools: "DevTools",
+  design: "Diseno",
+  hackathons: "Hackathons"
+};
+
 function formatDate(value?: string) {
   if (!value) return "Reciente";
   const timestamp = Date.parse(value);
@@ -34,6 +43,8 @@ function languageLabel(item: NewsItem) {
 interface NewsSectionProps {
   onCreatePromptFromNews: (item: NewsItem) => void;
   onCreateForumPostFromNews: (item: NewsItem, intent?: "idea" | "question" | "team") => void;
+  onCreateForumDigest: (items: NewsItem[], category: NewsCategory) => void;
+  onCreateNewsletterFromNews: (items: NewsItem[], category: NewsCategory) => void;
   onSummarizeNews: (item: NewsItem) => void;
   onTranslateNews: (item: NewsItem) => void;
   onDetectHackathonOpportunity: (item: NewsItem) => void;
@@ -42,6 +53,8 @@ interface NewsSectionProps {
 export default function NewsSection({
   onCreatePromptFromNews,
   onCreateForumPostFromNews,
+  onCreateForumDigest,
+  onCreateNewsletterFromNews,
   onSummarizeNews,
   onTranslateNews,
   onDetectHackathonOpportunity
@@ -49,6 +62,7 @@ export default function NewsSection({
   const [category, setCategory] = useState<NewsCategory>("ai");
   const [language, setLanguage] = useState<NewsLanguageFilter>("all");
   const [search, setSearch] = useState("");
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
   const { items, loading, error, hasPremiumSource } = useNews(category, language);
 
   const filteredItems = useMemo(() => {
@@ -65,6 +79,25 @@ export default function NewsSection({
       ].join(" ").toLowerCase().includes(needle)
     );
   }, [items, search]);
+
+  const digestItems = useMemo(() => filteredItems.slice(0, 5), [filteredItems]);
+  const digestText = useMemo(() => {
+    const lines = digestItems.map((item, index) => {
+      const summary = item.summaryEs || item.summary || "Sin resumen disponible.";
+      return `${index + 1}. ${item.title}\nFuente: ${item.source}\n${summary}\n${item.url}`;
+    });
+    return [
+      `Briefing ${CATEGORY_LABELS[category]} - Biblioteca de Prompts`,
+      "",
+      ...lines
+    ].join("\n\n");
+  }, [category, digestItems]);
+
+  const handleCopyDigest = async () => {
+    await navigator.clipboard.writeText(digestText);
+    setCopyState("copied");
+    setTimeout(() => setCopyState("idle"), 1800);
+  };
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
@@ -142,6 +175,72 @@ export default function NewsSection({
           </label>
         </div>
       </div>
+
+      {!loading && !error && digestItems.length > 0 && (
+        <section className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
+                  <Newspaper size={12} />
+                  Briefing publicable
+                </span>
+                <span className="rounded-full border border-slate-800 bg-slate-950/50 px-3 py-1 text-[10px] font-black text-slate-400">
+                  {digestItems.length} senales
+                </span>
+              </div>
+              <h3 className="mt-3 text-lg font-black leading-tight text-white">
+                Convierte este radar en newsletter, post o idea de comunidad.
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                Usa las noticias visibles del filtro actual para publicar un resumen rapido o preparar una edicion con IA.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-3 lg:w-auto">
+              <button
+                type="button"
+                onClick={handleCopyDigest}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-xs font-black text-slate-200 transition-all hover:border-cyan-500/30 hover:text-cyan-200 cursor-pointer"
+              >
+                <Copy size={13} />
+                {copyState === "copied" ? "Copiado" : "Copiar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onCreateForumDigest(digestItems, category)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-3 py-2.5 text-xs font-black text-indigo-300 transition-all hover:bg-indigo-500/15 cursor-pointer"
+              >
+                <Send size={13} />
+                Foro
+              </button>
+              <button
+                type="button"
+                onClick={() => onCreateNewsletterFromNews(digestItems, category)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-pink-500/25 bg-pink-500/10 px-3 py-2.5 text-xs font-black text-pink-300 transition-all hover:bg-pink-500/15 cursor-pointer"
+              >
+                <Sparkles size={13} />
+                Newsletter IA
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-5">
+            {digestItems.map((item) => (
+              <a
+                key={`digest-${item.id}`}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-slate-800 bg-slate-950/35 p-3 transition-colors hover:border-cyan-500/25"
+              >
+                <p className="line-clamp-2 text-[11px] font-black leading-snug text-slate-200">{item.title}</p>
+                <p className="mt-2 text-[10px] font-bold text-slate-500">{item.source}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <div className="rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
