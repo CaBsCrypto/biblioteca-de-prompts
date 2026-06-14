@@ -1,7 +1,8 @@
-import { Bookmark, Copy, ExternalLink, FileText, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Bookmark, Copy, ExternalLink, FileText, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Send, Sparkles, Target, Trash2, Users, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNews, type NewsLanguageFilter } from "../hooks/useNews";
 import type { NewsCategory, NewsItem, SavedIdea } from "../typesCommunity";
+import { safeIdeaId } from "../utils/news";
 
 const CATEGORIES: Array<{ id: NewsCategory; label: string; helper: string }> = [
   { id: "ai", label: "IA", helper: "Modelos, agentes y automatizacion" },
@@ -97,6 +98,37 @@ export default function NewsSection({
   }, [items, search]);
 
   const digestItems = useMemo(() => filteredItems.slice(0, 5), [filteredItems]);
+  const actionQueueItems = useMemo(() => {
+    const scoreItem = (item: NewsItem) => {
+      const text = [
+        item.title,
+        item.titleEs || "",
+        item.summary || "",
+        item.summaryEs || "",
+        item.source,
+        item.category,
+        ...item.tags
+      ].join(" ").toLowerCase();
+
+      let score = 0;
+      if (item.category === "hackathons") score += 5;
+      if (item.category === category) score += 2;
+      if (text.includes("hackathon") || text.includes("challenge") || text.includes("competition")) score += 4;
+      if (text.includes("agent") || text.includes("ai") || text.includes("open source")) score += 2;
+      if (text.includes("startup") || text.includes("funding") || text.includes("launch")) score += 2;
+      if (item.summaryEs) score += 1;
+      return score;
+    };
+
+    return [...filteredItems]
+      .map((item, index) => ({ item, score: scoreItem(item), index }))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.index - b.index;
+      })
+      .slice(0, 3)
+      .map(({ item }) => item);
+  }, [category, filteredItems]);
   const digestText = useMemo(() => {
     const lines = digestItems.map((item, index) => {
       const summary = item.summaryEs || item.summary || "Sin resumen disponible.";
@@ -113,6 +145,27 @@ export default function NewsSection({
     await navigator.clipboard.writeText(digestText);
     setCopyState("copied");
     setTimeout(() => setCopyState("idle"), 1800);
+  };
+
+  const renderSaveIdeaButton = (item: NewsItem, variant: "card" | "compact" = "card") => {
+    const itemSaved = savedIdeaIds.has(safeIdeaId(item));
+    const baseClass = variant === "compact"
+      ? "inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] font-black cursor-pointer"
+      : "inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-all cursor-pointer";
+    const stateClass = itemSaved
+      ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+      : "border-amber-500/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15";
+
+    return (
+      <button
+        type="button"
+        onClick={() => onSaveIdeaFromNews(item)}
+        className={`${baseClass} ${stateClass}`}
+      >
+        <Bookmark size={variant === "compact" ? 11 : 13} fill={itemSaved ? "currentColor" : "none"} />
+        {variant === "compact" && itemSaved ? "Guardada" : "Guardar"}
+      </button>
+    );
   };
 
   return (
@@ -262,6 +315,86 @@ export default function NewsSection({
                 <p className="mt-2 text-[10px] font-bold text-slate-500">{item.source}</p>
               </a>
             ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && !error && actionQueueItems.length > 0 && (
+        <section className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-300">
+                <Target size={12} />
+                Cola de accion
+              </span>
+              <h3 className="mt-3 text-lg font-black leading-tight text-white">
+                Senales listas para convertir en recursos, conversaciones o equipo.
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                Priorizamos oportunidades del filtro actual para que el radar termine en una accion concreta, no solo en lectura.
+              </p>
+            </div>
+            <span className="w-fit rounded-full border border-slate-800 bg-slate-950/50 px-3 py-1 text-[10px] font-black text-slate-400">
+              {actionQueueItems.length} acciones sugeridas
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            {actionQueueItems.map((item) => {
+              return (
+                <article key={`action-${item.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-xs font-black leading-snug text-white">{item.title}</p>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                        {CATEGORY_LABELS[item.category]} - {item.source}
+                      </p>
+                    </div>
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-lg border border-slate-700 bg-slate-900 p-2 text-slate-300 hover:text-white"
+                      title="Leer fuente"
+                    >
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+
+                  <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-slate-400">
+                    {item.summaryEs || item.summary || "Senal del radar lista para explorar."}
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {renderSaveIdeaButton(item, "compact")}
+                    <button
+                      type="button"
+                      onClick={() => onCreatePromptFromNews(item)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-pink-500/25 bg-pink-500/10 px-2.5 py-2 text-[11px] font-black text-pink-300 cursor-pointer"
+                    >
+                      <Sparkles size={11} />
+                      Prompt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onCreateForumPostFromNews(item, "team")}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2 text-[11px] font-black text-emerald-300 cursor-pointer"
+                    >
+                      <Users size={11} />
+                      Equipo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onCreatePublicBriefing([item], item.category)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-2 text-[11px] font-black text-cyan-300 cursor-pointer"
+                    >
+                      <FileText size={11} />
+                      Briefing
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
@@ -432,18 +565,7 @@ export default function NewsSection({
                     <Lightbulb size={13} />
                     Idea
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onSaveIdeaFromNews(item)}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-all cursor-pointer ${
-                      savedIdeaIds.has(item.id.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96))
-                        ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
-                        : "border-amber-500/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/15"
-                    }`}
-                  >
-                    <Bookmark size={13} fill={savedIdeaIds.has(item.id.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96)) ? "currentColor" : "none"} />
-                    Guardar
-                  </button>
+                  {renderSaveIdeaButton(item)}
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">

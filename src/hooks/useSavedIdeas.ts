@@ -12,16 +12,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import type { NewsItem, SavedIdea } from "../typesCommunity";
+import { safeIdeaId } from "../utils/news";
 
 interface UseSavedIdeasOptions {
   user: User | null;
   onNotification: (message: string, type?: "success" | "info") => void;
-}
-
-function safeIdeaId(item: NewsItem) {
-  const rawId = item.id || item.url || item.title;
-  const normalized = rawId.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
-  return normalized.slice(0, 96) || `idea-${Date.now()}`;
 }
 
 function mapSavedIdeaDoc<T extends { id: string; data: () => unknown }>(docSnap: T): SavedIdea {
