@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   collection,
   doc,
@@ -150,6 +150,10 @@ export default function App() {
   const [pendingForumDraft, setPendingForumDraft] = useState<CommunityPostInput | null>(null);
   const [pendingSaveIdeaItem, setPendingSaveIdeaItem] = useState<NewsItem | null>(null);
   const [pendingBriefingDraft, setPendingBriefingDraft] = useState<{ items: NewsItem[]; category: NewsCategory } | null>(null);
+  const [pendingBriefingSaveItem, setPendingBriefingSaveItem] = useState<BriefingItem | null>(null);
+  const [pendingBriefingPromptItem, setPendingBriefingPromptItem] = useState<BriefingItem | null>(null);
+  const [pendingBriefingForumItem, setPendingBriefingForumItem] = useState<BriefingItem | null>(null);
+  const trackedBriefingOpenRef = useRef<Set<string>>(new Set());
 
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
@@ -458,6 +462,14 @@ export default function App() {
     tags: idea.tags || []
   });
 
+  const buildBriefingEventMetadata = (item?: BriefingItem) => ({
+    briefingId: sharedBriefing?.id || sharedBriefingId || "",
+    briefingTitle: sharedBriefing?.title || "",
+    itemTitle: item?.title || "",
+    source: item?.source || "",
+    url: item?.url || ""
+  });
+
   const openNewsInAssistant = (item: NewsItem, mode: "prompt" | "summary" | "translation" | "opportunity") => {
     const context = `Titulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nResumen/contexto disponible: ${item.summaryEs || item.summary || "Sin resumen disponible."}`;
     const instructions = {
@@ -602,15 +614,51 @@ export default function App() {
   };
 
   const handleSaveBriefingItem = async (item: BriefingItem) => {
-    await handleSaveIdeaFromNews(briefingItemToNewsItem(item));
+    if (!user) {
+      setPendingBriefingSaveItem(item);
+      triggerNotification("Conecta con Google y guardaremos esta idea del briefing.", "info");
+      await handleSignIn();
+      return;
+    }
+
+    await saveIdeaFromNews(briefingItemToNewsItem(item));
+    void trackUserEvent("briefing_idea_save", undefined, buildBriefingEventMetadata(item));
   };
 
-  const handleCreatePromptFromBriefingItem = (item: BriefingItem) => {
+  const handleCreatePromptFromBriefingItem = async (item: BriefingItem) => {
+    if (!user) {
+      setPendingBriefingPromptItem(item);
+      triggerNotification("Conecta con Google y abriremos el prompt con contexto del briefing.", "info");
+      await handleSignIn();
+      return;
+    }
+
+    void trackUserEvent("briefing_prompt_create", undefined, buildBriefingEventMetadata(item));
     openNewsInAssistant(briefingItemToNewsItem(item), "prompt");
   };
 
-  const handleCreateForumPostFromBriefingItem = (item: BriefingItem) => {
+  const handleCreateForumPostFromBriefingItem = async (item: BriefingItem) => {
+    if (!user) {
+      setPendingBriefingForumItem(item);
+      triggerNotification("Conecta con Google y abriremos el borrador del foro.", "info");
+      await handleSignIn();
+      return;
+    }
+
+    void trackUserEvent("briefing_forum_post", undefined, buildBriefingEventMetadata(item));
     handleCreateForumPostFromNews(briefingItemToNewsItem(item), "question");
+  };
+
+  const handleCopyBriefingLink = async () => {
+    if (!sharedBriefing) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("briefing", sharedBriefing.id);
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    url.searchParams.delete("user");
+    await navigator.clipboard.writeText(url.toString());
+    void trackUserEvent("briefing_link_copy", undefined, buildBriefingEventMetadata());
+    triggerNotification("Link del briefing copiado.", "success");
   };
 
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
@@ -672,6 +720,35 @@ export default function App() {
     setPendingBriefingDraft(null);
     void handleCreatePublicBriefing(draftToPublish.items, draftToPublish.category);
   }, [user, pendingBriefingDraft]);
+
+  useEffect(() => {
+    if (!user || !sharedBriefing) return;
+    const trackingKey = `${user.uid}:${sharedBriefing.id}`;
+    if (trackedBriefingOpenRef.current.has(trackingKey)) return;
+    trackedBriefingOpenRef.current.add(trackingKey);
+    void trackUserEvent("briefing_open", undefined, buildBriefingEventMetadata());
+  }, [user, sharedBriefing]);
+
+  useEffect(() => {
+    if (!user || !pendingBriefingSaveItem) return;
+    const itemToSave = pendingBriefingSaveItem;
+    setPendingBriefingSaveItem(null);
+    void handleSaveBriefingItem(itemToSave);
+  }, [user, pendingBriefingSaveItem]);
+
+  useEffect(() => {
+    if (!user || !pendingBriefingPromptItem) return;
+    const itemToOpen = pendingBriefingPromptItem;
+    setPendingBriefingPromptItem(null);
+    void handleCreatePromptFromBriefingItem(itemToOpen);
+  }, [user, pendingBriefingPromptItem]);
+
+  useEffect(() => {
+    if (!user || !pendingBriefingForumItem) return;
+    const itemToPost = pendingBriefingForumItem;
+    setPendingBriefingForumItem(null);
+    void handleCreateForumPostFromBriefingItem(itemToPost);
+  }, [user, pendingBriefingForumItem]);
 
   const founderPackPrompts = useMemo<Prompt[]>(() => {
     return DEFAULT_PROMPTS.map((prompt, index) => ({
@@ -1358,9 +1435,10 @@ export default function App() {
           loading={loadingSharedBriefing}
           onBack={handleCloseBriefing}
           onSignIn={handleSignIn}
+          onCopyLink={() => void handleCopyBriefingLink()}
           onSaveItem={(item) => void handleSaveBriefingItem(item)}
-          onCreatePrompt={handleCreatePromptFromBriefingItem}
-          onCreateForumPost={handleCreateForumPostFromBriefingItem}
+          onCreatePrompt={(item) => void handleCreatePromptFromBriefingItem(item)}
+          onCreateForumPost={(item) => void handleCreateForumPostFromBriefingItem(item)}
         />
       ) : sharedCollection ? (
         <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">

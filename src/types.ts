@@ -83,7 +83,18 @@ export interface HiddenPrompt {
 
 export interface UserEvent {
   id: string;
-  type: "recommendation_open" | "recommendation_use" | "recommendation_copy" | "use" | "copy" | "edit";
+  type:
+    | "recommendation_open"
+    | "recommendation_use"
+    | "recommendation_copy"
+    | "use"
+    | "copy"
+    | "edit"
+    | "briefing_open"
+    | "briefing_link_copy"
+    | "briefing_idea_save"
+    | "briefing_prompt_create"
+    | "briefing_forum_post";
   promptId?: string | null;
   promptTitle?: string | null;
   category?: Prompt["category"] | null;

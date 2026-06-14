@@ -1,4 +1,4 @@
-import { ArrowLeft, Bookmark, ExternalLink, MessageSquare, Sparkles, UserPlus } from "lucide-react";
+import { ArrowLeft, Bookmark, Copy, ExternalLink, MessageSquare, Sparkles, UserPlus } from "lucide-react";
 import type { Briefing, BriefingItem } from "../typesCommunity";
 
 function formatBriefingDate(value: any) {
@@ -13,6 +13,7 @@ interface PublicBriefingViewProps {
   loading?: boolean;
   onBack: () => void;
   onSignIn: () => void;
+  onCopyLink: () => void;
   onSaveItem: (item: BriefingItem) => void;
   onCreatePrompt: (item: BriefingItem) => void;
   onCreateForumPost: (item: BriefingItem) => void;
@@ -23,6 +24,7 @@ export default function PublicBriefingView({
   loading,
   onBack,
   onSignIn,
+  onCopyLink,
   onSaveItem,
   onCreatePrompt,
   onCreateForumPost
@@ -62,14 +64,39 @@ export default function PublicBriefingView({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onSignIn}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4f46e5] to-[#ec4899] px-4 py-2.5 text-xs font-black text-white transition-all hover:opacity-95 cursor-pointer"
-            >
-              <UserPlus size={14} />
-              Crear mi biblioteca
-            </button>
+            <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 lg:w-72 lg:grid-cols-1">
+              <button
+                type="button"
+                onClick={() => briefing.items[0] && onSaveItem(briefing.items[0])}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-slate-950 transition-all hover:bg-amber-400 cursor-pointer"
+              >
+                <Bookmark size={14} fill="currentColor" />
+                Guardar una idea
+              </button>
+              <button
+                type="button"
+                onClick={onSignIn}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4f46e5] to-[#ec4899] px-4 py-2.5 text-xs font-black text-white transition-all hover:opacity-95 cursor-pointer"
+              >
+                <UserPlus size={14} />
+                Crear mi biblioteca
+              </button>
+              <button
+                type="button"
+                onClick={onCopyLink}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-4 py-2.5 text-xs font-black text-slate-200 transition-all hover:border-cyan-500/30 hover:text-cyan-200 cursor-pointer min-[430px]:col-span-2 lg:col-span-1"
+              >
+                <Copy size={14} />
+                Copiar link
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-cyan-500/15 bg-cyan-500/5 p-4">
+            <p className="text-sm font-black text-cyan-100">Guarda ideas, conviertelas en prompts y publica tu version.</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              Este briefing funciona como punto de partida: guarda una senal, abre un prompt editable o crea una conversacion para construir con otros.
+            </p>
           </div>
 
           {briefing.tags.length > 0 && (
@@ -119,7 +146,7 @@ export default function PublicBriefingView({
                       className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-300 cursor-pointer"
                     >
                       <Bookmark size={12} />
-                      Guardar
+                      Guardar idea
                     </button>
                     <button
                       type="button"

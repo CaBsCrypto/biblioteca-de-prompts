@@ -287,7 +287,7 @@ service cloud.firestore {
         allow create: if isSignedIn()
           && request.auth.uid == userId
           && isValidId(eventId)
-          && incoming().type in ['recommendation_open', 'recommendation_use', 'recommendation_copy', 'use', 'copy', 'edit']
+          && incoming().type in ['recommendation_open', 'recommendation_use', 'recommendation_copy', 'use', 'copy', 'edit', 'briefing_open', 'briefing_link_copy', 'briefing_idea_save', 'briefing_prompt_create', 'briefing_forum_post']
           && (!('promptId' in incoming()) || incoming().promptId == null || (incoming().promptId is string && incoming().promptId.size() <= 128))
           && (!('promptTitle' in incoming()) || incoming().promptTitle == null || (incoming().promptTitle is string && incoming().promptTitle.size() <= 150))
           && (!('category' in incoming()) || incoming().category == null || (incoming().category is string && incoming().category.size() <= 50))
