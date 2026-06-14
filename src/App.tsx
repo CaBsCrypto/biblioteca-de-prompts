@@ -48,6 +48,7 @@ import AppTopNav from "./components/AppTopNav";
 import ForumSection from "./components/ForumSection";
 import HackathonsSection from "./components/HackathonsSection";
 import ShowcaseSection from "./components/ShowcaseSection";
+import NewsSection from "./components/NewsSection";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -61,7 +62,7 @@ import { useContentSafety } from "./hooks/useContentSafety";
 import { useModerationReview } from "./hooks/useModerationReview";
 import { useCommunityPosts } from "./hooks/useCommunityPosts";
 import { useHackathons } from "./hooks/useHackathons";
-import type { AppSection } from "./typesCommunity";
+import type { AppSection, NewsItem } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
@@ -397,6 +398,18 @@ export default function App() {
     url.searchParams.delete("collection");
     navigator.clipboard.writeText(url.toString());
     triggerNotification("Enlace del perfil copiado.", "success");
+  };
+
+  const handleCreatePromptFromNews = (item: NewsItem) => {
+    setPresetAItext(`Crea un prompt reutilizable en espanol basado en esta noticia o tendencia.\n\nTitulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nContexto en espanol: ${item.summaryEs || item.summary || "Analiza la noticia y extrae una oportunidad accionable."}\n\nObjetivo: convertir esta noticia en una plantilla para crear contenido, investigar oportunidades o preparar una idea de hackathon.`);
+    setShowAIAssistant(true);
+    triggerNotification("Abrimos el asistente con contexto de la noticia.", "success");
+  };
+
+  const handleCreateForumPostFromNews = (item: NewsItem) => {
+    setCurrentSection("foro");
+    setCurrentTab("comunidad");
+    triggerNotification(`Idea para comentar: ${item.title.slice(0, 90)}`, "info");
   };
 
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
@@ -1089,6 +1102,7 @@ export default function App() {
         postsCount={forumPostsCount}
         hackathonsCount={hackathons.length}
         showcasesCount={showcasePostsCount}
+        newsCount={0}
         onSectionChange={handleSectionChange}
       />
 
@@ -1218,6 +1232,11 @@ export default function App() {
               onSave={savePost}
               onDelete={deletePost}
               onLike={togglePostLike}
+            />
+          ) : currentSection === "noticias" ? (
+            <NewsSection
+              onCreatePromptFromNews={handleCreatePromptFromNews}
+              onCreateForumPostFromNews={handleCreateForumPostFromNews}
             />
           ) : (
             <>

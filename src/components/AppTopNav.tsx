@@ -1,4 +1,4 @@
-import { BookOpen, FolderOpen, Home, Image, MessageSquare, Trophy, Users } from "lucide-react";
+import { BookOpen, FolderOpen, Home, Image, MessageSquare, Newspaper, Trophy, Users } from "lucide-react";
 import type { AppSection } from "../typesCommunity";
 
 interface AppTopNavProps {
@@ -8,6 +8,7 @@ interface AppTopNavProps {
   postsCount: number;
   hackathonsCount: number;
   showcasesCount: number;
+  newsCount?: number;
   onSectionChange: (section: AppSection) => void;
 }
 
@@ -15,13 +16,14 @@ const NAV_ITEMS: Array<{
   id: AppSection;
   label: string;
   icon: typeof Home;
-  countKey?: "prompts" | "library" | "posts" | "hackathons" | "showcases";
+  countKey?: "prompts" | "library" | "posts" | "hackathons" | "showcases" | "news";
 }> = [
   { id: "inicio", label: "Inicio", icon: Home },
   { id: "prompts", label: "Prompts", icon: BookOpen, countKey: "prompts" },
   { id: "foro", label: "Foro", icon: MessageSquare, countKey: "posts" },
   { id: "hackathons", label: "Hackathons", icon: Trophy, countKey: "hackathons" },
   { id: "galeria", label: "Galeria", icon: Image, countKey: "showcases" },
+  { id: "noticias", label: "Noticias", icon: Newspaper, countKey: "news" },
   { id: "mi-biblioteca", label: "Mi Biblioteca", icon: FolderOpen, countKey: "library" }
 ];
 
@@ -32,6 +34,7 @@ export default function AppTopNav({
   postsCount,
   hackathonsCount,
   showcasesCount,
+  newsCount = 0,
   onSectionChange
 }: AppTopNavProps) {
   const counts = {
@@ -39,7 +42,8 @@ export default function AppTopNav({
     library: libraryCount,
     posts: postsCount,
     hackathons: hackathonsCount,
-    showcases: showcasesCount
+    showcases: showcasesCount,
+    news: newsCount
   };
 
   return (

@@ -15,6 +15,7 @@ const categoryOptions = promptCategories.join(", ");
 const aiWindowMs = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const aiMaxRequests = Number(process.env.AI_RATE_LIMIT_MAX || 20);
 const aiBuckets = new Map<string, { count: number; resetAt: number }>();
+const newsCache = new Map<string, { items: NewsItemPayload[]; expiresAt: number }>();
 let certCache: { certs: Record<string, string>; expiresAt: number } | null = null;
 
 interface AuthenticatedRequest extends express.Request {
@@ -63,6 +64,63 @@ interface AIRecommendationPayload {
     suggestedVariables: GeneratedPromptPayload["suggestedVariables"];
   };
 }
+
+type NewsCategory = "ai" | "tech" | "startups" | "devtools" | "design" | "hackathons";
+type NewsLanguage = "en" | "es" | "unknown";
+
+interface NewsItemPayload {
+  id: string;
+  title: string;
+  titleEs?: string;
+  summary?: string;
+  summaryEs?: string;
+  url: string;
+  source: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  language: NewsLanguage;
+  category: NewsCategory;
+  tags: string[];
+}
+
+const newsQueries: Record<NewsCategory, { hn: string; gnews: string; tags: string[]; spanishContext: string }> = {
+  ai: {
+    hn: "artificial intelligence OR generative AI OR agents OR LLM",
+    gnews: "artificial intelligence OR generative AI OR AI agents",
+    tags: ["ia", "llm", "agentes"],
+    spanishContext: "Inteligencia artificial, modelos generativos, agentes o automatizacion."
+  },
+  tech: {
+    hn: "technology OR software OR product",
+    gnews: "technology OR software OR product",
+    tags: ["tech", "producto"],
+    spanishContext: "Tecnologia, software, producto o tendencias digitales."
+  },
+  startups: {
+    hn: "startup OR founder OR venture capital",
+    gnews: "startup OR founder OR venture capital",
+    tags: ["startups", "negocio"],
+    spanishContext: "Startups, founders, inversion o nuevas empresas tecnologicas."
+  },
+  devtools: {
+    hn: "developer tools OR open source OR API OR framework",
+    gnews: "developer tools OR open source OR API OR framework",
+    tags: ["devtools", "codigo"],
+    spanishContext: "Herramientas para desarrolladores, APIs, frameworks u open source."
+  },
+  design: {
+    hn: "design tools OR UX OR product design OR creative AI",
+    gnews: "design tools OR UX OR product design OR creative AI",
+    tags: ["diseno", "ux", "creatividad"],
+    spanishContext: "Diseno, UX, herramientas creativas o contenido visual con IA."
+  },
+  hackathons: {
+    hn: "hackathon OR builders OR developer challenge OR AI competition",
+    gnews: "hackathon OR developer challenge OR AI competition",
+    tags: ["hackathon", "oportunidades"],
+    spanishContext: "Hackathons, retos para builders, competencias o oportunidades para crear equipo."
+  }
+};
 
 function decodeBase64Url(input: string) {
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -272,6 +330,157 @@ function normalizeRecommendationCandidates(rawCandidates: unknown): Recommendati
     .slice(0, 8);
 }
 
+function getNewsCategory(value: unknown): NewsCategory {
+  return typeof value === "string" && value in newsQueries ? value as NewsCategory : "ai";
+}
+
+function detectNewsLanguage(text: string): NewsLanguage {
+  const normalized = text.toLowerCase();
+  const spanishSignals = [" el ", " la ", " los ", " las ", " una ", " para ", " con ", " inteligencia ", " tecnologia ", " diseno ", " como "];
+  const englishSignals = [" the ", " and ", " for ", " with ", " about ", " startup ", " artificial ", " intelligence ", " design "];
+  const spanishScore = spanishSignals.filter((signal) => normalized.includes(signal)).length;
+  const englishScore = englishSignals.filter((signal) => normalized.includes(signal)).length;
+  if (spanishScore > englishScore) return "es";
+  if (englishScore > 0) return "en";
+  return "unknown";
+}
+
+function buildSpanishNewsContext(category: NewsCategory, source: string, language: NewsLanguage) {
+  const base = newsQueries[category].spanishContext;
+  if (language === "es") {
+    return `Resumen editorial: contenido en espanol sobre ${base.toLowerCase()}`;
+  }
+  if (language === "en") {
+    return `Resumen editorial: contenido en ingles sobre ${base.toLowerCase()} Ideal para detectar ideas de prompts, oportunidades o temas para newsletter.`;
+  }
+  return `Resumen editorial: fuente ${source} relacionada con ${base.toLowerCase()}`;
+}
+
+function normalizeNewsUrl(url: unknown) {
+  if (typeof url !== "string") return "";
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+async function fetchHackerNewsItems(category: NewsCategory): Promise<NewsItemPayload[]> {
+  const queryConfig = newsQueries[category];
+  const url = new URL("https://hn.algolia.com/api/v1/search_by_date");
+  url.searchParams.set("query", queryConfig.hn);
+  url.searchParams.set("tags", "story");
+  url.searchParams.set("hitsPerPage", "24");
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "biblioteca-de-prompts-news/1.0" }
+  });
+  if (!response.ok) {
+    throw new Error(`Hacker News respondio ${response.status}`);
+  }
+
+  const payload = await response.json() as { hits?: Array<Record<string, unknown>> };
+  return (payload.hits || [])
+    .map((hit) => {
+      const title = typeof hit.title === "string" ? hit.title.trim() : "";
+      const storyUrl = normalizeNewsUrl(hit.url);
+      const discussionUrl = typeof hit.objectID === "string" ? `https://news.ycombinator.com/item?id=${hit.objectID}` : "";
+      const finalUrl = storyUrl || discussionUrl;
+      const language = detectNewsLanguage(title);
+      return {
+        id: `hn-${String(hit.objectID || crypto.createHash("sha1").update(`${title}-${finalUrl}`).digest("hex"))}`,
+        title,
+        summary: typeof hit.story_text === "string" ? hit.story_text.replace(/<[^>]*>/g, " ").trim().slice(0, 280) : "",
+        summaryEs: buildSpanishNewsContext(category, "Hacker News", language),
+        url: finalUrl,
+        source: "Hacker News",
+        publishedAt: typeof hit.created_at === "string" ? hit.created_at : "",
+        language,
+        category,
+        tags: queryConfig.tags
+      } satisfies NewsItemPayload;
+    })
+    .filter((item) => item.title && item.url);
+}
+
+async function fetchGNewsItems(category: NewsCategory, language: "en" | "es"): Promise<NewsItemPayload[]> {
+  const apiKey = process.env.GNEWS_API_KEY;
+  if (!apiKey) return [];
+
+  const queryConfig = newsQueries[category];
+  const url = new URL("https://gnews.io/api/v4/search");
+  url.searchParams.set("q", queryConfig.gnews);
+  url.searchParams.set("lang", language);
+  url.searchParams.set("max", "10");
+  url.searchParams.set("apikey", apiKey);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.warn(`GNews ${language} respondio ${response.status}`);
+    return [];
+  }
+
+  const payload = await response.json() as { articles?: Array<Record<string, unknown>> };
+  return (payload.articles || [])
+    .map((article) => {
+      const title = typeof article.title === "string" ? article.title.trim() : "";
+      const finalUrl = normalizeNewsUrl(article.url);
+      return {
+        id: `gnews-${crypto.createHash("sha1").update(`${title}-${finalUrl}`).digest("hex")}`,
+        title,
+        summary: typeof article.description === "string" ? article.description.trim().slice(0, 320) : "",
+        summaryEs: language === "es"
+          ? (typeof article.description === "string" ? article.description.trim().slice(0, 320) : buildSpanishNewsContext(category, "GNews", "es"))
+          : buildSpanishNewsContext(category, "GNews", "en"),
+        url: finalUrl,
+        source: typeof (article.source as Record<string, unknown> | undefined)?.name === "string"
+          ? String((article.source as Record<string, unknown>).name)
+          : "GNews",
+        imageUrl: normalizeNewsUrl(article.image),
+        publishedAt: typeof article.publishedAt === "string" ? article.publishedAt : "",
+        language,
+        category,
+        tags: queryConfig.tags
+      } satisfies NewsItemPayload;
+    })
+    .filter((item) => item.title && item.url);
+}
+
+async function getNewsItems(category: NewsCategory, language: "all" | "en" | "es") {
+  const cacheKey = `${category}:${language}`;
+  const cached = newsCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.items;
+  }
+
+  const [hnItems, gnewsEnItems, gnewsEsItems] = await Promise.all([
+    language === "es" ? Promise.resolve([]) : fetchHackerNewsItems(category).catch((error) => {
+      console.warn("Hacker News fetch failed:", error instanceof Error ? error.message : String(error));
+      return [];
+    }),
+    language === "es" ? Promise.resolve([]) : fetchGNewsItems(category, "en"),
+    language === "en" ? Promise.resolve([]) : fetchGNewsItems(category, "es")
+  ]);
+
+  const seenUrls = new Set<string>();
+  const items = [...gnewsEsItems, ...gnewsEnItems, ...hnItems]
+    .filter((item) => {
+      if (seenUrls.has(item.url)) return false;
+      seenUrls.add(item.url);
+      return true;
+    })
+    .sort((a, b) => Date.parse(b.publishedAt || "0") - Date.parse(a.publishedAt || "0"))
+    .slice(0, 36);
+
+  newsCache.set(cacheKey, {
+    items,
+    expiresAt: Date.now() + 10 * 60 * 1000
+  });
+  return items;
+}
+
 export async function createApp(options: { enableVite?: boolean; serveStatic?: boolean } = {}) {
   const enableVite = options.enableVite ?? process.env.NODE_ENV !== "production";
   const serveStatic = options.serveStatic ?? process.env.NODE_ENV === "production";
@@ -291,6 +500,26 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
       headers: {
         'User-Agent': 'aistudio-build',
       }
+    }
+  });
+
+  app.get("/api/news", async (req, res) => {
+    try {
+      const category = getNewsCategory(req.query.category);
+      const language = req.query.language === "en" || req.query.language === "es"
+        ? req.query.language
+        : "all";
+      const items = await getNewsItems(category, language);
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=600");
+      res.json({
+        category,
+        language,
+        hasPremiumSource: Boolean(process.env.GNEWS_API_KEY),
+        items
+      });
+    } catch (error) {
+      console.error("Error fetching news:", error);
+      res.status(500).json({ error: "No se pudieron cargar las noticias en este momento." });
     }
   });
 

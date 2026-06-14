@@ -36,4 +36,22 @@ export interface HackathonOpportunity {
   updatedAt: any;
 }
 
-export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "mi-biblioteca";
+export type NewsCategory = "ai" | "tech" | "startups" | "devtools" | "design" | "hackathons";
+export type NewsLanguage = "en" | "es" | "unknown";
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  titleEs?: string;
+  summary?: string;
+  summaryEs?: string;
+  url: string;
+  source: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  language: NewsLanguage;
+  category: NewsCategory;
+  tags: string[];
+}
+
+export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca";
