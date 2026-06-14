@@ -18,6 +18,7 @@ interface PublicPromptDetailModalProps {
     remixCount: number;
     hasOwnRemix: boolean;
     originalPrompt: Prompt | null;
+    knownRemixes: Prompt[];
   };
   currentUser: User | null;
   isSocialFavorite: boolean;
@@ -29,6 +30,7 @@ interface PublicPromptDetailModalProps {
   onLikeToggle: (prompt: Prompt) => void;
   onHidePrompt: (prompt: Prompt) => void;
   onReportPrompt: (prompt: Prompt) => void;
+  onViewRelatedPrompt?: (prompt: Prompt) => void;
   onAuthorClick?: (author: { name: string; uid: string; avatar?: string }) => void;
   onNotification?: (message: string, type: "success" | "info") => void;
 }
@@ -46,6 +48,7 @@ export default function PublicPromptDetailModal({
   onLikeToggle,
   onHidePrompt,
   onReportPrompt,
+  onViewRelatedPrompt,
   onAuthorClick,
   onNotification
 }: PublicPromptDetailModalProps) {
@@ -60,10 +63,12 @@ export default function PublicPromptDetailModal({
   const remixCount = resourceContext?.remixCount || 0;
   const hasOwnRemix = Boolean(resourceContext?.hasOwnRemix);
   const originalPrompt = resourceContext?.originalPrompt || null;
+  const knownRemixes = resourceContext?.knownRemixes || [];
   const primaryTags = (prompt.tags || []).slice(0, 3);
+  const canReadVersions = Boolean(currentUser && currentUser.uid === prompt.userId);
 
   useEffect(() => {
-    if (isFounderPackPrompt) {
+    if (isFounderPackPrompt || !canReadVersions) {
       setVersions([]);
       setLoadingVersions(false);
       return;
@@ -93,7 +98,7 @@ export default function PublicPromptDetailModal({
     );
 
     return unsubscribe;
-  }, [prompt.id, isFounderPackPrompt]);
+  }, [prompt.id, isFounderPackPrompt, canReadVersions]);
 
   return (
     <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4">
@@ -192,9 +197,47 @@ export default function PublicPromptDetailModal({
               {originalPrompt && (
                 <div className="rounded-2xl border border-slate-700/70 bg-slate-950/35 p-3.5 text-xs text-slate-300 flex items-start gap-2.5">
                   <Layers3 size={14} className="mt-0.5 text-slate-400 shrink-0" />
-                  <div className="leading-relaxed">
-                    Original conocido: <span className="font-bold text-slate-100">{originalPrompt.title}</span>
-                    {originalPrompt.authorName ? <> por <span className="font-bold text-slate-100">{originalPrompt.authorName}</span></> : ""}.
+                  <div className="leading-relaxed min-w-0 flex-1">
+                    <p>
+                      Original conocido: <span className="font-bold text-slate-100">{originalPrompt.title}</span>
+                      {originalPrompt.authorName ? <> por <span className="font-bold text-slate-100">{originalPrompt.authorName}</span></> : ""}.
+                    </p>
+                    {onViewRelatedPrompt && (
+                      <button
+                        type="button"
+                        onClick={() => onViewRelatedPrompt(originalPrompt)}
+                        className="mt-2 text-[10px] font-bold text-indigo-300 hover:text-indigo-200 cursor-pointer"
+                      >
+                        Ver original
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {knownRemixes.length > 0 && (
+                <div className="rounded-2xl border border-pink-500/20 bg-pink-500/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-pink-300 flex items-center gap-1.5">
+                      <GitFork size={13} />
+                      Remixes conocidos
+                    </h3>
+                    <span className="text-[10px] font-mono text-pink-200">{knownRemixes.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {knownRemixes.slice(0, 4).map((remix) => (
+                      <button
+                        key={`known-remix-${remix.id}`}
+                        type="button"
+                        onClick={() => onViewRelatedPrompt?.(remix)}
+                        className="rounded-xl border border-slate-800 bg-slate-950/35 p-3 text-left hover:border-pink-500/30 hover:bg-slate-900/55 transition-all cursor-pointer"
+                      >
+                        <p className="text-[11px] font-bold text-slate-100 line-clamp-1">{remix.title}</p>
+                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">
+                          {remix.authorName ? `por ${remix.authorName}` : "Remix de la comunidad"}
+                        </p>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -244,6 +287,10 @@ export default function PublicPromptDetailModal({
                   </div>
                   {loadingVersions ? (
                     <p className="text-[11px] text-slate-500">Consultando historial del prompt...</p>
+                  ) : !canReadVersions ? (
+                    <p className="text-[11px] text-slate-500">
+                      El historial completo de versiones queda privado para el autor. La comunidad ve la version publicada actual y sus remixes conocidos.
+                    </p>
                   ) : versions.length === 0 ? (
                     <p className="text-[11px] text-slate-500">
                       Aun no hay versiones previas visibles. Cuando el autor edite el prompt, el historial aparecera aqui.

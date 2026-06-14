@@ -32,10 +32,10 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
             </span>
           </div>
           <h3 className="text-sm md:text-base font-extrabold text-white mt-2 leading-tight">
-            Activa tu biblioteca en pocos minutos
+            Activa tu red personal de prompts
           </h3>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Sigue estos pasos para guardar prompts, probarlos, hacer remix desde la comunidad y compartir tu primera plantilla.
+            Guarda prompts, usalos en tu flujo diario, remixea recursos de otros creadores y publica tu primera version para la comunidad.
           </p>
         </div>
 

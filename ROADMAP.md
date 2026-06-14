@@ -2,44 +2,49 @@
 
 ## Estado actual
 
-- La app compila correctamente con `npm run lint` y `npm run build`.
-- El producto base ya tiene autenticacion, biblioteca privada, comunidad, carpetas, comentarios, likes, enlaces publicos, exportacion y asistente IA.
-- La mayor deuda tecnica esta en `src/App.tsx`, que concentra demasiada logica de estado, consultas Firestore y renderizado.
+- La app esta en `main` y se valida con `npm run qa` antes de deploy.
+- El producto ya tiene biblioteca privada, comunidad, perfiles publicos, follows, favoritos sociales, comentarios, likes, ocultar/reportar, remixes privados y enlaces publicos.
+- El Pack Fundador tiene 80 prompts semilla privados por usuario.
+- La vitrina publica permite explorar, copiar, usar y guardar prompts como remix despues de login.
+- El feed social ya incluye `Para ti`, `Creadores para seguir`, `Destacados`, `Recientes`, `Mas guardados` y `Remixeables`.
+- Mi Biblioteca ya funciona como workspace diario con accesos rapidos, remixes recientes, favoritos y candidatos para publicar.
+- El detalle publico presenta el prompt como `Recurso vivo`, con original conocido, remixes conocidos y estado de copia propia.
+- El perfil publico funciona como hub de creador con recursos destacados, mapa del creador, colecciones y remixes publicados.
+- El bundle inicial ya fue reducido con lazy loading de superficies grandes y chunks manuales de Firebase/vendors.
 
-## Prioridad 1 - Estabilizar base
+## Prioridad 1 - Producto confiable
 
-- Extraer constantes compartidas para categorias, filtros y mensajes.
-- Crear hooks para Auth, prompts, carpetas, comunidad y enlaces compartidos.
-- Centralizar operaciones Firestore en un modulo de servicios.
-- Agregar manejo visual de errores para operaciones que hoy solo registran en consola.
-- Revisar indices requeridos de Firestore para busquedas y filtros usados en comunidad.
+- Mantener `npm run qa` como puerta local obligatoria.
+- Mantener `npm run test:rules` dormido hasta CI/staging con Java/JDK.
+- Usar `QA_VERCEL.md` como checklist funcional antes de invitar usuarios.
+- Reforzar confianza social: reportes, ocultar, señales de calidad, estados privados/publicos y revision de publicaciones propias.
+- Confirmar que prompts privados no aparecen en vitrina, colecciones ni perfiles publicos.
 
-## Prioridad 2 - Mejorar experiencia de usuario
+## Prioridad 2 - Red social de prompts
 
-- Agregar importacion/exportacion JSON de la biblioteca.
-- Crear vista de detalle de prompt con historial de versiones.
-- Mejorar busqueda con filtros combinados persistentes.
-- Agregar estados vacios especificos por filtro, carpeta y comunidad.
-- Convertir la gestion de carpetas en una experiencia de navegacion mas clara.
+- Mejorar la narrativa publica: guardar, remixear, publicar y seguir creadores.
+- Hacer mas visible el grafo ligero de remixes sin crear router nuevo.
+- Separar mejor en perfiles: prompts originales, colecciones y remixes publicados.
+- Facilitar que un visitante entienda que `Guardar` crea un remix privado editable.
+- Pulir perfiles como hubs de creador antes de abrir una red social masiva.
 
-## Prioridad 3 - Robustecer IA
+## Prioridad 3 - Workspace diario
 
-- Validar y normalizar la respuesta de Gemini antes de guardarla.
-- Permitir seleccionar modelo desde configuracion de administrador.
-- Agregar streaming o estado de progreso para generaciones largas.
-- Guardar metadatos de generacion: modelo, fecha, modo usado y prompt fuente.
-- Crear plantillas IA especializadas por categoria.
+- Mejorar busqueda combinada por texto, autor, tags, categoria y estado.
+- Agregar importacion/exportacion JSON cuando la biblioteca personal crezca.
+- Seguir extrayendo logica de `src/App.tsx` hacia hooks y componentes.
+- Centralizar operaciones Firestore en servicios cuando el producto estabilice flujos sociales.
 
-## Prioridad 4 - Calidad y despliegue
+## Prioridad 4 - IA opcional
 
-- Agregar pruebas unitarias para utilidades de variables `{{variable}}`.
-- Agregar pruebas de componentes para formularios principales.
-- Reducir el bundle inicial mediante lazy loading de modales y panel IA.
-- Documentar despliegue Firebase/Vercel/Cloud Run segun destino final.
-- Agregar CI con `npm ci`, `npm run lint` y `npm run build`.
+- Mantener recomendador local primero.
+- Usar Gemini solo como mejora explicita y tolerante a errores.
+- No enviar `promptText` completo salvo que el usuario pida analisis profundo.
+- Futuro: sugerir huecos de biblioteca, plantillas nuevas y mejoras de prompts existentes.
 
-## Observaciones tecnicas
+## Pendiente futuro
 
-- El build advierte que el chunk principal supera 500 kB; Firebase y la app monolitica son los principales candidatos a dividir.
-- `src/firebase.ts` importa Firestore dinamica y estaticamente, por eso Vite avisa que ese import dinamico no separa chunk.
-- El backend IA ya usa `GEMINI_MODEL`, lo que permite actualizar modelos sin editar codigo.
+- Proyecto Firebase staging para pruebas intensas con datos descartables.
+- CI con `npm ci`, `npm run qa` y Firestore Emulator.
+- Moderacion global real para founder/admin si la comunidad empieza a crecer.
+- Monetizacion, equipos o marketplace solo despues de validar retencion y uso social.

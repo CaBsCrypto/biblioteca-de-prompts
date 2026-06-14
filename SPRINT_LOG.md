@@ -161,3 +161,30 @@ Estado: iniciado.
 - Extraer hooks de auth/perfil, prompts, comunidad, follows y eventos.
 - Extraer modales grandes de perfil, recomendador y compartir carpeta.
 - Resolver warning de bundle grande con code splitting o manual chunks.
+
+## Sprint 7 - Red social confiable
+
+Estado: implementado.
+
+### Completado
+
+- Roadmap actualizado para reflejar estado real: vitrina publica, feed `Para ti`, perfil hub, workspace diario, recurso vivo y code splitting.
+- Agregado centro de confianza en Mi Biblioteca para publicaciones propias:
+  - conteo de prompts publicos,
+  - conteo de prompts ocultos del feed,
+  - reportes recibidos por prompts propios,
+  - accesos para ver, editar o despublicar recursos reportados.
+- Reglas Firestore permiten leer reportes solo al dueno del prompt o a perfiles con rol `founder`.
+- Las tarjetas muestran mejor estado social:
+  - privado/publicado,
+  - remix,
+  - remixes conocidos.
+- El detalle publico ahora muestra remixes conocidos navegables y evita leer historial privado de versiones cuando el usuario no es el autor.
+- El perfil publico separa mejor prompts originales y remixes publicados.
+- El checklist de activacion refuerza la narrativa: guardar, usar, remixear, organizar y publicar.
+
+### Validacion esperada
+
+- `npm run qa`.
+- `npm run smoke:vercel -- https://biblioteca-de-prompts-ashen.vercel.app` despues de deploy.
+- Prueba manual de visitante, login, guardar remix, reporte/ocultar, centro de confianza y perfil publico.

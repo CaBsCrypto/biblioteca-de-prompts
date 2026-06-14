@@ -26,6 +26,7 @@ interface PromptCardProps {
   onHidePrompt?: (prompt: Prompt) => void;
   onReportPrompt?: (prompt: Prompt) => void;
   isSocialFavorite?: boolean;
+  knownRemixCount?: number;
 }
 
 export default function PromptCard({
@@ -46,7 +47,8 @@ export default function PromptCard({
   onSocialFavoriteToggle,
   onHidePrompt,
   onReportPrompt,
-  isSocialFavorite = false
+  isSocialFavorite = false,
+  knownRemixCount = 0
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -353,6 +355,24 @@ ${notesStr}
               <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Publicado en Comunidad">
                 <Globe size={11} className="animate-pulse" />
                 <span>En Comunidad</span>
+              </span>
+            )}
+            {!prompt.isShared && !isCommunityView && (
+              <span className="text-[10px] bg-slate-950/45 text-slate-400 border border-slate-700/70 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Privado en tu biblioteca">
+                <EyeOff size={11} />
+                <span>Privado</span>
+              </span>
+            )}
+            {forkSourceTitle && (
+              <span className="text-[10px] bg-pink-500/10 text-pink-300 border border-pink-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Este prompt nace de otro recurso">
+                <GitFork size={11} />
+                <span>Remix</span>
+              </span>
+            )}
+            {knownRemixCount > 0 && (
+              <span className="text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Remixes conocidos de este recurso">
+                <GitFork size={11} />
+                <span>{knownRemixCount} remix{knownRemixCount === 1 ? "" : "es"}</span>
               </span>
             )}
             {isCommunityView && (

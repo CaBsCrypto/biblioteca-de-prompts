@@ -52,35 +52,35 @@ export function getActivationChecklistState({
     {
       id: "seed",
       title: "Completa tu pack inicial",
-      description: `${defaultPromptsSavedCount}/${defaultPromptsTotal} prompts base guardados.`,
+      description: `Guarda prompts base para empezar tu workspace: ${defaultPromptsSavedCount}/${defaultPromptsTotal}.`,
       ctaLabel: defaultPromptsSavedCount === 0 ? "Cargar pack" : "Completar pack",
       completed: defaultPromptsSavedCount >= defaultPromptsTotal
     },
     {
       id: "use",
       title: "Usa o copia un prompt",
-      description: "Prueba una plantilla con variables o copia una version lista.",
+      description: "Convierte un recurso guardado en una accion real de trabajo.",
       ctaLabel: "Ir a mis prompts",
       completed: hasUsedOrCopiedPrompt
     },
     {
       id: "remix",
       title: "Haz tu primer remix",
-      description: "Clona un prompt comunitario y editalo en tu biblioteca.",
+      description: "Guarda un prompt social como copia privada y adaptalo a tu caso.",
       ctaLabel: "Explorar comunidad",
       completed: hasRemix
     },
     {
       id: "folder",
       title: "Organiza con una carpeta",
-      description: "Crea una coleccion para ordenar tus mejores prompts.",
+      description: "Agrupa prompts por proyecto, cliente, canal o formato.",
       ctaLabel: "Crear carpeta",
       completed: hasFolder
     },
     {
       id: "share",
       title: "Publica tu primer prompt",
-      description: "Comparte una plantilla cuando este lista para la comunidad.",
+      description: "Comparte una version util y empieza tu perfil de creador.",
       ctaLabel: "Elegir prompt",
       completed: hasSharedPrompt
     }

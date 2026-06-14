@@ -170,6 +170,7 @@ interface AppModalLayerProps {
     remixCount: number;
     hasOwnRemix: boolean;
     originalPrompt: Prompt | null;
+    knownRemixes: Prompt[];
   };
   currentUser: User | null;
   socialFavoritePromptIds: Set<string>;
@@ -181,6 +182,7 @@ interface AppModalLayerProps {
   onLikeToggle: (prompt: Prompt) => void;
   onHidePrompt: (prompt: Prompt) => void;
   onReportPrompt: (prompt: Prompt) => void;
+  onViewRelatedPrompt: (prompt: Prompt) => void;
   onAuthorClick: (author: { name: string; uid: string; avatar?: string }) => void;
 }
 
@@ -263,6 +265,7 @@ export function AppModalLayer(props: AppModalLayerProps) {
     onLikeToggle,
     onHidePrompt,
     onReportPrompt,
+    onViewRelatedPrompt,
     onAuthorClick
   } = props;
 
@@ -393,6 +396,7 @@ export function AppModalLayer(props: AppModalLayerProps) {
           onLikeToggle={onLikeToggle}
           onHidePrompt={onHidePrompt}
           onReportPrompt={onReportPrompt}
+          onViewRelatedPrompt={onViewRelatedPrompt}
           onAuthorClick={onAuthorClick}
           onNotification={onNotification}
         />

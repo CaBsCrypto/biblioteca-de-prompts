@@ -54,7 +54,8 @@ export default function PublicProfileView({
 }: PublicProfileViewProps) {
   const publicFolders = folders.filter((folder) => folder.userId === author.uid && folder.isShared);
   const remixPrompts = prompts.filter((prompt) => Boolean(prompt.forkedFromPromptId || prompt.forkedFrom));
-  const visiblePrompts = activeTab === "remixes" ? remixPrompts : prompts;
+  const originalPrompts = prompts.filter((prompt) => !prompt.forkedFromPromptId && !prompt.forkedFrom);
+  const visiblePrompts = activeTab === "remixes" ? remixPrompts : originalPrompts;
   const likesCount = prompts.reduce((sum, prompt) => sum + (prompt.likesCount || prompt.likedBy?.length || 0), 0);
   const isFollowing = followedCreatorUids.includes(author.uid);
   const displayHandle = author.handle || prompts.find((prompt) => prompt.authorHandle)?.authorHandle || "";
@@ -77,6 +78,17 @@ export default function PublicProfileView({
     .filter((item) => item.remixes > 0)
     .sort((a, b) => b.remixes - a.remixes)
     .slice(0, 3);
+  const getKnownRemixCount = (prompt: Prompt) => {
+    const sourceId = prompt.forkedFromPromptId || prompt.id;
+    return allCommunityPrompts.filter((candidate) => (
+      candidate.id !== prompt.id &&
+      (
+        candidate.forkedFromPromptId === sourceId ||
+        candidate.forkedFromPromptId === prompt.id ||
+        (!candidate.forkedFromPromptId && candidate.forkedFrom === prompt.title)
+      )
+    )).length;
+  };
   const categoryCounts = prompts.reduce((map, prompt) => {
     map.set(prompt.category, (map.get(prompt.category) || 0) + 1);
     return map;
@@ -143,7 +155,7 @@ export default function PublicProfileView({
                 {displayHandle ? `@${displayHandle}` : "Creador de la comunidad"}
               </p>
               <p className="mt-3 text-xs text-slate-400 max-w-2xl leading-relaxed font-sans">
-                Hub publico con prompts, colecciones y remixes. Guarda cualquier recurso como remix editable para adaptarlo a tu propio flujo.
+                Hub publico con prompts originales, colecciones y remixes publicados. Guarda cualquier recurso como remix editable para adaptarlo a tu propio flujo.
               </p>
             </div>
           </div>
@@ -345,6 +357,7 @@ export default function PublicProfileView({
         >
           <Globe size={13} />
           <span>Prompts</span>
+          <span className="text-[10px] bg-slate-950/45 px-1.5 py-0.5 rounded-md font-mono">{originalPrompts.length}</span>
         </button>
         <button
           type="button"
@@ -365,6 +378,7 @@ export default function PublicProfileView({
         >
           <GitFork size={13} />
           <span>Remixes publicados</span>
+          <span className="text-[10px] bg-slate-950/45 px-1.5 py-0.5 rounded-md font-mono">{remixPrompts.length}</span>
         </button>
       </div>
 
@@ -372,10 +386,10 @@ export default function PublicProfileView({
         visiblePrompts.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/35 p-12 text-center">
             <p className="text-sm font-bold text-white">
-              {activeTab === "remixes" ? "Este creador aun no publico remixes." : "Este creador aun no tiene prompts publicos."}
+              {activeTab === "remixes" ? "Este creador aun no publico remixes." : "Este creador aun no tiene prompts originales publicos."}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              {activeTab === "remixes" ? "Cuando comparta adaptaciones, apareceran aqui." : "Cuando publique, sus posts apareceran aqui."}
+              {activeTab === "remixes" ? "Cuando comparta adaptaciones, apareceran aqui." : "Cuando publique recursos originales, apareceran aqui."}
             </p>
           </div>
         ) : (
@@ -401,6 +415,7 @@ export default function PublicProfileView({
                 onHidePrompt={onHidePrompt}
                 onReportPrompt={onReportPrompt}
                 isSocialFavorite={socialFavoritePromptIds.has(prompt.id)}
+                knownRemixCount={getKnownRemixCount(prompt)}
               />
             ))}
           </div>

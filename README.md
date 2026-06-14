@@ -6,7 +6,11 @@ Aplicacion full-stack para guardar, clasificar, compartir y optimizar prompts co
 
 - Login con Google mediante Firebase Auth.
 - Biblioteca personal de prompts con favoritos, carpetas, etiquetas y busqueda.
-- Comunidad de prompts publicos con likes, comentarios y clonacion.
+- Comunidad de prompts publicos con likes, comentarios, follows, favoritos sociales y remixes privados.
+- Vitrina publica para explorar prompts antes de iniciar sesion.
+- Perfil publico tipo hub de creador con prompts originales, colecciones y remixes publicados.
+- Detalle social de prompt como recurso vivo, con original conocido y remixes relacionados.
+- Centro de confianza para revisar publicaciones propias, reportes recibidos y prompts ocultos del feed.
 - Enlaces publicos para prompts y colecciones compartidas.
 - Relleno interactivo de variables `{{variable}}`.
 - Exportacion de prompts como Markdown o mediante dialogo de impresion/PDF.
@@ -65,6 +69,6 @@ La aplicacion queda disponible en `http://localhost:3000`.
 ## Notas de continuidad
 
 - Las reglas de Firestore viven en `firestore.rules`.
-- Los prompts semilla estan en `src/data.ts`.
+- Los prompts semilla estan en `src/data/founderPrompts.ts` y se re-exportan desde `src/data.ts`.
 - La UI principal esta concentrada en `src/App.tsx`; conviene extraer hooks y componentes antes de sumar flujos grandes.
 - El backend IA esta en `server.ts` y usa `GEMINI_MODEL` para evitar hardcodear cambios de modelo.

@@ -84,6 +84,11 @@ export function useCommunity({
         setCommunityFolders(snapshot.docs.map(mapFolderDoc));
       },
       (error) => {
+        if ((error as { code?: string }).code === "permission-denied") {
+          setCommunityFolders([]);
+          console.warn("Community folders are not readable with the current Firestore rules.");
+          return;
+        }
         console.error("Error subscribing to community folders:", error);
       }
     );

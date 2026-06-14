@@ -69,10 +69,17 @@ vercel logs <deployment-url> --no-follow --since 30m --level error --expand
 
 - Visitante sin login ve la vitrina publica.
 - Visitante puede copiar o usar prompts publicos.
+- Visitante entiende que `Guardar` crea un remix privado editable despues de login.
 - Login con Google funciona.
 - Editar perfil actualiza nombre, handle y bio.
 - Crear prompt privado.
 - Publicar prompt individual.
+- Verificar que el centro de confianza aparece en Mi Biblioteca cuando hay publicaciones, ocultos o reportes.
+- Reportar un prompt de otro creador exige login, crea reporte y lo oculta del feed del usuario.
+- Ocultar un prompt lo remueve del feed sin borrar ni despublicar el recurso.
+- Detalle de prompt muestra estado `Recurso vivo`, original conocido y remixes conocidos cuando existan.
+- Si el usuario no es autor, el historial de versiones no intenta leerse como dato publico.
+- Perfil publico separa prompts originales, colecciones y remixes publicados.
 - Compartir carpeta no publica prompts privados por defecto.
 - Publicacion masiva de carpeta requiere marcar la casilla explicita.
 - Seguir creador persiste en `/users/{uid}/following/{creatorUid}`.

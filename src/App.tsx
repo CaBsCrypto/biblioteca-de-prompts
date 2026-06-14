@@ -43,6 +43,7 @@ import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
 import CommunityExplore from "./components/CommunityExplore";
 import DailyWorkspace from "./components/DailyWorkspace";
+import TrustModerationPanel from "./components/TrustModerationPanel";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -53,6 +54,7 @@ import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
 import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { useContentSafety } from "./hooks/useContentSafety";
+import { useModerationReview } from "./hooks/useModerationReview";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
 import { buildCommunityExploreSections, buildDailyWorkspaceState, buildSuggestedCreators } from "./utils/dailyLoop";
@@ -274,6 +276,13 @@ export default function App() {
     user,
     onNotification: triggerNotification
   });
+
+  const {
+    publicOwnPrompts,
+    reportedPrompts,
+    totalReportsCount,
+    hasPermissionIssue: hasModerationPermissionIssue
+  } = useModerationReview(user, prompts);
 
   const handleHideCommunityPrompt = async (prompt: Prompt) => {
     await handleHidePrompt(prompt);
@@ -819,7 +828,8 @@ export default function App() {
       return {
         remixCount: 0,
         hasOwnRemix: false,
-        originalPrompt: null as Prompt | null
+        originalPrompt: null as Prompt | null,
+        knownRemixes: [] as Prompt[]
       };
     }
 
@@ -836,13 +846,38 @@ export default function App() {
         (!candidate.forkedFromPromptId && candidate.forkedFrom === selectedPublicPrompt.title)
       );
     };
+    const knownRemixes = allKnownPrompts.filter(isKnownRemix);
 
     return {
-      remixCount: allKnownPrompts.filter(isKnownRemix).length,
+      remixCount: knownRemixes.length,
       hasOwnRemix: prompts.some(isKnownRemix),
-      originalPrompt
+      originalPrompt,
+      knownRemixes
     };
   }, [selectedPublicPrompt, visibleCommunityCatalogPrompts, prompts]);
+
+  const knownRemixCountsByPromptId = useMemo(() => {
+    const allKnownPrompts = [...visibleCommunityCatalogPrompts, ...prompts];
+    const counts = new Map<string, number>();
+
+    allKnownPrompts.forEach((prompt) => {
+      const sourceId = prompt.forkedFromPromptId || prompt.id;
+      const count = allKnownPrompts.filter((candidate) => {
+        if (candidate.id === prompt.id) return false;
+        return (
+          candidate.forkedFromPromptId === sourceId ||
+          candidate.forkedFromPromptId === prompt.id ||
+          (!candidate.forkedFromPromptId && candidate.forkedFrom === prompt.title)
+        );
+      }).length;
+
+      if (count > 0) {
+        counts.set(prompt.id, count);
+      }
+    });
+
+    return counts;
+  }, [visibleCommunityCatalogPrompts, prompts]);
 
   const dailyWorkspaceState = useMemo(() => buildDailyWorkspaceState({
     prompts,
@@ -1608,6 +1643,24 @@ export default function App() {
                 />
               )}
 
+              {user && currentTab === "mi-biblioteca" && (
+                <TrustModerationPanel
+                  publicPrompts={publicOwnPrompts}
+                  reportedPrompts={reportedPrompts}
+                  hiddenCount={hiddenPromptIds.size}
+                  totalReportsCount={totalReportsCount}
+                  hasPermissionIssue={hasModerationPermissionIssue}
+                  onEditPrompt={handleOpenEdit}
+                  onViewPrompt={setSelectedPublicPrompt}
+                  onOpenCommunity={() => {
+                    setCurrentTab("comunidad");
+                    setCommunityScope("todos");
+                    setSelectedAuthor(null);
+                    setSelectedCategory("Todas");
+                  }}
+                />
+              )}
+
               {/* Stats & Controls Row */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1e293b]/90 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-700/85 shadow-xl">
                 <div className="min-w-0">
@@ -2226,6 +2279,7 @@ export default function App() {
                           onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
                           onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
                           isSocialFavorite={socialFavoritePromptIds.has(p.id)}
+                          knownRemixCount={knownRemixCountsByPromptId.get(p.id) || 0}
                         />
                       </motion.div>
                     ))}
@@ -2370,6 +2424,7 @@ export default function App() {
         onLikeToggle={handleLikeToggle}
         onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
         onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
+        onViewRelatedPrompt={setSelectedPublicPrompt}
         onAuthorClick={openPublicProfile}
       />
       {/* Humble Footer */}
