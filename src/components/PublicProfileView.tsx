@@ -1,6 +1,7 @@
-import { ArrowLeft, BookOpen, Copy, FolderOpen, GitFork, Globe, Heart, Layers3, Share2, Sparkles, Tags, TrendingUp, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, Copy, ExternalLink, FolderOpen, GitFork, Globe, Heart, Image, Layers3, MessageSquare, Newspaper, Share2, Sparkles, Tags, TrendingUp, Trophy, UserCheck, UserPlus } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Folder, Prompt } from "../types";
+import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
 import PromptCard from "./PromptCard";
 
 export type PublicProfileTab = "prompts" | "colecciones" | "remixes";
@@ -10,6 +11,9 @@ interface PublicProfileViewProps {
   prompts: Prompt[];
   allCommunityPrompts: Prompt[];
   folders: Folder[];
+  briefings: Briefing[];
+  posts: CommunityPost[];
+  hackathons: HackathonOpportunity[];
   activeTab: PublicProfileTab;
   currentUser: User | null;
   followedCreatorUids: string[];
@@ -17,6 +21,7 @@ interface PublicProfileViewProps {
   onTabChange: (tab: PublicProfileTab) => void;
   onBack: () => void;
   onCopyProfileLink: () => void;
+  onOpenBriefing: (briefing: Briefing) => void;
   onToggleFollow: (creatorUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
@@ -34,6 +39,9 @@ export default function PublicProfileView({
   prompts,
   allCommunityPrompts,
   folders,
+  briefings,
+  posts,
+  hackathons,
   activeTab,
   currentUser,
   followedCreatorUids,
@@ -41,6 +49,7 @@ export default function PublicProfileView({
   onTabChange,
   onBack,
   onCopyProfileLink,
+  onOpenBriefing,
   onToggleFollow,
   onUsePrompt,
   onCopyFilled,
@@ -53,6 +62,10 @@ export default function PublicProfileView({
   onNotification
 }: PublicProfileViewProps) {
   const publicFolders = folders.filter((folder) => folder.userId === author.uid && folder.isShared);
+  const forumPosts = posts.filter((post) => post.authorUid === author.uid && post.type !== "showcase");
+  const showcasePosts = posts.filter((post) => post.authorUid === author.uid && post.type === "showcase");
+  const publicBriefings = briefings.filter((briefing) => briefing.authorUid === author.uid && briefing.isPublished);
+  const creatorHackathons = hackathons.filter((hackathon) => hackathon.authorUid === author.uid);
   const remixPrompts = prompts.filter((prompt) => Boolean(prompt.forkedFromPromptId || prompt.forkedFrom));
   const originalPrompts = prompts.filter((prompt) => !prompt.forkedFromPromptId && !prompt.forkedFrom);
   const visiblePrompts = activeTab === "remixes" ? remixPrompts : originalPrompts;
@@ -226,6 +239,116 @@ export default function PublicProfileView({
           </div>
         </div>
       </section>
+
+      {(publicBriefings.length > 0 || forumPosts.length > 0 || showcasePosts.length > 0 || creatorHackathons.length > 0) && (
+        <section className="rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-slate-900/55 p-4 md:p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+              <TrendingUp size={15} className="text-cyan-300" />
+              Actividad publica
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Briefings, conversaciones, trabajos y oportunidades que muestran como construye este creador.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+              <p className="text-lg font-black text-cyan-300 font-mono">{publicBriefings.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-500">briefings</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+              <p className="text-lg font-black text-indigo-300 font-mono">{forumPosts.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-500">foro</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+              <p className="text-lg font-black text-pink-300 font-mono">{showcasePosts.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-500">galeria</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+              <p className="text-lg font-black text-emerald-300 font-mono">{creatorHackathons.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-500">hackathons</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {publicBriefings.slice(0, 2).map((briefing) => (
+              <article key={`profile-briefing-${briefing.id}`} className="rounded-2xl border border-cyan-500/15 bg-slate-950/30 p-4">
+                <div className="flex items-start gap-3">
+                  <Newspaper size={16} className="mt-0.5 shrink-0 text-cyan-300" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Briefing</p>
+                    <h4 className="mt-1 line-clamp-2 text-sm font-black text-white">{briefing.title}</h4>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{briefing.intro}</p>
+                    <button
+                      type="button"
+                      onClick={() => onOpenBriefing(briefing)}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-black text-cyan-300 cursor-pointer"
+                    >
+                      <BookOpen size={11} />
+                      Abrir briefing
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            {forumPosts.slice(0, 2).map((post) => (
+              <article key={`profile-post-${post.id}`} className="rounded-2xl border border-indigo-500/15 bg-slate-950/30 p-4">
+                <div className="flex items-start gap-3">
+                  <MessageSquare size={16} className="mt-0.5 shrink-0 text-indigo-300" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-indigo-300">{post.type === "team" ? "Equipo" : post.type === "question" ? "Pregunta" : "Foro"}</p>
+                    <h4 className="mt-1 line-clamp-2 text-sm font-black text-white">{post.title}</h4>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{post.body}</p>
+                    {post.linkUrl && (
+                      <a href={post.linkUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-1.5 text-[10px] font-black text-indigo-300">
+                        <ExternalLink size={11} />
+                        Abrir recurso
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            {showcasePosts.slice(0, 2).map((post) => (
+              <article key={`profile-showcase-${post.id}`} className="overflow-hidden rounded-2xl border border-pink-500/15 bg-slate-950/30">
+                {post.imageUrl && (
+                  <div className="aspect-[16/9] overflow-hidden bg-slate-950">
+                    <img src={post.imageUrl} alt={post.title} loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-pink-300">
+                    <Image size={12} />
+                    Galeria
+                  </p>
+                  <h4 className="mt-1 line-clamp-2 text-sm font-black text-white">{post.title}</h4>
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{post.body}</p>
+                </div>
+              </article>
+            ))}
+
+            {creatorHackathons.slice(0, 2).map((hackathon) => (
+              <article key={`profile-hackathon-${hackathon.id}`} className="rounded-2xl border border-emerald-500/15 bg-slate-950/30 p-4">
+                <div className="flex items-start gap-3">
+                  <Trophy size={16} className="mt-0.5 shrink-0 text-emerald-300" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Hackathon</p>
+                    <h4 className="mt-1 line-clamp-2 text-sm font-black text-white">{hackathon.title}</h4>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-400">{hackathon.description}</p>
+                    <a href={hackathon.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-black text-emerald-300">
+                      <ExternalLink size={11} />
+                      Ver oportunidad
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {!currentUser && prompts.length > 0 && (
         <section className="rounded-2xl md:rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-4 md:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">

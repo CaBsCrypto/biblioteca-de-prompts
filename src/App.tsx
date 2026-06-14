@@ -1255,6 +1255,21 @@ export default function App() {
     return communityFolders.filter((folder) => folder.userId === selectedAuthor.uid);
   }, [communityFolders, selectedAuthor]);
 
+  const selectedAuthorBriefings = useMemo(() => {
+    if (!selectedAuthor) return [];
+    return publicBriefings.filter((briefing) => briefing.authorUid === selectedAuthor.uid);
+  }, [publicBriefings, selectedAuthor]);
+
+  const selectedAuthorPosts = useMemo(() => {
+    if (!selectedAuthor) return [];
+    return communityPosts.filter((post) => post.authorUid === selectedAuthor.uid);
+  }, [communityPosts, selectedAuthor]);
+
+  const selectedAuthorHackathons = useMemo(() => {
+    if (!selectedAuthor) return [];
+    return hackathons.filter((hackathon) => hackathon.authorUid === selectedAuthor.uid);
+  }, [hackathons, selectedAuthor]);
+
   const publicShowcasePrompts = useMemo(() => {
     return getPublicShowcasePrompts({
       prompts: visibleCommunityCatalogPrompts,
@@ -1659,6 +1674,9 @@ export default function App() {
                 prompts={selectedAuthorPrompts}
                 allCommunityPrompts={visibleCommunityCatalogPrompts}
                 folders={selectedAuthorFolders}
+                briefings={selectedAuthorBriefings}
+                posts={selectedAuthorPosts}
+                hackathons={selectedAuthorHackathons}
                 activeTab={publicProfileTab}
                 currentUser={user}
                 followedCreatorUids={followedCreatorUids}
@@ -1666,6 +1684,7 @@ export default function App() {
                 onTabChange={setPublicProfileTab}
                 onBack={closePublicProfile}
                 onCopyProfileLink={handleCopyPublicProfileLink}
+                onOpenBriefing={openPublicBriefing}
                 onToggleFollow={handleToggleFollowCreator}
                 onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                 onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
@@ -2311,6 +2330,9 @@ export default function App() {
                   prompts={selectedAuthorPrompts}
                   allCommunityPrompts={visibleCommunityCatalogPrompts}
                   folders={selectedAuthorFolders}
+                  briefings={selectedAuthorBriefings}
+                  posts={selectedAuthorPosts}
+                  hackathons={selectedAuthorHackathons}
                   activeTab={publicProfileTab}
                   currentUser={user}
                   followedCreatorUids={followedCreatorUids}
@@ -2318,6 +2340,7 @@ export default function App() {
                   onTabChange={setPublicProfileTab}
                   onBack={closePublicProfile}
                   onCopyProfileLink={handleCopyPublicProfileLink}
+                  onOpenBriefing={openPublicBriefing}
                   onToggleFollow={handleToggleFollowCreator}
                   onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                   onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}

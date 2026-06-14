@@ -4,6 +4,7 @@ import type { Prompt, Folder, PromptVariable, UserProfile } from "../types";
 import type { GeminiRecommendationResult } from "./RecommendationModal";
 import type { PublicProfileTab } from "./PublicProfileView";
 import type { LocalRecommendation } from "../utils/recommendations";
+import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
 
 const PromptFormModal = lazy(() => import("./PromptFormModal"));
 const PromptFillerModal = lazy(() => import("./PromptFillerModal"));
@@ -39,10 +40,13 @@ export function DeferredInlineFallback({ label = "Cargando..." }: { label?: stri
 }
 
 interface PublicProfileSurfaceProps {
-  author: UserProfile;
+  author: { name: string; uid: string; avatar?: string; handle?: string };
   prompts: Prompt[];
   allCommunityPrompts: Prompt[];
   folders: Folder[];
+  briefings: Briefing[];
+  posts: CommunityPost[];
+  hackathons: HackathonOpportunity[];
   activeTab: PublicProfileTab;
   currentUser: User | null;
   followedCreatorUids: string[];
@@ -50,6 +54,7 @@ interface PublicProfileSurfaceProps {
   onTabChange: (tab: PublicProfileTab) => void;
   onBack: () => void;
   onCopyProfileLink: () => void;
+  onOpenBriefing: (briefing: Briefing) => void;
   onToggleFollow: (creatorUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
