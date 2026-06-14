@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { Calendar, Edit3, ExternalLink, Plus, Search, Trash2, Trophy, Users } from "lucide-react";
 import type { HackathonInput } from "../hooks/useHackathons";
-import type { HackathonOpportunity } from "../typesCommunity";
+import { useNews } from "../hooks/useNews";
+import type { HackathonOpportunity, NewsItem } from "../typesCommunity";
 import CreateHackathonModal from "./CreateHackathonModal";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -21,12 +22,14 @@ interface HackathonsSectionProps {
   onSignIn: () => void;
   onSave: (input: HackathonInput, editingHackathon?: HackathonOpportunity | null) => Promise<boolean>;
   onDelete: (hackathon: HackathonOpportunity) => void;
+  onCreateTeamPostFromNews?: (item: NewsItem) => void;
 }
 
-export default function HackathonsSection({ hackathons, loading, currentUser, onSignIn, onSave, onDelete }: HackathonsSectionProps) {
+export default function HackathonsSection({ hackathons, loading, currentUser, onSignIn, onSave, onDelete, onCreateTeamPostFromNews }: HackathonsSectionProps) {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingHackathon, setEditingHackathon] = useState<HackathonOpportunity | null>(null);
+  const { items: radarHackathons, loading: loadingRadarHackathons } = useNews("hackathons", "all");
 
   const filteredHackathons = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -55,7 +58,7 @@ export default function HackathonsSection({ hackathons, loading, currentUser, on
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/55 p-5 shadow-2xl md:p-7">
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
@@ -81,6 +84,50 @@ export default function HackathonsSection({ hackathons, loading, currentUser, on
         </div>
       </div>
 
+      <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-sm font-black text-emerald-200">Oportunidades desde el radar</h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              Senales externas para encontrar retos, ideas de equipo o temas de hackathon sin scraping complejo.
+            </p>
+          </div>
+          <span className="rounded-full border border-slate-800 bg-slate-950/50 px-3 py-1 text-[10px] font-black text-slate-400 w-fit">
+            {loadingRadarHackathons ? "Buscando..." : `${radarHackathons.length} senales`}
+          </span>
+        </div>
+
+        {!loadingRadarHackathons && radarHackathons.length > 0 && (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            {radarHackathons.slice(0, 3).map((item) => (
+              <article key={item.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+                <p className="line-clamp-2 text-xs font-black leading-snug text-white">{item.title}</p>
+                <p className="mt-1 text-[10px] font-bold text-slate-500">{item.source}</p>
+                <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-2 md:grid-cols-1">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-[11px] font-black text-slate-300"
+                  >
+                    Ver
+                    <ExternalLink size={11} />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onCreateTeamPostFromNews?.(item)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2 text-[11px] font-black text-emerald-300 cursor-pointer"
+                  >
+                    <Users size={11} />
+                    Buscar equipo
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <label className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
         <Search size={14} className="text-slate-500" />
         <input
@@ -105,10 +152,10 @@ export default function HackathonsSection({ hackathons, loading, currentUser, on
           {filteredHackathons.map((hackathon) => {
             const isOwner = currentUser?.uid === hackathon.authorUid;
             return (
-              <article key={hackathon.id} className="rounded-2xl border border-slate-800/80 bg-slate-900/55 p-5 shadow-xl shadow-slate-950/20">
+              <article key={hackathon.id} className="rounded-2xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-xl shadow-slate-950/20">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                       <div className="flex flex-wrap gap-2">
                         <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
                           {hackathon.mode || "online"}

@@ -65,9 +65,9 @@ export default function CreateHackathonModal({ isOpen, editingHackathon, onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <form onSubmit={handleSubmit} className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/80 p-3 pt-4 sm:items-center sm:p-4 backdrop-blur-sm">
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl max-h-[96vh] flex flex-col">
+        <div className="flex items-center justify-between border-b border-slate-800 px-4 sm:px-5 py-4 shrink-0">
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Hackathons</p>
             <h2 className="text-lg font-black text-white">{editingHackathon ? "Editar oportunidad" : "Publicar oportunidad"}</h2>
@@ -77,7 +77,7 @@ export default function CreateHackathonModal({ isOpen, editingHackathon, onClose
           </button>
         </div>
 
-        <div className="max-h-[78vh] space-y-5 overflow-y-auto p-5">
+        <div className="space-y-5 overflow-y-auto p-4 sm:p-5">
           <label className="block space-y-2">
             <span className="text-xs font-black text-slate-300">Titulo</span>
             <input
@@ -177,7 +177,7 @@ export default function CreateHackathonModal({ isOpen, editingHackathon, onClose
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-slate-800 p-5 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-1 gap-3 border-t border-slate-800 p-4 sm:p-5 sm:flex sm:flex-row sm:justify-end shrink-0">
           <button type="button" onClick={onClose} className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-black text-slate-300 hover:text-white cursor-pointer">
             Cancelar
           </button>

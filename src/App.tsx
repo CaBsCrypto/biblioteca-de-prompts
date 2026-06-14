@@ -61,6 +61,7 @@ import { useSocialFavorites } from "./hooks/useSocialFavorites";
 import { useContentSafety } from "./hooks/useContentSafety";
 import { useModerationReview } from "./hooks/useModerationReview";
 import { useCommunityPosts } from "./hooks/useCommunityPosts";
+import type { CommunityPostInput } from "./hooks/useCommunityPosts";
 import { useHackathons } from "./hooks/useHackathons";
 import type { AppSection, NewsItem } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
@@ -143,6 +144,7 @@ export default function App() {
   const [publicShowcaseSearch, setPublicShowcaseSearch] = useState("");
   const [pendingPublicSavePrompt, setPendingPublicSavePrompt] = useState<Prompt | null>(null);
   const [isResolvingPendingPublicSave, setIsResolvingPendingPublicSave] = useState(false);
+  const [pendingForumDraft, setPendingForumDraft] = useState<CommunityPostInput | null>(null);
 
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
@@ -400,16 +402,50 @@ export default function App() {
     triggerNotification("Enlace del perfil copiado.", "success");
   };
 
-  const handleCreatePromptFromNews = (item: NewsItem) => {
-    setPresetAItext(`Crea un prompt reutilizable en espanol basado en esta noticia o tendencia.\n\nTitulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nContexto en espanol: ${item.summaryEs || item.summary || "Analiza la noticia y extrae una oportunidad accionable."}\n\nObjetivo: convertir esta noticia en una plantilla para crear contenido, investigar oportunidades o preparar una idea de hackathon.`);
+  const openNewsInAssistant = (item: NewsItem, mode: "prompt" | "summary" | "translation" | "opportunity") => {
+    const context = `Titulo original: ${item.title}\nFuente: ${item.source}\nURL: ${item.url}\nResumen/contexto disponible: ${item.summaryEs || item.summary || "Sin resumen disponible."}`;
+    const instructions = {
+      prompt: `Crea un prompt reutilizable en espanol basado en esta noticia o tendencia.\n\n${context}\n\nObjetivo: convertir esta noticia en una plantilla para crear contenido, investigar oportunidades o preparar una idea de hackathon.`,
+      summary: `Resume esta noticia en espanol neutro para un newsletter de creadores IA.\n\n${context}\n\nDevuelve: 1) resumen en 5 bullets, 2) por que importa, 3) idea de prompt accionable, 4) posible oportunidad de comunidad.`,
+      translation: `Traduce y adapta esta noticia al espanol neutro para una comunidad de creadores IA.\n\n${context}\n\nMantén el sentido, evita exagerar y termina con 3 ideas de uso practico.`,
+      opportunity: `Analiza esta noticia como oportunidad de hackathon o proyecto.\n\n${context}\n\nDevuelve: 1) problema, 2) posible proyecto, 3) roles necesarios, 4) prompts utiles, 5) primer MVP en 48 horas.`
+    };
+    setPresetAItext(instructions[mode]);
     setShowAIAssistant(true);
     triggerNotification("Abrimos el asistente con contexto de la noticia.", "success");
   };
 
-  const handleCreateForumPostFromNews = (item: NewsItem) => {
+  const handleCreatePromptFromNews = (item: NewsItem) => {
+    openNewsInAssistant(item, "prompt");
+  };
+
+  const handleCreateForumPostFromNews = (item: NewsItem, intent: "idea" | "question" | "team" = "idea") => {
+    const titlePrefix = intent === "team" ? "Busco equipo:" : intent === "question" ? "Pregunta:" : "Idea:";
+    setPendingForumDraft({
+      type: intent,
+      title: `${titlePrefix} ${item.title}`.slice(0, 140),
+      body: [
+        item.summaryEs || item.summary || "Quiero abrir conversacion sobre esta noticia/tendencia.",
+        "",
+        `Fuente: ${item.source}`,
+        item.url,
+        "",
+        intent === "team"
+          ? "Busco personas para explorar si esto puede convertirse en proyecto, demo o hackathon."
+          : "Que oportunidad, prompt o proyecto ven aqui?"
+      ].join("\n"),
+      tags: Array.from(new Set([...(item.tags || []), "radar"])).slice(0, 10),
+      linkUrl: item.url,
+      imageUrl: item.imageUrl || ""
+    });
     setCurrentSection("foro");
     setCurrentTab("comunidad");
-    triggerNotification(`Idea para comentar: ${item.title.slice(0, 90)}`, "info");
+    if (!user) {
+      triggerNotification("Conecta con Google y abriremos el borrador del foro.", "info");
+      void handleSignIn();
+      return;
+    }
+    triggerNotification("Preparamos un borrador en el foro.", "success");
   };
 
   const resolvePublicSavePrompt = async (prompt: Prompt) => {
@@ -1213,6 +1249,8 @@ export default function App() {
               onSave={savePost}
               onDelete={deletePost}
               onLike={togglePostLike}
+              initialDraft={pendingForumDraft}
+              onDraftConsumed={() => setPendingForumDraft(null)}
             />
           ) : currentSection === "hackathons" ? (
             <HackathonsSection
@@ -1222,6 +1260,7 @@ export default function App() {
               onSignIn={handleSignIn}
               onSave={saveHackathon}
               onDelete={deleteHackathon}
+              onCreateTeamPostFromNews={(item) => handleCreateForumPostFromNews(item, "team")}
             />
           ) : currentSection === "galeria" ? (
             <ShowcaseSection
@@ -1237,6 +1276,9 @@ export default function App() {
             <NewsSection
               onCreatePromptFromNews={handleCreatePromptFromNews}
               onCreateForumPostFromNews={handleCreateForumPostFromNews}
+              onSummarizeNews={(item) => openNewsInAssistant(item, "summary")}
+              onTranslateNews={(item) => openNewsInAssistant(item, "translation")}
+              onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}
             />
           ) : (
             <>

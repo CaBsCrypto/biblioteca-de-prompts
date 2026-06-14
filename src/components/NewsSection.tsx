@@ -1,4 +1,4 @@
-import { ExternalLink, Globe2, Languages, Newspaper, RefreshCw, Search, Sparkles } from "lucide-react";
+import { ExternalLink, Globe2, Languages, Lightbulb, MessageSquare, Newspaper, RefreshCw, Search, Sparkles, Wand2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNews, type NewsLanguageFilter } from "../hooks/useNews";
 import type { NewsCategory, NewsItem } from "../typesCommunity";
@@ -33,10 +33,19 @@ function languageLabel(item: NewsItem) {
 
 interface NewsSectionProps {
   onCreatePromptFromNews: (item: NewsItem) => void;
-  onCreateForumPostFromNews: (item: NewsItem) => void;
+  onCreateForumPostFromNews: (item: NewsItem, intent?: "idea" | "question" | "team") => void;
+  onSummarizeNews: (item: NewsItem) => void;
+  onTranslateNews: (item: NewsItem) => void;
+  onDetectHackathonOpportunity: (item: NewsItem) => void;
 }
 
-export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostFromNews }: NewsSectionProps) {
+export default function NewsSection({
+  onCreatePromptFromNews,
+  onCreateForumPostFromNews,
+  onSummarizeNews,
+  onTranslateNews,
+  onDetectHackathonOpportunity
+}: NewsSectionProps) {
   const [category, setCategory] = useState<NewsCategory>("ai");
   const [language, setLanguage] = useState<NewsLanguageFilter>("all");
   const [search, setSearch] = useState("");
@@ -59,7 +68,7 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/55 p-5 shadow-2xl md:p-7">
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
@@ -149,7 +158,7 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
           <p className="mt-2 text-xs text-slate-500">Prueba otra categoria o cambia el idioma.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {filteredItems.map((item) => (
             <article key={item.id} className="flex min-h-full flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
               {item.imageUrl && (
@@ -157,7 +166,7 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
                   <img src={item.imageUrl} alt={item.title} loading="lazy" className="h-full w-full object-cover" />
                 </div>
               )}
-              <div className="flex flex-1 flex-col gap-4 p-5">
+              <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-300">
                     {languageLabel(item)}
@@ -199,7 +208,7 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
                   </div>
                 )}
 
-                <div className="mt-auto flex flex-wrap gap-2 border-t border-slate-800/80 pt-4">
+                <div className="grid grid-cols-2 gap-2 border-t border-slate-800/80 pt-4 sm:flex sm:flex-wrap">
                   <a
                     href={item.url}
                     target="_blank"
@@ -211,9 +220,10 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
                   </a>
                   <button
                     type="button"
-                    onClick={() => onCreateForumPostFromNews(item)}
+                    onClick={() => onCreateForumPostFromNews(item, "question")}
                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-3 py-2 text-xs font-black text-indigo-300 transition-all hover:bg-indigo-500/15 cursor-pointer"
                   >
+                    <MessageSquare size={13} />
                     Comentar
                   </button>
                   <button
@@ -223,6 +233,41 @@ export default function NewsSection({ onCreatePromptFromNews, onCreateForumPostF
                   >
                     <Sparkles size={13} />
                     Prompt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCreateForumPostFromNews(item, "idea")}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-300 transition-all hover:bg-amber-500/15 cursor-pointer"
+                  >
+                    <Lightbulb size={13} />
+                    Idea
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => onSummarizeNews(item)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-300 transition-all hover:bg-cyan-500/15 cursor-pointer"
+                  >
+                    <Wand2 size={12} />
+                    Resumir ES
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTranslateNews(item)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-300 transition-all hover:bg-cyan-500/15 cursor-pointer"
+                  >
+                    <Languages size={12} />
+                    Traducir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDetectHackathonOpportunity(item)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[11px] font-black text-emerald-300 transition-all hover:bg-emerald-500/15 cursor-pointer"
+                  >
+                    <Sparkles size={12} />
+                    Oportunidad
                   </button>
                 </div>
               </div>

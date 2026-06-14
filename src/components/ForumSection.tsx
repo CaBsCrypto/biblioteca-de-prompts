@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
 import { MessageSquare, Plus, Search, Users } from "lucide-react";
 import type { CommunityPost, CommunityPostType } from "../typesCommunity";
@@ -21,12 +21,15 @@ interface ForumSectionProps {
   onSave: (input: CommunityPostInput, editingPost?: CommunityPost | null) => Promise<boolean>;
   onDelete: (post: CommunityPost) => void;
   onLike: (post: CommunityPost) => void;
+  initialDraft?: CommunityPostInput | null;
+  onDraftConsumed?: () => void;
 }
 
-export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike }: ForumSectionProps) {
+export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, initialDraft, onDraftConsumed }: ForumSectionProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | CommunityPostType>("all");
   const [initialPostType, setInitialPostType] = useState<CommunityPostType>("idea");
+  const [modalDraft, setModalDraft] = useState<CommunityPostInput | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
 
@@ -49,15 +52,29 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
       onSignIn();
       return;
     }
+    setModalDraft(null);
     setEditingPost(null);
     setInitialPostType(type);
     setFilter(type);
     setShowCreateModal(true);
   };
 
+  useEffect(() => {
+    if (!initialDraft) return;
+    if (!currentUser) {
+      return;
+    }
+    setEditingPost(null);
+    setModalDraft(initialDraft);
+    setInitialPostType(initialDraft.type);
+    setFilter(initialDraft.type);
+    setShowCreateModal(true);
+    onDraftConsumed?.();
+  }, [currentUser, initialDraft, onDraftConsumed]);
+
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/55 p-5 shadow-2xl md:p-7">
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-300">
@@ -72,7 +89,7 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-2 lg:flex lg:flex-wrap">
             <button
               type="button"
               onClick={() => openCreate("team")}
@@ -151,10 +168,12 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
       <CreatePostModal
         isOpen={showCreateModal}
         initialType={initialPostType}
+        initialDraft={modalDraft}
         editingPost={editingPost}
         onClose={() => {
           setShowCreateModal(false);
           setEditingPost(null);
+          setModalDraft(null);
         }}
         onSave={onSave}
       />
