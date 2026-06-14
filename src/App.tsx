@@ -440,6 +440,7 @@ export default function App() {
     url.searchParams.set("user", selectedAuthor.uid);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
+    url.searchParams.delete("briefing");
     navigator.clipboard.writeText(url.toString());
     triggerNotification("Enlace del perfil copiado.", "success");
   };
@@ -1520,7 +1521,6 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
           {/* Header of the Shared Collection */}
           <div className="bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
-            <div className="absolute right-0 top-0 w-80 h-80 rounded-full bg-indigo-600/10 blur-[80px] pointer-events-none"></div>
             
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">

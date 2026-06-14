@@ -135,11 +135,11 @@ export default function PublicProfileView({
     .slice(0, 6);
   const highlightedPrompt = popularPrompts[0] || prompts[0] || null;
   const starterPrompts = popularPrompts.length > 0 ? popularPrompts : prompts.slice(0, 3);
+  const publicActivityCount = publicBriefings.length + forumPosts.length + showcasePosts.length + creatorHackathons.length;
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-250">
       <section className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-indigo-500/25 bg-gradient-to-br from-slate-900/95 via-indigo-950/35 to-slate-900/95 p-5 md:p-7 shadow-2xl">
-        <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-pink-500/10 blur-[70px] pointer-events-none"></div>
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start gap-4 min-w-0">
             <button
@@ -175,13 +175,19 @@ export default function PublicProfileView({
                     Siguiendo
                   </span>
                 )}
+                {publicActivityCount > 0 && (
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <TrendingUp size={11} />
+                    Hub activo
+                  </span>
+                )}
               </div>
               <h2 className="mt-2 text-2xl md:text-4xl font-black text-white leading-tight">{author.name}</h2>
               <p className="mt-1 text-xs md:text-sm text-slate-400 font-mono">
                 {displayHandle ? `@${displayHandle}` : "Creador de la comunidad"}
               </p>
               <p className="mt-3 text-xs text-slate-400 max-w-2xl leading-relaxed font-sans">
-                Mini-home publica para descubrir prompts originales, colecciones y remixes. Guarda un recurso como remix privado, adaptalo a tu flujo y publica tu version solo cuando este lista.
+                Hub publico para descubrir prompts, briefings, trabajos y oportunidades. Guarda un recurso como remix privado, adaptalo a tu flujo y publica tu version solo cuando este lista.
               </p>
             </div>
           </div>
@@ -206,7 +212,7 @@ export default function PublicProfileView({
                 className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
               >
                 <GitFork size={14} />
-                <span>Guardar prompt inicial</span>
+                <span>Guardar recurso</span>
               </button>
             )}
             <button
@@ -215,7 +221,7 @@ export default function PublicProfileView({
               className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-slate-950/60 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-800"
             >
               <Share2 size={14} />
-              <span>Copiar perfil</span>
+              <span>Copiar hub</span>
             </button>
           </div>
         </div>
@@ -238,18 +244,42 @@ export default function PublicProfileView({
             <p className="text-[10px] text-slate-500 uppercase font-bold">remixes</p>
           </div>
         </div>
+
+        <div className="relative z-10 mt-4 rounded-2xl border border-slate-800 bg-slate-950/35 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <p className="text-xs leading-relaxed text-slate-400">
+            Comparte este hub para que otros exploren recursos, sigan al creador y guarden una copia editable sin tocar el original.
+          </p>
+          <button
+            type="button"
+            onClick={onCopyProfileLink}
+            className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-slate-900 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-800 shrink-0"
+          >
+            <Share2 size={13} />
+            Copiar enlace
+          </button>
+        </div>
       </section>
 
       {(publicBriefings.length > 0 || forumPosts.length > 0 || showcasePosts.length > 0 || creatorHackathons.length > 0) && (
         <section className="rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-slate-900/55 p-4 md:p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <TrendingUp size={15} className="text-cyan-300" />
-              Actividad publica
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Briefings, conversaciones, trabajos y oportunidades que muestran como construye este creador.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <TrendingUp size={15} className="text-cyan-300" />
+                Actividad publica
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Briefings, conversaciones, trabajos y oportunidades que muestran como construye este creador.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onCopyProfileLink}
+              className="px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-cyan-500/10 text-cyan-300 border-cyan-500/25 hover:bg-cyan-500/20 shrink-0"
+            >
+              <Share2 size={13} />
+              Copiar hub
+            </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -368,7 +398,7 @@ export default function PublicProfileView({
               className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
               <GitFork size={13} />
-              Crear mi primer remix
+              Guardar recurso
             </button>
           )}
         </section>
@@ -519,7 +549,7 @@ export default function PublicProfileView({
               <div className="flex flex-wrap gap-1.5">
                 {topCategories.map(([category, count]) => (
                   <span key={category} className="text-[10px] text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-lg">
-                    {category} · {count}
+                    {category} - {count}
                   </span>
                 ))}
               </div>
@@ -534,7 +564,7 @@ export default function PublicProfileView({
               <div className="flex flex-wrap gap-1.5">
                 {topTags.map(([tag, count]) => (
                   <span key={tag} className="text-[10px] text-slate-300 bg-slate-800 border border-slate-700/70 px-2 py-0.5 rounded-lg">
-                    #{tag} · {count}
+                    #{tag} - {count}
                   </span>
                 ))}
               </div>
