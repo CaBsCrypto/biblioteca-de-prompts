@@ -21,14 +21,23 @@ interface CommunityPostCardProps {
   key?: Key;
   post: CommunityPost;
   currentUser: User | null;
+  onAuthorClick?: (author: { name: string; uid: string; avatar?: string; handle?: string }) => void;
   onLike: (post: CommunityPost) => void;
   onEdit: (post: CommunityPost) => void;
   onDelete: (post: CommunityPost) => void;
 }
 
-export default function CommunityPostCard({ post, currentUser, onLike, onEdit, onDelete }: CommunityPostCardProps) {
+export default function CommunityPostCard({ post, currentUser, onAuthorClick, onLike, onEdit, onDelete }: CommunityPostCardProps) {
   const isOwner = currentUser?.uid === post.authorUid;
   const isLiked = Boolean(currentUser && post.likedBy.includes(currentUser.uid));
+  const openAuthor = () => {
+    onAuthorClick?.({
+      name: post.authorName,
+      uid: post.authorUid,
+      avatar: post.authorAvatar,
+      handle: post.authorHandle
+    });
+  };
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
@@ -46,7 +55,15 @@ export default function CommunityPostCard({ post, currentUser, onLike, onEdit, o
 
       <div className="space-y-4 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={openAuthor}
+            disabled={!onAuthorClick}
+            className={`flex min-w-0 items-center gap-2 rounded-xl text-left transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${
+              onAuthorClick ? "cursor-pointer hover:bg-slate-950/35" : "cursor-default"
+            }`}
+            title="Ver perfil del creador"
+          >
             {post.authorAvatar ? (
               <img
                 src={post.authorAvatar}
@@ -65,7 +82,7 @@ export default function CommunityPostCard({ post, currentUser, onLike, onEdit, o
                 {post.authorHandle ? `@${post.authorHandle}` : "miembro de la comunidad"}
               </p>
             </div>
-          </div>
+          </button>
 
           <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${TYPE_STYLES[post.type]}`}>
             {TYPE_LABELS[post.type]}
@@ -119,6 +136,16 @@ export default function CommunityPostCard({ post, currentUser, onLike, onEdit, o
               <Users size={13} />
               Buscando equipo
             </span>
+          )}
+
+          {onAuthorClick && (
+            <button
+              type="button"
+              onClick={openAuthor}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[11px] font-bold text-indigo-300 transition-colors hover:bg-indigo-500/15 cursor-pointer"
+            >
+              Ver creador
+            </button>
           )}
 
           {isOwner && (

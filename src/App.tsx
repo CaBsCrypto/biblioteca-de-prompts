@@ -1622,6 +1622,7 @@ export default function App() {
               onSave={savePost}
               onDelete={deletePost}
               onLike={togglePostLike}
+              onAuthorClick={openPublicProfile}
               initialDraft={pendingForumDraft}
               onDraftConsumed={() => setPendingForumDraft(null)}
             />
@@ -1644,6 +1645,7 @@ export default function App() {
               onSave={savePost}
               onDelete={deletePost}
               onLike={togglePostLike}
+              onAuthorClick={openPublicProfile}
             />
           ) : currentSection === "noticias" ? (
             <NewsSection

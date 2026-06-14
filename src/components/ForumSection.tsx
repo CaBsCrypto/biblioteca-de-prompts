@@ -21,11 +21,12 @@ interface ForumSectionProps {
   onSave: (input: CommunityPostInput, editingPost?: CommunityPost | null) => Promise<boolean>;
   onDelete: (post: CommunityPost) => void;
   onLike: (post: CommunityPost) => void;
+  onAuthorClick: (author: { name: string; uid: string; avatar?: string; handle?: string }) => void;
   initialDraft?: CommunityPostInput | null;
   onDraftConsumed?: () => void;
 }
 
-export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, initialDraft, onDraftConsumed }: ForumSectionProps) {
+export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, onAuthorClick, initialDraft, onDraftConsumed }: ForumSectionProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | CommunityPostType>("all");
   const [initialPostType, setInitialPostType] = useState<CommunityPostType>("idea");
@@ -154,6 +155,7 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
               key={post.id}
               post={post}
               currentUser={currentUser}
+              onAuthorClick={onAuthorClick}
               onLike={onLike}
               onEdit={(targetPost) => {
                 setEditingPost(targetPost);
