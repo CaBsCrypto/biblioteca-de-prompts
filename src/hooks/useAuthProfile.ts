@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, User } from "firebase/auth";
 import { auth, db, googleProvider } from "../firebase";
 import { UserProfile } from "../types";
 import { buildProfileHandle, getAuthorIdentity, normalizeProfileHandle } from "../utils/profile";
@@ -30,6 +30,22 @@ function getGoogleAuthErrorMessage(error: unknown) {
     default:
       return "No se pudo iniciar sesión con Google. Revisa la consola o la configuración de Firebase Auth.";
   }
+}
+
+function getGoogleAuthErrorCode(error: unknown) {
+  if (error instanceof FirebaseError) return error.code;
+  if (typeof error === "object" && error && "code" in error) {
+    return String((error as { code?: unknown }).code);
+  }
+  return "";
+}
+
+function shouldUseRedirectSignIn() {
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  const isTouchDevice = window.navigator.maxTouchPoints > 0;
+  const isMobileViewport = window.matchMedia("(max-width: 768px)").matches;
+  const isInAppBrowser = /instagram|fbav|fban|line|whatsapp|wv/.test(userAgent);
+  return isInAppBrowser || (isTouchDevice && isMobileViewport);
 }
 
 export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfileOptions) {
@@ -84,6 +100,19 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
   };
 
   useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          onNotification("Sesion iniciada con exito.", "success");
+        }
+      })
+      .catch((error) => {
+        console.error("Error completing Google redirect sign-in:", error);
+        onNotification(getGoogleAuthErrorMessage(error), "info");
+      });
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -100,10 +129,20 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
 
   const handleSignIn = async () => {
     try {
+      if (shouldUseRedirectSignIn()) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       await signInWithPopup(auth, googleProvider);
       onNotification("Sesión iniciada con éxito.", "success");
     } catch (error) {
       console.error("Error signing in with Google:", error);
+      const code = getGoogleAuthErrorCode(error);
+      if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
       onNotification(getGoogleAuthErrorMessage(error), "info");
     }
   };
