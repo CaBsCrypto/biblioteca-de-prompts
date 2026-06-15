@@ -56,6 +56,7 @@ import HackathonsSection from "./components/HackathonsSection";
 import ShowcaseSection from "./components/ShowcaseSection";
 import NewsSection from "./components/NewsSection";
 import PublicBriefingView from "./components/PublicBriefingView";
+import SeedPackModal from "./components/SeedPackModal";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -106,6 +107,7 @@ const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
   { id: "favoritos", label: "Favoritos propios" }
 ];
 type UiThemeMode = "dark" | "clear";
+const STARTER_PROMPT_GOAL = 8;
 
 export default function App() {
   // Social / Community navigation
@@ -149,6 +151,7 @@ export default function App() {
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showRecommendationModal, setShowRecommendationModal] = useState(false);
+  const [showSeedPackModal, setShowSeedPackModal] = useState(false);
   const [recommendationGoal, setRecommendationGoal] = useState("");
   const [geminiRecommendation, setGeminiRecommendation] = useState<GeminiRecommendationResult | null>(null);
   const [geminiRecommendationLoading, setGeminiRecommendationLoading] = useState(false);
@@ -1104,6 +1107,11 @@ export default function App() {
     setCopyingFilledPrompt(prompt);
   };
 
+  const handleSeedSelectedPack = (selectedPrompts: typeof DEFAULT_PROMPTS) => {
+    void handleSeedDefaults(selectedPrompts);
+    setShowSeedPackModal(false);
+  };
+
   // Live trigger optimize with AI directly from Form
   const handleOptimizeWithAIDirect = (promptText: string) => {
     setShowFormModal(false);
@@ -1113,7 +1121,7 @@ export default function App() {
 
   const handleActivationAction = (stepId: ActivationStepId) => {
     if (stepId === "seed") {
-      handleSeedDefaults();
+      setShowSeedPackModal(true);
       return;
     }
 
@@ -1189,6 +1197,10 @@ export default function App() {
     () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
     []
   );
+  const existingPromptTitles = useMemo(
+    () => new Set(prompts.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
+    [prompts]
+  );
   const existingDefaultPromptCount = useMemo(() => {
     const matchedTitles = new Set(
       prompts
@@ -1204,7 +1216,8 @@ export default function App() {
     folders,
     userEvents,
     defaultPromptTitles,
-    defaultPromptsTotal: DEFAULT_PROMPTS.length
+    defaultPromptsTotal: DEFAULT_PROMPTS.length,
+    defaultPromptsStarterGoal: STARTER_PROMPT_GOAL
   }), [prompts, folders, userEvents, defaultPromptTitles]);
 
   const allAvailableTags = useMemo(() => {
@@ -2555,7 +2568,7 @@ export default function App() {
                         Colección personal. Tienes <strong className="text-pink-400">{prompts.length}</strong> prompts guardados en total.
                         {missingDefaultPromptCount > 0 && (
                           <span className="ml-1 text-slate-400">
-                            Pack inicial: <strong className="text-indigo-300">{existingDefaultPromptCount}/{DEFAULT_PROMPTS.length}</strong> guardados.
+                            Starter: <strong className="text-indigo-300">{Math.min(existingDefaultPromptCount, STARTER_PROMPT_GOAL)}/{STARTER_PROMPT_GOAL}</strong> guardados. Pack completo opcional.
                           </span>
                         )}
                       </>
@@ -2577,15 +2590,15 @@ export default function App() {
                   {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                     <button
                       id="btn-seed-defaults"
-                      onClick={handleSeedDefaults}
+                      onClick={() => setShowSeedPackModal(true)}
                       disabled={loadingPrompts}
                       className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer animate-pulse min-w-0"
                     >
                       <BookOpen size={14} />
                       <span>
                         {prompts.length === 0
-                          ? `Cargar ${DEFAULT_PROMPTS.length} prompts iniciales`
-                          : `Completar pack inicial (+${missingDefaultPromptCount})`}
+                          ? "Elegir pack inicial"
+                          : "Sumar prompts del pack"}
                       </span>
                     </button>
                   )}
@@ -3098,7 +3111,7 @@ export default function App() {
                     <p className="text-slate-400 text-xs px-6 mt-1.5 leading-relaxed font-sans animate-fade-in">
                       {currentTab === "mi-biblioteca" ? (
                         prompts.length === 0
-                          ? "Tu biblioteca está lista para ser poblada. Puedes dar clic en 'Cargar Prompts Ejemplos' para agregar plantillas recomendadas de inmediato o crear una nueva con el Asistente IA de Gemini."
+                          ? "Tu biblioteca esta lista. Elige un pack pequeno para empezar segun tu objetivo, o crea un prompt nuevo desde cero."
                           : "No se encontraron prompts en tu biblioteca que coincidan con la categoría o filtros."
                       ) : (
                         communityScope === "siguiendo" && followedCreatorUids.length === 0
@@ -3117,12 +3130,12 @@ export default function App() {
                   </div>
                   {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                     <button
-                      onClick={handleSeedDefaults}
+                      onClick={() => setShowSeedPackModal(true)}
                       className="px-4 py-2 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
                     >
                       {prompts.length === 0
-                        ? `Cargar ${DEFAULT_PROMPTS.length} prompts iniciales`
-                        : `Completar pack inicial (+${missingDefaultPromptCount})`}
+                        ? "Elegir pack inicial"
+                        : "Sumar prompts del pack"}
                     </button>
                   )}
                 </div>
@@ -3313,6 +3326,15 @@ export default function App() {
         onViewRelatedPrompt={setSelectedPublicPrompt}
         onAuthorClick={openPublicProfile}
       />
+      {showSeedPackModal && (
+        <SeedPackModal
+          defaultPrompts={DEFAULT_PROMPTS}
+          existingTitles={existingPromptTitles}
+          loading={loadingPrompts}
+          onClose={() => setShowSeedPackModal(false)}
+          onSeedPack={handleSeedSelectedPack}
+        />
+      )}
       {/* Humble Footer */}
       <footer className="bg-[#0f172a]/95 border-t border-[#334155]/50 py-5 px-6 md:px-12 text-center text-[10px] text-slate-450 shrink-0 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 select-none">
         <p>© {new Date().getFullYear()} Biblioteca de Prompts — Diseñado para creadores de YouTube de Inteligencia Artificial.</p>

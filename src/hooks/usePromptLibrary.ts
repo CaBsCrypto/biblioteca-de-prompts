@@ -6,6 +6,8 @@ import { DEFAULT_PROMPTS } from "../data";
 import type { Prompt } from "../types";
 import { mapPromptDoc, sortOwnPrompts } from "../utils/firestoreMappers";
 
+type SeedPrompt = Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">;
+
 interface UsePromptLibraryOptions {
   user: User | null;
   editingPrompt: Prompt | null;
@@ -60,17 +62,17 @@ export function usePromptLibrary({
     return unsubscribe;
   }, [user]);
 
-  const handleSeedDefaults = async () => {
+  const handleSeedDefaults = async (selectedPrompts: SeedPrompt[] = DEFAULT_PROMPTS) => {
     if (!user) return;
     setLoadingPrompts(true);
 
     try {
       const promptsCollectionPath = "prompts";
       const existingTitles = new Set(prompts.map((prompt) => normalizeSeedTitle(prompt.title)));
-      const promptsToSeed = DEFAULT_PROMPTS.filter((prompt) => !existingTitles.has(normalizeSeedTitle(prompt.title)));
+      const promptsToSeed = selectedPrompts.filter((prompt) => !existingTitles.has(normalizeSeedTitle(prompt.title)));
 
       if (promptsToSeed.length === 0) {
-        onNotification("Tu biblioteca ya tiene todos los prompts recomendados.", "info");
+        onNotification("Tu biblioteca ya tiene los prompts de este pack.", "info");
         return;
       }
 
@@ -86,7 +88,7 @@ export function usePromptLibrary({
         });
       }));
 
-      onNotification(`Se añadieron ${promptsToSeed.length} prompts recomendados a tu biblioteca.`, "success");
+      onNotification(`Se añadieron ${promptsToSeed.length} prompts de este pack a tu biblioteca.`, "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "prompts");
     } finally {

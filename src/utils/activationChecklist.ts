@@ -24,6 +24,7 @@ interface ActivationChecklistInput {
   userEvents: UserEvent[];
   defaultPromptTitles: Set<string>;
   defaultPromptsTotal: number;
+  defaultPromptsStarterGoal?: number;
 }
 
 const normalizeTitle = (title: string) => title.trim().toLocaleLowerCase("es");
@@ -33,7 +34,8 @@ export function getActivationChecklistState({
   folders,
   userEvents,
   defaultPromptTitles,
-  defaultPromptsTotal
+  defaultPromptsTotal,
+  defaultPromptsStarterGoal = 8
 }: ActivationChecklistInput): ActivationChecklistState {
   const savedDefaultTitles = new Set(
     prompts
@@ -41,6 +43,7 @@ export function getActivationChecklistState({
       .filter((title) => defaultPromptTitles.has(title))
   );
   const defaultPromptsSavedCount = savedDefaultTitles.size;
+  const starterGoal = Math.min(defaultPromptsStarterGoal, defaultPromptsTotal);
   const hasUsedOrCopiedPrompt = userEvents.some((event) =>
     ["use", "copy", "recommendation_use", "recommendation_copy"].includes(event.type)
   );
@@ -51,10 +54,10 @@ export function getActivationChecklistState({
   const steps: ActivationChecklistStep[] = [
     {
       id: "seed",
-      title: "Completa tu pack inicial",
-      description: `Guarda prompts base para empezar tu workspace: ${defaultPromptsSavedCount}/${defaultPromptsTotal}.`,
-      ctaLabel: defaultPromptsSavedCount === 0 ? "Cargar pack" : "Completar pack",
-      completed: defaultPromptsSavedCount >= defaultPromptsTotal
+      title: "Elige tu primer pack",
+      description: `Empieza con un pack pequeno segun tu objetivo: ${Math.min(defaultPromptsSavedCount, starterGoal)}/${starterGoal}. El pack completo queda opcional.`,
+      ctaLabel: defaultPromptsSavedCount === 0 ? "Elegir pack" : "Sumar prompts",
+      completed: defaultPromptsSavedCount >= starterGoal
     },
     {
       id: "use",
