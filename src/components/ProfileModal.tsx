@@ -33,19 +33,19 @@ export default function ProfileModal({
   onClose
 }: ProfileModalProps) {
   return (
-    <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <form onSubmit={onSave} className="bg-[#1e293b] rounded-3xl w-full max-w-lg shadow-2xl p-6 border border-slate-700/80 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
+      <form onSubmit={onSave} className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-lg shadow-2xl p-4 sm:p-6 border border-slate-700/80 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[96vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <UserCheck size={18} className="text-indigo-400" />
             <h3 className="font-extrabold text-white text-md">Perfil público</h3>
           </div>
-          <button type="button" onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
+          <button type="button" onClick={onClose} className="ui-action-secondary p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
+        <div className="ui-muted-panel flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-3">
           {(currentUserProfile?.photoURL || user.photoURL) ? (
             <img
               src={currentUserProfile?.photoURL || user.photoURL || ""}
@@ -107,7 +107,7 @@ export default function ProfileModal({
         </div>
 
         <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-800/60">
-          <button type="button" onClick={onClose} className="px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-350 text-xs font-bold transition-colors cursor-pointer">
+          <button type="button" onClick={onClose} className="ui-action-secondary px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-350 text-xs font-bold transition-colors cursor-pointer">
             Cancelar
           </button>
           <button

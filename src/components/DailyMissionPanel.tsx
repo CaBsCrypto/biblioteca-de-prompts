@@ -44,7 +44,7 @@ export default function DailyMissionPanel({
             <Rocket size={12} />
             Mision de hoy
           </p>
-          <h3 className="mt-3 text-lg font-black text-white">Convierte una senal en recurso publicable.</h3>
+          <h3 className="mt-3 text-lg md:text-xl font-black text-white">Convierte una senal en recurso publicable.</h3>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
             Un loop diario simple: encuentra una tendencia, usala o remixea un prompt, y deja algo listo para compartir en tu hub.
           </p>
@@ -54,8 +54,8 @@ export default function DailyMissionPanel({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <article className="surface-nested-card mobile-tight-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-2 text-cyan-300">
               <Newspaper size={15} />
@@ -79,7 +79,7 @@ export default function DailyMissionPanel({
           </button>
         </article>
 
-        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <article className="surface-nested-card mobile-tight-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/10 p-2 text-pink-300">
               <GitFork size={15} />
@@ -114,7 +114,7 @@ export default function DailyMissionPanel({
           )}
         </article>
 
-        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <article className="surface-nested-card mobile-tight-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-300">
               <Share2 size={15} />

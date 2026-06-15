@@ -111,8 +111,8 @@ export default function SeedPackModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/70 p-3 pt-4 backdrop-blur-md sm:items-center sm:p-4">
-      <div className="surface-card w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-700/80 bg-[#1e293b] shadow-2xl sm:rounded-3xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-6">
+      <div className="ui-modal-panel surface-card w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-700/80 bg-[#1e293b] shadow-2xl sm:rounded-3xl">
+        <div className="ui-modal-header flex items-start justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-6">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
               <BookOpen size={12} />
@@ -120,13 +120,13 @@ export default function SeedPackModal({
             </p>
             <h2 className="mt-3 text-xl font-black text-white">Elige con que prompts quieres empezar</h2>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">
-              No necesitas cargar los 80 prompts. Empieza con un pack pequeno y despues puedes sumar mas cuando tenga sentido.
+              No necesitas cargar los 80 prompts. Empieza con un pack pequeno y despues suma mas desde este mismo selector.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-800 bg-slate-950/50 p-2 text-slate-400 transition-colors hover:text-white"
+            className="ui-action-secondary rounded-xl border border-slate-800 bg-slate-950/50 p-2 text-slate-400 transition-colors hover:text-white"
             title="Cerrar"
           >
             <X size={16} />
@@ -138,12 +138,12 @@ export default function SeedPackModal({
             const newPromptsCount = pack.prompts.filter((prompt) => !existingTitles.has(normalizeTitle(prompt.title))).length;
             const Icon = pack.icon;
             return (
-              <article key={pack.id} className="surface-nested-card flex min-h-[220px] flex-col rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+              <article key={pack.id} className="surface-nested-card mobile-tight-card flex min-h-[210px] flex-col rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className={`rounded-2xl border p-2.5 ${accentClasses(pack.accent)}`}>
                     <Icon size={18} />
                   </div>
-                  <span className="rounded-full border border-slate-800 bg-slate-950/45 px-2.5 py-1 text-[10px] font-black text-slate-400">
+                  <span className="ui-chip rounded-full border border-slate-800 bg-slate-950/45 px-2.5 py-1 text-[10px] font-black text-slate-400">
                     {pack.prompts.length} prompts
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export default function SeedPackModal({
 
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {pack.prompts.slice(0, 4).map((prompt) => (
-                    <span key={prompt.title} className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1 text-[10px] font-bold text-slate-400">
+                    <span key={prompt.title} className="ui-chip rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1 text-[10px] font-bold text-slate-400">
                       {prompt.category}
                     </span>
                   ))}

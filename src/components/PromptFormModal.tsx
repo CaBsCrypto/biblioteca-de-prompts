@@ -292,10 +292,10 @@ export default function PromptFormModal({
 
   return (
     <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col my-2 sm:my-8 max-h-[96vh] sm:max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col my-2 sm:my-8 max-h-[96vh] sm:max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
+        <div className="ui-modal-header flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <h2 className="text-base sm:text-lg font-extrabold text-white leading-tight">
               {prompt ? "Editar Prompt en la Biblioteca" : "Crear Nuevo Prompt"}
@@ -303,7 +303,7 @@ export default function PromptFormModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1 px-2.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white font-bold transition-all cursor-pointer"
+            className="ui-action-secondary p-1 px-2.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white font-bold transition-all cursor-pointer"
             title="Cerrar"
           >
             <X size={18} />
@@ -423,14 +423,14 @@ export default function PromptFormModal({
               required
               className="w-full rounded-xl border border-slate-705 p-4 text-xs font-mono focus:outline-none focus:border-indigo-400 transition-all bg-[#0f172a] text-slate-100 leading-relaxed shadow-inner"
             />
-            <p className="text-[10px] text-slate-400 flex items-start sm:items-center gap-1 bg-slate-900/20 p-1.5 px-3 rounded-lg border border-slate-800/60 w-full sm:w-fit">
+            <p className="ui-muted-panel text-[10px] text-slate-400 flex items-start sm:items-center gap-1 bg-slate-900/20 p-1.5 px-3 rounded-lg border border-slate-800/60 w-full sm:w-fit">
               <HelpCircle size={11} className="text-indigo-400 animate-pulse" />
               <span>Consejo: El uso de llaves dobles permite que las personas completen interactivamente tu prompt paso a paso.</span>
             </p>
 
             {/* Version History HUD section */}
             {prompt && (
-              <div className="mt-3 bg-slate-900/40 border border-[#334155]/40 rounded-2xl p-4.5 space-y-3 shadow-inner">
+              <div className="ui-muted-panel mt-3 bg-slate-900/40 border border-[#334155]/40 rounded-2xl p-4.5 space-y-3 shadow-inner">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
                     <History size={13} className="text-indigo-400" /> Historial de versiones del Prompt
@@ -523,7 +523,7 @@ export default function PromptFormModal({
           </div>
 
           {/* Row 4.8: Enlace Compartido Toggle */}
-          <div className="border border-indigo-500/15 rounded-2xl p-4 bg-indigo-500/5 space-y-2">
+          <div className="ui-muted-panel border border-indigo-500/15 rounded-2xl p-4 bg-indigo-500/5 space-y-2">
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -541,7 +541,7 @@ export default function PromptFormModal({
           </div>
 
           {/* Row 5: Variables Section */}
-          <div className="border border-slate-700/50 rounded-2xl p-5 bg-slate-900/30 space-y-3">
+          <div className="ui-muted-panel border border-slate-700/50 rounded-2xl p-4 sm:p-5 bg-slate-900/30 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Variables de Entrada</h4>
@@ -551,7 +551,7 @@ export default function PromptFormModal({
                 <button
                   type="button"
                   onClick={handleExtractVariables}
-                  className="px-2.5 py-2 sm:py-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-all cursor-pointer"
+                  className="ui-action-secondary px-2.5 py-2 sm:py-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold rounded-lg border border-slate-700 transition-all cursor-pointer"
                   title="Detectar variables del prompt de arriba dinámicamente"
                 >
                   Escanear Prompt
@@ -619,11 +619,11 @@ export default function PromptFormModal({
         </form>
 
         {/* Footer Actions */}
-        <div className="px-4 sm:px-6 py-4 border-t border-slate-700/60 bg-slate-900/40 grid grid-cols-1 min-[420px]:grid-cols-2 sm:flex sm:items-center sm:justify-end gap-3 shrink-0">
+        <div className="ui-modal-footer px-4 sm:px-6 py-4 border-t border-slate-700/60 bg-slate-900/40 grid grid-cols-1 min-[420px]:grid-cols-2 sm:flex sm:items-center sm:justify-end gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 sm:py-2 hover:bg-slate-800 rounded-xl text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+            className="ui-action-secondary px-4 py-2.5 sm:py-2 hover:bg-slate-800 rounded-xl text-slate-300 font-bold text-xs transition-colors cursor-pointer"
           >
             Cancelar
           </button>

@@ -40,7 +40,7 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
   };
 
   return (
-    <article className="surface-card community-post-surface overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
+    <article className="surface-card community-post-surface mobile-tight-card overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
       {post.imageUrl && (
         <div className="aspect-[16/9] w-full overflow-hidden bg-slate-950">
           <img
@@ -90,7 +90,7 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
         </div>
 
         <div className="space-y-2">
-          <h3 className="text-lg font-black leading-tight text-white">{post.title}</h3>
+          <h3 className="text-base sm:text-lg font-black leading-tight text-white">{post.title}</h3>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{post.body}</p>
         </div>
 
@@ -124,7 +124,7 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
             className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition-all cursor-pointer ${
               isLiked
                 ? "border-pink-500/40 bg-pink-500/15 text-pink-300"
-                : "border-slate-800 bg-slate-950/50 text-slate-400 hover:text-pink-300"
+                : "ui-action-secondary border-slate-800 bg-slate-950/50 text-slate-400 hover:text-pink-300"
             }`}
           >
             <Heart size={13} fill={isLiked ? "currentColor" : "none"} />

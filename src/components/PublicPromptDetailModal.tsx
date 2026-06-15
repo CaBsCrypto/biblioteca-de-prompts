@@ -101,9 +101,9 @@ export default function PublicPromptDetailModal({
   }, [prompt.id, isFounderPackPrompt, canReadVersions]);
 
   return (
-    <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-250">
-        <div className="flex items-start justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
+    <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
+      <div className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col max-h-[96vh] sm:max-h-[94vh] animate-in fade-in zoom-in-95 duration-250">
+        <div className="ui-modal-header flex items-start justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] uppercase tracking-widest bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2.5 py-0.5 rounded font-bold flex items-center gap-1.5">
@@ -143,7 +143,7 @@ export default function PublicPromptDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white font-bold transition-all cursor-pointer shrink-0"
+            className="ui-action-secondary p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white font-bold transition-all cursor-pointer shrink-0"
             title="Cerrar detalle"
           >
             <X size={18} />
@@ -154,28 +154,28 @@ export default function PublicPromptDetailModal({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
             <section className="space-y-5 min-w-0">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+                <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Tipo</p>
                   <p className="text-xs font-extrabold text-white mt-1">{forkSourceTitle ? "Remix publicado" : "Prompt original"}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+                <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Remixes</p>
                   <p className="text-xs font-extrabold text-indigo-300 mt-1">{remixCount} conocidos</p>
                 </div>
-                <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+                <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Estado</p>
                   <p className="text-xs font-extrabold text-emerald-300 mt-1">{hasOwnRemix ? "Ya esta en tu biblioteca" : "Disponible para remix"}</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 space-y-2">
+              <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-indigo-300">Objetivo del prompt</h3>
                 <p className="text-sm text-slate-300 leading-relaxed font-sans">
                   {prompt.description || "El creador no agrego un objetivo detallado para este prompt."}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 space-y-2">
+              <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-pink-300">Caso de uso recomendado</h3>
                 <p className="text-xs text-slate-300 leading-relaxed font-sans">
                   Usalo cuando necesites una base lista para <strong className="text-slate-100">{prompt.category}</strong>
@@ -328,7 +328,7 @@ export default function PublicPromptDetailModal({
             </section>
 
             <aside className="space-y-3">
-              <div className="rounded-2xl border border-slate-700/70 bg-slate-900/45 p-4 space-y-3">
+              <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/45 p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-xl bg-slate-950/50 border border-slate-800 p-3">
                     <p className="text-lg font-black text-pink-300 font-mono">{likesCount}</p>
@@ -361,7 +361,7 @@ export default function PublicPromptDetailModal({
                   <button
                     type="button"
                     onClick={() => onCopy(prompt)}
-                    className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="ui-action-secondary px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <Copy size={13} />
                     <span>Copiar</span>
@@ -383,7 +383,7 @@ export default function PublicPromptDetailModal({
                     className={`px-3 py-2.5 font-bold text-xs rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       isSocialFavorite
                         ? "bg-amber-500/15 text-amber-300 border-amber-500/35"
-                        : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                        : "ui-action-secondary bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
                     }`}
                   >
                     <Star size={13} fill={isSocialFavorite ? "currentColor" : "none"} />
@@ -397,7 +397,7 @@ export default function PublicPromptDetailModal({
                       className={`px-3 py-2.5 font-bold text-xs rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         isLiked
                           ? "bg-rose-500/15 text-rose-300 border-rose-500/35"
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
+                          : "ui-action-secondary bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
                       }`}
                     >
                       <Heart size={13} fill={isLiked ? "currentColor" : "none"} />
@@ -410,7 +410,7 @@ export default function PublicPromptDetailModal({
                   <button
                     type="button"
                     onClick={() => onHidePrompt(prompt)}
-                    className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="ui-action-secondary px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <EyeOff size={13} />
                     <span>Ocultar</span>

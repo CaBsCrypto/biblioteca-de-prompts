@@ -31,15 +31,15 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
               {state.completedCount}/{state.totalCount} completado
             </span>
           </div>
-          <h3 className="text-sm md:text-base font-extrabold text-white mt-2 leading-tight">
-            Activa tu red personal de prompts
+          <h3 className="text-base md:text-lg font-extrabold text-white mt-2 leading-tight">
+            Activa tu biblioteca a tu ritmo
           </h3>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Guarda prompts, usalos en tu flujo diario, remixea recursos de otros creadores y publica tu primera version para la comunidad.
+            Elige un pack pequeno, usa un recurso, guarda un remix privado y publica solo cuando este listo.
           </p>
         </div>
 
-        <div className="w-full md:w-40">
+        <div className="w-full md:w-44">
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold mb-1">
             <span>Progreso</span>
             <span>{progressPercent}%</span>
@@ -53,13 +53,13 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5">
         {state.steps.map((step) => {
           const Icon = stepIcons[step.id];
           return (
             <div
               key={step.id}
-              className={`surface-nested-card rounded-2xl border p-3 flex flex-col gap-3 min-h-[150px] ${
+              className={`surface-nested-card mobile-tight-card rounded-2xl border p-3.5 flex flex-col gap-3 min-h-[144px] ${
                 step.completed
                   ? "bg-emerald-500/5 border-emerald-500/20"
                   : "bg-slate-950/35 border-slate-800/90"
@@ -84,7 +84,7 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
 
               <div className="space-y-1 min-w-0">
                 <h4 className="text-xs font-extrabold text-white leading-snug">{step.title}</h4>
-                <p className="text-[11px] text-slate-400 leading-relaxed">{step.description}</p>
+                <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3">{step.description}</p>
               </div>
 
               {!step.completed && (

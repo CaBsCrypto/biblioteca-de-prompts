@@ -107,7 +107,7 @@ export default function DailyWorkspace({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {sections.map((section) => (
-          <div key={section.id} className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/25 p-3.5 space-y-2.5">
+          <div key={section.id} className="surface-nested-card mobile-tight-card rounded-2xl border border-slate-800 bg-slate-950/25 p-3.5 space-y-2.5">
             <div className="flex items-start gap-2">
               <SectionIcon icon={section.icon} />
               <div className="min-w-0">
@@ -144,7 +144,7 @@ export default function DailyWorkspace({
                         <button
                           type="button"
                           onClick={() => onViewSocial(prompt)}
-                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="ui-action-secondary px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <Eye size={11} />
                           Ver
@@ -163,7 +163,7 @@ export default function DailyWorkspace({
                         <button
                           type="button"
                           onClick={() => onEdit(prompt)}
-                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="ui-action-secondary px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <Pencil size={11} />
                           Editar

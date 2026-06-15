@@ -1493,20 +1493,20 @@ export default function App() {
       )}
 
       {/* Main Top Header Navigation */}
-      <header id="main-app-header" className="bg-[#1e293b]/75 border-b border-[#334155]/60 backdrop-blur-md py-3.5 px-4 md:px-12 flex items-center justify-between gap-3 sticky top-0 z-30 shrink-0">
+      <header id="main-app-header" className="bg-[#1e293b]/75 border-b border-[#334155]/60 backdrop-blur-md px-3 py-2.5 sm:px-4 sm:py-3.5 md:px-12 flex items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-lg shadow-indigo-600/10 shrink-0">
+          <div className="app-logo-mark w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-lg shadow-indigo-600/10 shrink-0">
             <Zap size={18} fill="currentColor" className="text-yellow-300 animate-pulse" />
           </div>
           <div className="min-w-0">
             <h1 className="font-extrabold text-white text-sm sm:text-md leading-tight font-sans tracking-tight flex items-center gap-1.5 sm:gap-2 min-w-0">
-              <span className="bg-gradient-to-r from-[#818cf8] to-[#ec4899] bg-clip-text text-transparent truncate">Biblioteca de Prompts</span>
-              <span className="hidden min-[430px]:inline bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest leading-none shrink-0">
+              <span className="text-gradient-brand bg-gradient-to-r from-[#818cf8] to-[#ec4899] bg-clip-text text-transparent truncate">Biblioteca de Prompts</span>
+              <span className="hidden sm:inline bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest leading-none shrink-0">
                 Creadores IA
               </span>
             </h1>
-            <p className="text-[10px] text-slate-400 font-sans hidden sm:block">
-              Instrucciones y guias optimizadas listas para tus videos de YouTube
+            <p className="text-[10px] text-slate-400 font-sans hidden md:block">
+              Red social + radar para guardar, remixear y compartir prompts
             </p>
           </div>
         </div>
@@ -1516,7 +1516,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setUiThemeMode((current) => current === "clear" ? "dark" : "clear")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/65 px-3 py-2.5 text-xs font-black text-slate-200 shadow-lg shadow-slate-950/10 transition-all hover:border-cyan-400/40 hover:text-cyan-200 active:scale-[0.98] cursor-pointer"
+            className="header-quiet-button inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/65 px-2.5 py-2.5 sm:px-3 text-xs font-black text-slate-200 shadow-lg shadow-slate-950/10 transition-all hover:border-cyan-400/40 hover:text-cyan-200 active:scale-[0.98] cursor-pointer"
             title={uiThemeMode === "clear" ? "Volver al modo oscuro" : "Activar modo claro"}
             aria-label={uiThemeMode === "clear" ? "Volver al modo oscuro" : "Activar modo claro"}
           >
@@ -1524,7 +1524,7 @@ export default function App() {
             <span className="hidden sm:inline">{uiThemeMode === "clear" ? "Oscuro" : "Claro"}</span>
           </button>
           {user ? (
-            <div className="flex items-center gap-1.5 sm:gap-3 bg-slate-900/60 p-1.5 sm:pr-4 rounded-2xl border border-slate-800">
+            <div className="header-account-panel flex items-center gap-1 sm:gap-2 bg-slate-900/60 p-1.5 sm:pr-2.5 md:pr-4 rounded-2xl border border-slate-800">
               {(currentUserProfile?.photoURL || user.photoURL) ? (
                 <img
                   src={currentUserProfile?.photoURL || user.photoURL || ""}
@@ -1537,7 +1537,7 @@ export default function App() {
                   {(currentUserProfile?.displayName || user.displayName)?.charAt(0) || "U"}
                 </div>
               )}
-              <div className="hidden sm:block text-left">
+              <div className="hidden lg:block text-left max-w-36">
                 <p className="text-[10px] font-extrabold text-slate-200 leading-tight">
                   {currentUserProfile?.displayName || user.displayName}
                 </p>
@@ -1548,7 +1548,7 @@ export default function App() {
               <button
                 id="btn-edit-profile"
                 onClick={handleOpenProfileModal}
-                className="p-2 sm:p-1 sm:px-2.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all sm:ml-1.5 flex items-center gap-1 cursor-pointer"
+                className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 title="Editar perfil publico"
               >
                 <UserCheck size={12} />
@@ -1557,7 +1557,7 @@ export default function App() {
               <button
                 id="btn-logout"
                 onClick={handleSignOut}
-                className="p-2 sm:p-1 sm:px-2.5 bg-slate-800 hover:bg-red-500/15 hover:text-red-400 rounded-lg border border-slate-700 text-xs font-bold transition-all sm:ml-1.5 flex items-center gap-1 cursor-pointer"
+                className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-red-500/15 hover:text-red-400 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 title="Cerrar Sesión"
               >
                 <LogOut size={12} />
@@ -1717,7 +1717,7 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-12 space-y-6 md:space-y-8">
+        <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
           {currentSection === "foro" ? (
             <ForumSection
               posts={communityPosts}
