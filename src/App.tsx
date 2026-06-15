@@ -44,6 +44,7 @@ import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
 import CommunityExplore from "./components/CommunityExplore";
 import CreatorGrowthPanel from "./components/CreatorGrowthPanel";
+import DailyMissionPanel from "./components/DailyMissionPanel";
 import DailyWorkspace from "./components/DailyWorkspace";
 import TrustModerationPanel from "./components/TrustModerationPanel";
 import AppTopNav from "./components/AppTopNav";
@@ -2360,6 +2361,28 @@ export default function App() {
                 <ActivationChecklist
                   state={activationChecklistState}
                   onAction={handleActivationAction}
+                />
+              )}
+
+              {user && currentTab === "mi-biblioteca" && (
+                <DailyMissionPanel
+                  savedIdeasCount={savedIdeas.length}
+                  publicBriefingsCount={ownPublicBriefings.length}
+                  publicPromptsCount={ownPublicPrompts.length}
+                  publishCandidates={dailyWorkspaceState.publishCandidates}
+                  recentPrompts={dailyWorkspaceState.recentPrompts}
+                  recentRemixes={dailyWorkspaceState.recentRemixes}
+                  socialFavoritePromptsCount={dailyWorkspaceState.socialFavoritePrompts.length}
+                  onOpenNews={() => handleSectionChange("noticias")}
+                  onOpenCommunity={() => {
+                    setCurrentSection("prompts");
+                    setCurrentTab("comunidad");
+                    setCommunityScope("todos");
+                    setSelectedAuthor(null);
+                    setSelectedCategory("Todas");
+                  }}
+                  onEditPrompt={handleOpenEdit}
+                  onUsePrompt={(prompt) => handleUsePrompt(prompt, "daily_mission")}
                 />
               )}
 
