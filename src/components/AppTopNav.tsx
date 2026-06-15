@@ -1,4 +1,4 @@
-import { BookOpen, FolderOpen, Home, Image, MessageSquare, Newspaper, Trophy, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, Trophy, Users } from "lucide-react";
 import type { AppSection } from "../typesCommunity";
 
 interface AppTopNavProps {
@@ -9,7 +9,9 @@ interface AppTopNavProps {
   hackathonsCount: number;
   showcasesCount: number;
   newsCount?: number;
+  showGuidedMode?: boolean;
   onSectionChange: (section: AppSection) => void;
+  onGuidedModeClick?: () => void;
 }
 
 const NAV_ITEMS: Array<{
@@ -35,7 +37,9 @@ export default function AppTopNav({
   hackathonsCount,
   showcasesCount,
   newsCount = 0,
-  onSectionChange
+  showGuidedMode = false,
+  onSectionChange,
+  onGuidedModeClick
 }: AppTopNavProps) {
   const counts = {
     prompts: promptsCount,
@@ -49,6 +53,20 @@ export default function AppTopNav({
   return (
     <nav className="sticky top-[68px] sm:top-[73px] z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-3 md:px-12">
       <div className="mx-auto flex max-w-7xl items-center gap-1.5 sm:gap-2 overflow-x-auto py-2 scrollbar-thin">
+        {showGuidedMode && (
+          <button
+            type="button"
+            onClick={onGuidedModeClick}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-500/45 bg-amber-500 px-3.5 py-2 text-[11px] sm:text-xs font-black text-slate-950 shadow-lg shadow-amber-900/20 transition-all hover:bg-amber-400 cursor-pointer"
+            title="Abrir modo guiado de beta"
+          >
+            <ClipboardCheck size={14} />
+            <span>Modo guiado</span>
+            <span className="rounded-md bg-slate-950/15 px-1.5 py-0.5 text-[10px] font-mono font-black text-slate-950">
+              Beta
+            </span>
+          </button>
+        )}
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon === Users ? Users : item.icon;
           const isActive = currentSection === item.id;

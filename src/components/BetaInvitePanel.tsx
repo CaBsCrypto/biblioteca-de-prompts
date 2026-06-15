@@ -62,7 +62,7 @@ export default function BetaInvitePanel({
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-slate-950 transition-all hover:bg-amber-400 cursor-pointer"
           >
             <Copy size={13} />
-            Copiar invitacion
+            Copiar mensaje beta
           </button>
           <button
             type="button"
@@ -70,7 +70,7 @@ export default function BetaInvitePanel({
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-4 py-2.5 text-xs font-black text-indigo-300 transition-all hover:bg-indigo-500/15 cursor-pointer"
           >
             <MessageSquare size={13} />
-            Dar feedback
+            Abrir feedback
           </button>
         </div>
       </div>

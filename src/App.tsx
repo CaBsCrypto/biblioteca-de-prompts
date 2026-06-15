@@ -436,6 +436,31 @@ export default function App() {
     window.history.replaceState({}, "", url.toString());
   };
 
+  const openGuidedBetaMode = () => {
+    setCurrentSection("mi-biblioteca");
+    setCurrentTab("mi-biblioteca");
+    setSelectedCategory("Todas");
+    setSearchQuery("");
+    setSelectedTags([]);
+    setSelectedFolderId(null);
+    setCommunityScope("todos");
+    setSelectedAuthor(null);
+    setSharedPrompt(null);
+    setSharedPromptId(null);
+    setSharedCollection(null);
+    setSharedCollectionId(null);
+    setSharedCollectionPrompts([]);
+    setSharedBriefing(null);
+    setSharedBriefingId(null);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("user");
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    url.searchParams.delete("briefing");
+    window.history.replaceState({}, "", url.toString());
+  };
+
   const handleCopyPublicProfileLink = () => {
     if (!selectedAuthor) return;
     const url = new URL(window.location.href);
@@ -1546,7 +1571,9 @@ export default function App() {
         hackathonsCount={hackathons.length}
         showcasesCount={showcasePostsCount}
         newsCount={savedIdeas.length}
+        showGuidedMode={Boolean(user)}
         onSectionChange={handleSectionChange}
+        onGuidedModeClick={openGuidedBetaMode}
       />
 
       {/* Main Core Area layout */}
