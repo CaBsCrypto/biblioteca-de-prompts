@@ -34,7 +34,9 @@ import {
   UserPlus,
   GitFork,
   TrendingUp,
-  Newspaper
+  Newspaper,
+  Moon,
+  Sun
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -103,11 +105,16 @@ const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
   { id: "remixes", label: "Remixes" },
   { id: "favoritos", label: "Favoritos propios" }
 ];
+type UiThemeMode = "dark" | "clear";
 
 export default function App() {
   // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad">("mi-biblioteca");
   const [currentSection, setCurrentSection] = useState<AppSection>("inicio");
+  const [uiThemeMode, setUiThemeMode] = useState<UiThemeMode>(() => {
+    const savedTheme = window.localStorage.getItem("biblioteca-ui-theme");
+    return savedTheme === "clear" ? "clear" : "dark";
+  });
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Todas");
@@ -856,6 +863,10 @@ export default function App() {
     }));
   }, []);
 
+  useEffect(() => {
+    window.localStorage.setItem("biblioteca-ui-theme", uiThemeMode);
+  }, [uiThemeMode]);
+
   const communityCatalogPrompts = useMemo(() => {
     const communityIds = new Set(communityPrompts.map((prompt) => prompt.id));
     return [
@@ -1449,7 +1460,7 @@ export default function App() {
   }, [authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200">
+    <div className={`min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200 ${uiThemeMode === "clear" ? "clear-ui" : "dark-ui"}`}>
       
       {/* Toast Notification HUD */}
       {notification && (
@@ -1489,6 +1500,16 @@ export default function App() {
 
         {/* Right Header Navigation - Auth State panel */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setUiThemeMode((current) => current === "clear" ? "dark" : "clear")}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/65 px-3 py-2.5 text-xs font-black text-slate-200 shadow-lg shadow-slate-950/10 transition-all hover:border-cyan-400/40 hover:text-cyan-200 active:scale-[0.98] cursor-pointer"
+            title={uiThemeMode === "clear" ? "Volver al modo oscuro" : "Activar modo claro"}
+            aria-label={uiThemeMode === "clear" ? "Volver al modo oscuro" : "Activar modo claro"}
+          >
+            {uiThemeMode === "clear" ? <Moon size={14} /> : <Sun size={14} />}
+            <span className="hidden sm:inline">{uiThemeMode === "clear" ? "Oscuro" : "Claro"}</span>
+          </button>
           {user ? (
             <div className="flex items-center gap-1.5 sm:gap-3 bg-slate-900/60 p-1.5 sm:pr-4 rounded-2xl border border-slate-800">
               {(currentUserProfile?.photoURL || user.photoURL) ? (

@@ -8,7 +8,7 @@ import firebaseConfig from "./firebase-applet-config.json";
 // Load environment variables
 dotenv.config();
 
-const port = 3000;
+const port = Number(process.env.PORT || 3000);
 const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 const promptCategories = ["YouTube", "Marketing", "Programación", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General"] as const;
 const categoryOptions = promptCategories.join(", ");

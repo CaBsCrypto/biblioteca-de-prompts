@@ -34,3 +34,91 @@
     background: rgba(236, 72, 153, 0.4);
   }
 }
+
+.clear-ui {
+  color: #172033 !important;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.22), transparent 34rem),
+    radial-gradient(circle at top right, rgba(236, 72, 153, 0.14), transparent 30rem),
+    linear-gradient(180deg, #f8fbff 0%, #eef6ff 46%, #f8fafc 100%) !important;
+}
+
+.clear-ui #main-app-header,
+.clear-ui nav {
+  background: rgba(255, 255, 255, 0.84) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08) !important;
+}
+
+.clear-ui [class*="bg-slate-950"],
+.clear-ui [class*="bg-slate-900"],
+.clear-ui [class*="bg-[#0f172a]"],
+.clear-ui [class*="bg-[#1e293b]"] {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.clear-ui [class*="bg-slate-800"] {
+  background-color: rgba(226, 232, 240, 0.82) !important;
+}
+
+.clear-ui [class*="border-slate-800"],
+.clear-ui [class*="border-slate-700"],
+.clear-ui [class*="border-[#334155]"] {
+  border-color: rgba(148, 163, 184, 0.34) !important;
+}
+
+.clear-ui [class*="shadow-slate-950"],
+.clear-ui [class*="shadow-2xl"],
+.clear-ui [class*="shadow-xl"] {
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08) !important;
+}
+
+.clear-ui [class*="text-slate-100"],
+.clear-ui [class*="text-slate-200"],
+.clear-ui [class*="text-slate-300"],
+.clear-ui [class*="text-slate-350"] {
+  color: #1f2937 !important;
+}
+
+.clear-ui [class*="text-slate-400"],
+.clear-ui [class*="text-slate-420"],
+.clear-ui [class*="text-slate-450"],
+.clear-ui [class*="text-slate-500"],
+.clear-ui [class*="text-slate-550"] {
+  color: #64748b !important;
+}
+
+.clear-ui #main-app-header [class*="text-white"],
+.clear-ui #toast-hud [class*="text-white"] {
+  color: #172033 !important;
+}
+
+.clear-ui input,
+.clear-ui textarea,
+.clear-ui select,
+.clear-ui pre {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  color: #172033 !important;
+}
+
+.clear-ui input::placeholder,
+.clear-ui textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.clear-ui code,
+.clear-ui kbd {
+  background-color: rgba(226, 232, 240, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #334155 !important;
+}
+
+.clear-ui .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.75);
+}
+
+.clear-ui .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.35);
+  border-color: rgba(255, 255, 255, 0.75);
+}
