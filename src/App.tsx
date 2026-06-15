@@ -2432,6 +2432,10 @@ export default function App() {
               {user && currentTab === "mi-biblioteca" && (
                 <BetaInvitePanel
                   publicUrl={publicAppUrl}
+                  publicPromptsCount={ownPublicPrompts.length}
+                  publicBriefingsCount={ownPublicBriefings.length}
+                  forumPostsCount={forumPostsCount}
+                  savedIdeasCount={savedIdeas.length}
                   onCopy={(text, message) => void handleCopyText(text, message)}
                   onCreateFeedbackPost={handleCreateBetaFeedbackPost}
                 />

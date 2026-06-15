@@ -2,6 +2,10 @@ import { ClipboardCheck, Copy, MessageSquare, Smartphone, Users } from "lucide-r
 
 interface BetaInvitePanelProps {
   publicUrl: string;
+  publicPromptsCount: number;
+  publicBriefingsCount: number;
+  forumPostsCount: number;
+  savedIdeasCount: number;
   onCopy: (text: string, successMessage: string) => void;
   onCreateFeedbackPost: () => void;
 }
@@ -22,7 +26,22 @@ const inviteText = (publicUrl: string) => [
   publicUrl
 ].join("\n");
 
-export default function BetaInvitePanel({ publicUrl, onCopy, onCreateFeedbackPost }: BetaInvitePanelProps) {
+export default function BetaInvitePanel({
+  publicUrl,
+  publicPromptsCount,
+  publicBriefingsCount,
+  forumPostsCount,
+  savedIdeasCount,
+  onCopy,
+  onCreateFeedbackPost
+}: BetaInvitePanelProps) {
+  const betaSignals = [
+    { label: "prompts publicos", value: publicPromptsCount },
+    { label: "briefings", value: publicBriefingsCount },
+    { label: "posts foro", value: forumPostsCount },
+    { label: "ideas guardadas", value: savedIdeasCount }
+  ];
+
   return (
     <section className="rounded-2xl md:rounded-3xl border border-amber-500/20 bg-amber-500/5 p-4 md:p-5 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -56,6 +75,15 @@ export default function BetaInvitePanel({ publicUrl, onCopy, onCreateFeedbackPos
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {betaSignals.map((signal) => (
+          <div key={signal.label} className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+            <p className="text-lg font-black text-white">{signal.value}</p>
+            <p className="text-[10px] font-bold uppercase text-slate-500">{signal.label}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <article className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <p className="flex items-center gap-2 text-xs font-black text-white">
@@ -84,6 +112,13 @@ export default function BetaInvitePanel({ publicUrl, onCopy, onCreateFeedbackPos
             Pide capturas, cuenta usada, navegador y el paso exacto donde hubo confusion o friccion.
           </p>
         </article>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <p className="text-xs font-black text-white">Criterio de exito de esta ronda</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+          3 testers completan: login con Google, cargar pack inicial, guardar un remix privado y publicar feedback en Foro.
+        </p>
       </div>
     </section>
   );
