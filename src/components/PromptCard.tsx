@@ -316,7 +316,7 @@ ${notesStr}
   return (
     <div
       id={`prompt-card-${prompt.id}`}
-      className={`bg-[#1e293b]/90 border border-slate-700/60 rounded-2xl md:rounded-3xl p-4 sm:p-6 shadow-xl hover:shadow-[0_0_25px_rgba(129,140,248,0.12)] hover:border-indigo-450/80 transition-all duration-250 flex flex-col justify-between group ${
+      className={`surface-card prompt-surface bg-[#1e293b]/90 border border-slate-700/60 rounded-2xl md:rounded-3xl p-4 sm:p-6 shadow-xl hover:shadow-[0_0_25px_rgba(129,140,248,0.12)] hover:border-indigo-450/80 transition-all duration-250 flex flex-col justify-between group ${
         !isCommunityView ? "cursor-grab active:cursor-grabbing select-none" : ""
       }`}
       draggable={!isCommunityView}

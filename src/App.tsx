@@ -1612,7 +1612,7 @@ export default function App() {
       ) : sharedCollection ? (
         <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
           {/* Header of the Shared Collection */}
-          <div className="bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
+          <div className="surface-card bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
             
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">
@@ -1667,7 +1667,7 @@ export default function App() {
                 <p className="text-xs text-slate-400 italic font-sans animate-pulse">Cargando los prompts de la colección...</p>
               </div>
             ) : sharedCollectionPrompts.length === 0 ? (
-              <div className="text-center py-24 bg-[#1e293b]/25 rounded-3xl border border-dashed border-slate-800 text-slate-400 space-y-2">
+              <div className="surface-card text-center py-24 bg-[#1e293b]/25 rounded-3xl border border-dashed border-slate-800 text-slate-400 space-y-2">
                 <p className="text-sm font-bold">Esta colección no tiene ningún prompt guardado o visible aún.</p>
                 <p className="text-xs font-sans text-slate-500">Los prompts agregados a esta carpeta por su creador aparecerán aquí en tiempo real.</p>
               </div>
@@ -1792,7 +1792,7 @@ export default function App() {
               />
             </div>
           ) : !user && !authLoading ? (
-            <div id="welcome-callout" className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
+            <div id="welcome-callout" className="surface-card public-hero-surface bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
               <div className="space-y-3 relative z-10 max-w-3xl">
                 <span className="font-extrabold uppercase tracking-widest text-[9px] text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20 shadow-[0_0_15px_rgba(34,211,238,0.12)]">
                   Radar social para creadores IA

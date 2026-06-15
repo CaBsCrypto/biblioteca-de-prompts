@@ -40,7 +40,7 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
+    <article className="surface-card community-post-surface overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
       {post.imageUrl && (
         <div className="aspect-[16/9] w-full overflow-hidden bg-slate-950">
           <img

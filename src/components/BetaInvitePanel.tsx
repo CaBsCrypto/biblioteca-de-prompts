@@ -43,7 +43,7 @@ export default function BetaInvitePanel({
   ];
 
   return (
-    <section className="rounded-2xl md:rounded-3xl border border-amber-500/20 bg-amber-500/5 p-4 md:p-5 space-y-4">
+    <section className="surface-card beta-surface rounded-2xl md:rounded-3xl border border-amber-500/20 bg-amber-500/5 p-4 md:p-5 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
