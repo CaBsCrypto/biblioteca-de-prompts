@@ -37,7 +37,7 @@ export default function DailyMissionPanel({
   const completedCount = [discoveryDone, workDone, publishDone].filter(Boolean).length;
 
   return (
-    <section className="rounded-2xl md:rounded-3xl border border-violet-500/20 bg-violet-500/5 p-4 md:p-5 space-y-4">
+    <section className="surface-card mission-surface rounded-2xl md:rounded-3xl border border-violet-500/20 bg-violet-500/5 p-4 md:p-5 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-300">
@@ -55,7 +55,7 @@ export default function DailyMissionPanel({
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-2 text-cyan-300">
               <Newspaper size={15} />
@@ -79,7 +79,7 @@ export default function DailyMissionPanel({
           </button>
         </article>
 
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-pink-500/20 bg-pink-500/10 p-2 text-pink-300">
               <GitFork size={15} />
@@ -114,7 +114,7 @@ export default function DailyMissionPanel({
           )}
         </article>
 
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+        <article className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
           <div className="flex items-start gap-3">
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-300">
               <Share2 size={15} />

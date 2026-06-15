@@ -20,7 +20,7 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
   const progressPercent = Math.round((state.completedCount / state.totalCount) * 100);
 
   return (
-    <section className="rounded-2xl md:rounded-3xl border border-indigo-500/20 bg-[#1e293b]/80 p-4 md:p-5 shadow-xl space-y-4">
+    <section className="surface-card onboarding-surface rounded-2xl md:rounded-3xl border border-indigo-500/20 bg-[#1e293b]/80 p-4 md:p-5 shadow-xl space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -59,7 +59,7 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
           return (
             <div
               key={step.id}
-              className={`rounded-2xl border p-3 flex flex-col gap-3 min-h-[150px] ${
+              className={`surface-nested-card rounded-2xl border p-3 flex flex-col gap-3 min-h-[150px] ${
                 step.completed
                   ? "bg-emerald-500/5 border-emerald-500/20"
                   : "bg-slate-950/35 border-slate-800/90"
@@ -91,7 +91,7 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
                 <button
                   type="button"
                   onClick={() => onAction(step.id)}
-                  className="mt-auto px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="clear-secondary-action mt-auto px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <span>{step.ctaLabel}</span>
                   <ArrowRight size={12} />

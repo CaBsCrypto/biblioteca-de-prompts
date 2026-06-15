@@ -82,7 +82,7 @@ export default function DailyWorkspace({
   const sections = allSections.filter((section) => section.prompts.length > 0);
 
   return (
-    <section className="rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/60 p-4 md:p-5 space-y-4">
+    <section className="surface-card workspace-surface rounded-2xl md:rounded-3xl border border-slate-800/85 bg-[#1e293b]/60 p-4 md:p-5 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
@@ -107,7 +107,7 @@ export default function DailyWorkspace({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {sections.map((section) => (
-          <div key={section.id} className="rounded-2xl border border-slate-800 bg-slate-950/25 p-3.5 space-y-2.5">
+          <div key={section.id} className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/25 p-3.5 space-y-2.5">
             <div className="flex items-start gap-2">
               <SectionIcon icon={section.icon} />
               <div className="min-w-0">
@@ -118,7 +118,7 @@ export default function DailyWorkspace({
 
             <div className="space-y-2">
               {section.prompts.map((prompt) => (
-                <article key={`${section.id}-${prompt.id}`} className="rounded-xl border border-slate-800/80 bg-[#1e293b]/70 p-3 min-w-0">
+                <article key={`${section.id}-${prompt.id}`} className="surface-nested-card rounded-xl border border-slate-800/80 bg-[#1e293b]/70 p-3 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-extrabold text-white line-clamp-1">{prompt.title}</p>

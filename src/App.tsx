@@ -2171,7 +2171,7 @@ export default function App() {
             <div className="space-y-8">
               
               {/* Sleek Navigation Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-[#0f172a]/65 rounded-2xl border border-slate-800/80 w-fit">
+              <div className="library-switcher-surface flex items-center gap-1 p-1 bg-[#0f172a]/65 rounded-2xl border border-slate-800/80 w-fit">
                 <button
                   onClick={() => {
                     setCurrentSection("mi-biblioteca");
@@ -2215,7 +2215,7 @@ export default function App() {
               </div>
 
               {currentTab === "comunidad" && !selectedAuthor && (
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-[#1e293b]/45 p-3">
+                <div className="control-panel-surface flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800/80 bg-[#1e293b]/45 p-3">
                   <div className="flex items-center gap-1.5 rounded-xl bg-slate-950/50 p-1 border border-slate-800">
                     <button
                       type="button"

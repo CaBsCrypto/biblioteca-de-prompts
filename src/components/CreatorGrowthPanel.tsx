@@ -46,7 +46,7 @@ export default function CreatorGrowthPanel({
 
   if (!briefings.length && !publicPrompts.length && !publishCandidates.length) {
     return (
-      <section className="rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4 md:p-5">
+      <section className="surface-card growth-surface rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-4 md:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
@@ -82,7 +82,7 @@ export default function CreatorGrowthPanel({
   }
 
   return (
-    <section className="rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-slate-900/55 p-4 md:p-5 space-y-4">
+    <section className="surface-card growth-surface rounded-2xl md:rounded-3xl border border-cyan-500/20 bg-slate-900/55 p-4 md:p-5 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
