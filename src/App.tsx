@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Prompt, CategoryFilter, Folder } from "./types";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
+import BetaInvitePanel from "./components/BetaInvitePanel";
 import CommunityExplore from "./components/CommunityExplore";
 import CreatorGrowthPanel from "./components/CreatorGrowthPanel";
 import DailyMissionPanel from "./components/DailyMissionPanel";
@@ -567,6 +568,34 @@ export default function App() {
       return;
     }
     triggerNotification("Briefing preparado como borrador de foro.", "success");
+  };
+
+  const handleCreateBetaFeedbackPost = () => {
+    setPendingForumDraft({
+      type: "question",
+      title: "Feedback beta: mi primera prueba",
+      body: [
+        "Probe la beta y este es mi feedback:",
+        "",
+        "1. Lo mas claro fue:",
+        "2. Lo mas confuso fue:",
+        "3. Algo que no funciono:",
+        "4. Lo probaria de nuevo si:",
+        "",
+        "Dispositivo/navegador:"
+      ].join("\n"),
+      tags: ["feedback", "beta"],
+      linkUrl: window.location.origin,
+      imageUrl: ""
+    });
+    setCurrentSection("foro");
+    setCurrentTab("comunidad");
+    if (!user) {
+      triggerNotification("Conecta con Google y abriremos el feedback en el foro.", "info");
+      void handleSignIn();
+      return;
+    }
+    triggerNotification("Borrador de feedback preparado en el foro.", "success");
   };
 
   const handleCreateNewsletterFromNews = (items: NewsItem[], category: NewsCategory) => {
@@ -1379,6 +1408,20 @@ export default function App() {
   const youtubeCount = useMemo(() => prompts.filter((p) => p.category === "YouTube").length, [prompts]);
   const forumPostsCount = useMemo(() => communityPosts.filter((post) => post.type !== "showcase").length, [communityPosts]);
   const showcasePostsCount = useMemo(() => communityPosts.filter((post) => post.type === "showcase").length, [communityPosts]);
+  const publicAppUrl = typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "https://biblioteca-de-prompts-ashen.vercel.app";
+
+  const handleCopyText = async (text: string, successMessage: string) => {
+    await navigator.clipboard.writeText(text);
+    triggerNotification(successMessage, "success");
+  };
+
+  useEffect(() => {
+    if (!user || authLoading) return;
+    if (currentSection !== "inicio") return;
+    if (sharedBriefing || sharedPrompt || sharedCollection || selectedAuthor) return;
+    setCurrentSection("mi-biblioteca");
+    setCurrentTab("mi-biblioteca");
+  }, [authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200">
@@ -1707,13 +1750,13 @@ export default function App() {
                   Radar social para creadores IA
                 </span>
                 <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
-                  Convierte tendencias IA en ideas guardadas, prompts remixables y briefings compartibles.
+                  Crea tu biblioteca privada y remixea prompts con una comunidad de creadores IA.
                 </h2>
                 <p className="hidden text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
                   ¿Vas a enseñar Inteligencia Artificial en YouTube? Esta biblioteca te permite tener todas las plantillas de instrucciones organizadas en un solo lugar. Rellena variables en vivo para tus espectadores y optimiza cualquier prompt básico al instante mediante el Asistente IA de Gemini.
                 </p>
                 <p className="text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
-                  Descubre noticias, hackathons y recursos de la comunidad. Guarda lo importante en tu biblioteca, transforma cada senal en un prompt editable y comparte briefings para atraer otros creadores.
+                  Explora recursos publicos, guarda copias privadas, usalas en tu flujo y publica tu version solo cuando este lista. Tu perfil se crea con Google, pero tu contenido privado no se comparte sin permiso.
                 </p>
               </div>
 
@@ -1777,18 +1820,18 @@ export default function App() {
                 </div>
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-pink-400 flex items-center gap-1">
-                    <Sparkles size={14} /> 3. Crea prompts
+                    <Sparkles size={14} /> 3. Usa y remixea
                   </h4>
                   <p className="text-slate-400 leading-relaxed font-sans">
-                    Convierte cada noticia o recurso en instrucciones reutilizables.
+                    Guarda una copia editable y adaptala a tu proyecto.
                   </p>
                 </div>
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-emerald-300 flex items-center gap-1">
-                    <Share2 size={14} /> 4. Comparte briefings
+                    <Share2 size={14} /> 4. Publica tu version
                   </h4>
                   <p className="text-slate-400 leading-relaxed font-sans">
-                    Publica links que otros pueden leer, guardar y comentar.
+                    Comparte prompts, briefings o posts solo cuando decidas.
                   </p>
                 </div>
               </div>
@@ -2383,6 +2426,14 @@ export default function App() {
                   }}
                   onEditPrompt={handleOpenEdit}
                   onUsePrompt={(prompt) => handleUsePrompt(prompt, "daily_mission")}
+                />
+              )}
+
+              {user && currentTab === "mi-biblioteca" && (
+                <BetaInvitePanel
+                  publicUrl={publicAppUrl}
+                  onCopy={(text, message) => void handleCopyText(text, message)}
+                  onCreateFeedbackPost={handleCreateBetaFeedbackPost}
                 />
               )}
 
