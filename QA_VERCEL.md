@@ -31,7 +31,7 @@ vercel inspect <preview-url>
 5. Al desplegar produccion o un dominio publico, ejecutar smoke HTTP:
 
 ```bash
-npm run smoke:vercel -- https://biblioteca-de-prompts-ashen.vercel.app
+npm run smoke:vercel -- https://biblioteca.browns.studio
 ```
 
 El smoke valida dos cosas minimas: la home responde `200` y `/api/ai/crear` responde `401` sin token, confirmando que la API existe y sigue protegida.

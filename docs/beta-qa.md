@@ -1,6 +1,6 @@
 # Beta QA - Comunidad Invitable
 
-Dominio de prueba: https://biblioteca-de-prompts-ashen.vercel.app
+Dominio de prueba: https://biblioteca.browns.studio
 
 ## Objetivo
 
@@ -33,7 +33,7 @@ Checklist rapido:
 
 Importante: nada se publica sin que tu lo decidas.
 
-https://biblioteca-de-prompts-ashen.vercel.app
+https://biblioteca.browns.studio
 ```
 
 ## Criterio De Exito

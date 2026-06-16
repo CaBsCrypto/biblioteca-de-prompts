@@ -118,9 +118,9 @@ export default function SeedPackModal({
               <BookOpen size={12} />
               Onboarding flexible
             </p>
-            <h2 className="mt-3 text-xl font-black text-white">Elige con que prompts quieres empezar</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">
-              No necesitas cargar los 80 prompts. Empieza con un pack pequeno y despues suma mas desde este mismo selector.
+            <h2 className="ui-text-primary mt-3 text-xl font-black text-white">Elige un pack pequeno para empezar</h2>
+            <p className="ui-text-muted mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
+              Recomendado: empieza con el starter. Puedes sumar mas prompts despues, sin duplicar tu biblioteca.
             </p>
           </div>
           <button
@@ -128,6 +128,7 @@ export default function SeedPackModal({
             onClick={onClose}
             className="ui-action-secondary rounded-xl border border-slate-800 bg-slate-950/50 p-2 text-slate-400 transition-colors hover:text-white"
             title="Cerrar"
+            aria-label="Cerrar selector de packs"
           >
             <X size={16} />
           </button>
@@ -149,8 +150,8 @@ export default function SeedPackModal({
                 </div>
 
                 <div className="mt-4 min-w-0">
-                  <h3 className="text-base font-black text-white">{pack.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">{pack.description}</p>
+                  <h3 className="ui-text-primary text-base font-black text-white">{pack.title}</h3>
+                  <p className="ui-text-muted mt-2 text-sm leading-relaxed text-slate-400">{pack.description}</p>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-1.5">
@@ -165,7 +166,11 @@ export default function SeedPackModal({
                   type="button"
                   disabled={loading || newPromptsCount === 0}
                   onClick={() => onSeedPack(pack.prompts)}
-                  className="clear-secondary-action mt-auto flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-black text-slate-200 transition-all hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-55"
+                  className={`mt-auto flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black transition-all disabled:cursor-not-allowed disabled:opacity-55 ${
+                    pack.id === "creator"
+                      ? "ui-button-primary border-transparent"
+                      : "clear-secondary-action border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700"
+                  }`}
                 >
                   {newPromptsCount === 0 ? "Ya guardado" : `Agregar ${newPromptsCount}`}
                 </button>

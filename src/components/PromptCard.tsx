@@ -628,8 +628,9 @@ ${notesStr}
             {canForkPrompt && (
               <button
                 onClick={() => onFork(prompt)}
-                className="px-3 py-2.5 sm:py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-white border border-emerald-500/25 hover:border-emerald-400/50 rounded-xl sm:rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="px-3 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-white border border-emerald-500/25 hover:border-emerald-400/50 rounded-xl sm:rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 title={currentUser ? "Guardar como remix privado editable" : "Guardar este prompt iniciando sesion con Google"}
+                aria-label={currentUser ? `Guardar ${prompt.title} como remix privado` : `Iniciar sesion para guardar ${prompt.title}`}
               >
                 <GitFork size={13} />
                 <span>{currentUser ? "Guardar remix" : "Guardar"}</span>
@@ -640,7 +641,7 @@ ${notesStr}
               <button
                 id={`btn-view-details-${prompt.id}`}
                 onClick={() => onViewDetails(prompt)}
-                className="ui-action-secondary px-3 py-2.5 sm:py-1.5 bg-slate-900/70 hover:bg-slate-800 text-slate-250 border border-slate-700 rounded-xl sm:rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="ui-action-secondary px-3 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 bg-slate-900/70 hover:bg-slate-800 text-slate-250 border border-slate-700 rounded-xl sm:rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 title="Ver objetivo, prompt completo y comentarios"
               >
                 <Globe size={13} />
@@ -651,7 +652,7 @@ ${notesStr}
             <button
               id={`btn-copy-${prompt.id}`}
               onClick={handleCopy}
-              className={`ui-action-secondary px-3 py-2.5 sm:py-1.5 rounded-xl sm:rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`ui-action-secondary px-3 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 rounded-xl sm:rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 copied
                   ? "bg-slate-800 text-slate-200 border-indigo-500/40"
                   : "bg-slate-800 text-slate-350 border-slate-700 hover:bg-slate-700 hover:text-white"
@@ -677,7 +678,7 @@ ${notesStr}
                 e.stopPropagation();
                 onCopyFilled(prompt);
               }}
-              className="px-3 py-2.5 sm:py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white border border-indigo-500/25 hover:border-indigo-400/50 rounded-xl sm:rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.1)]"
+              className="px-3 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white border border-indigo-500/25 hover:border-indigo-400/50 rounded-xl sm:rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.1)]"
               title="Copiar prompt rellenando variables rápidamente"
             >
               <Sparkles size={13} className="text-pink-400 animate-pulse" />
@@ -687,7 +688,7 @@ ${notesStr}
             <button
               id={`btn-use-${prompt.id}`}
               onClick={() => onUse(prompt)}
-              className="prompt-primary-action col-span-2 sm:col-span-1 px-4 py-2.5 sm:py-1.5 bg-gradient-to-r from-indigo-650 to-pink-600 hover:opacity-90 text-white text-xs font-bold rounded-xl sm:rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
+              className="prompt-primary-action ui-button-primary col-span-2 sm:col-span-1 px-4 py-2.5 sm:py-1.5 text-xs font-bold rounded-xl sm:rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-indigo-600/10"
               title="Rellenar variables interactivamente"
             >
               <Play size={12} fill="currentColor" />

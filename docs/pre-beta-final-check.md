@@ -12,7 +12,7 @@ Usar antes de enviar el link a testers reales.
 
 ## 2. Ruta De Usuario Nuevo
 
-- [ ] Abrir `https://biblioteca-de-prompts-ashen.vercel.app` sin login.
+- [ ] Abrir `https://biblioteca.browns.studio` sin login.
 - [ ] Confirmar que el CTA principal es `Crear mi biblioteca`.
 - [ ] Login con Google.
 - [ ] Elegir pack pequeno, no pack completo.

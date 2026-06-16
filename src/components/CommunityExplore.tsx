@@ -147,11 +147,12 @@ export default function CommunityExplore({
                   <p className="text-[10px] text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                     {prompt.description || "Prompt publico listo para adaptar."}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                  <div className="grid grid-cols-1 gap-2 mt-3 min-[420px]:grid-cols-3">
                     <button
                       type="button"
                       onClick={() => onSave(prompt)}
-                      className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                      className="min-h-11 px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                      aria-label={`Guardar ${prompt.title} como remix privado`}
                     >
                       <GitFork size={11} />
                       Remix
@@ -159,7 +160,7 @@ export default function CommunityExplore({
                     <button
                       type="button"
                       onClick={() => onUse(prompt)}
-                      className="px-2.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                      className="min-h-11 px-2.5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Play size={10} fill="currentColor" />
                       Usar
@@ -167,7 +168,7 @@ export default function CommunityExplore({
                     <button
                       type="button"
                       onClick={() => onView(prompt)}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                      className="ui-button-secondary px-2.5 py-2 border rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Eye size={11} />
                       Ver

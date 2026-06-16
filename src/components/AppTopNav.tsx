@@ -19,14 +19,15 @@ const NAV_ITEMS: Array<{
   label: string;
   icon: typeof Home;
   countKey?: "prompts" | "library" | "posts" | "hackathons" | "showcases" | "news";
+  priority: "primary" | "secondary";
 }> = [
-  { id: "inicio", label: "Inicio", icon: Home },
-  { id: "prompts", label: "Prompts", icon: BookOpen, countKey: "prompts" },
-  { id: "foro", label: "Foro", icon: MessageSquare, countKey: "posts" },
-  { id: "hackathons", label: "Hackathons", icon: Trophy, countKey: "hackathons" },
-  { id: "galeria", label: "Galeria", icon: Image, countKey: "showcases" },
-  { id: "noticias", label: "Noticias", icon: Newspaper, countKey: "news" },
-  { id: "mi-biblioteca", label: "Mi Biblioteca", icon: FolderOpen, countKey: "library" }
+  { id: "inicio", label: "Inicio", icon: Home, priority: "primary" },
+  { id: "prompts", label: "Prompts", icon: BookOpen, countKey: "prompts", priority: "primary" },
+  { id: "noticias", label: "Noticias", icon: Newspaper, countKey: "news", priority: "primary" },
+  { id: "mi-biblioteca", label: "Mi Biblioteca", icon: FolderOpen, countKey: "library", priority: "primary" },
+  { id: "foro", label: "Foro", icon: MessageSquare, countKey: "posts", priority: "secondary" },
+  { id: "hackathons", label: "Hackathons", icon: Trophy, countKey: "hackathons", priority: "secondary" },
+  { id: "galeria", label: "Galeria", icon: Image, countKey: "showcases", priority: "secondary" }
 ];
 
 export default function AppTopNav({
@@ -77,7 +78,9 @@ export default function AppTopNav({
               key={item.id}
               type="button"
               onClick={() => onSectionChange(item.id)}
-              className={`nav-section-button flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-3.5 py-2.5 sm:py-2 text-[11px] sm:text-xs font-black transition-all active:scale-[0.98] cursor-pointer ${
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`Ir a ${item.label}`}
+              className={`nav-section-button nav-priority-${item.priority} flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-3.5 py-2.5 sm:py-2 text-[11px] sm:text-xs font-black transition-all active:scale-[0.98] cursor-pointer ${
                 isActive
                   ? "nav-section-button-active border-indigo-500/50 bg-indigo-600 text-white shadow-lg shadow-indigo-700/15"
                   : "border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:text-slate-100"
@@ -86,7 +89,7 @@ export default function AppTopNav({
               <Icon size={14} />
               <span>{item.label}</span>
               {typeof count === "number" && count > 0 && (
-                <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-mono font-black ${
+                <span className={`nav-section-count rounded-md px-1.5 py-0.5 text-[10px] font-mono font-black ${
                   isActive ? "bg-white/15 text-white" : "bg-slate-950 text-indigo-300"
                 }`}>
                   {count}

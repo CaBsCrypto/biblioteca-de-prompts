@@ -1457,7 +1457,12 @@ export default function App() {
   const youtubeCount = useMemo(() => prompts.filter((p) => p.category === "YouTube").length, [prompts]);
   const forumPostsCount = useMemo(() => communityPosts.filter((post) => post.type !== "showcase").length, [communityPosts]);
   const showcasePostsCount = useMemo(() => communityPosts.filter((post) => post.type === "showcase").length, [communityPosts]);
-  const publicAppUrl = typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : "https://biblioteca-de-prompts-ashen.vercel.app";
+  const publicAppUrl = useMemo(() => {
+    if (typeof window === "undefined") return "https://biblioteca.browns.studio";
+    const { hostname, origin, pathname } = window.location;
+    if (hostname.endsWith(".vercel.app")) return "https://biblioteca.browns.studio";
+    return `${origin}${pathname}`;
+  }, []);
 
   const handleCopyText = async (text: string, successMessage: string) => {
     await navigator.clipboard.writeText(text);
@@ -1473,7 +1478,7 @@ export default function App() {
   }, [authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
 
   return (
-    <div className={`min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200 ${uiThemeMode === "clear" ? "clear-ui" : "dark-ui"}`}>
+    <div className={`ui-page min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200 ${uiThemeMode === "clear" ? "clear-ui" : "dark-ui"}`}>
       
       {/* Toast Notification HUD */}
       {notification && (
@@ -1550,6 +1555,7 @@ export default function App() {
                 onClick={handleOpenProfileModal}
                 className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 title="Editar perfil publico"
+                aria-label="Editar perfil publico"
               >
                 <UserCheck size={12} />
                 <span className="hidden md:inline">Perfil</span>
@@ -1559,6 +1565,7 @@ export default function App() {
                 onClick={handleSignOut}
                 className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-red-500/15 hover:text-red-400 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                 title="Cerrar Sesión"
+                aria-label="Cerrar sesion"
               >
                 <LogOut size={12} />
                 <span className="hidden md:inline">Cerrar</span>
@@ -1569,7 +1576,8 @@ export default function App() {
               <button
                 id="btn-google-login"
                 onClick={handleSignIn}
-                className="px-3 sm:px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/10 active:scale-[0.98] cursor-pointer"
+                className="ui-button-primary px-3 sm:px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                aria-label="Crear mi biblioteca con Google"
               >
                 <svg className="w-4 h-4 mr-0.5" viewBox="0 0 24 24" fill="none">
                   <path
@@ -1805,7 +1813,7 @@ export default function App() {
               />
             </div>
           ) : !user && !authLoading ? (
-            <div id="welcome-callout" className="surface-card public-hero-surface bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
+            <div id="welcome-callout" className="ui-card surface-card public-hero-surface bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
               <div className="space-y-3 relative z-10 max-w-3xl">
                 <span className="font-extrabold uppercase tracking-widest text-[9px] text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20 shadow-[0_0_15px_rgba(34,211,238,0.12)]">
                   Empieza por aqui
@@ -1816,7 +1824,7 @@ export default function App() {
                 <p className="hidden text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
                   ¿Vas a enseñar Inteligencia Artificial en YouTube? Esta biblioteca te permite tener todas las plantillas de instrucciones organizadas en un solo lugar. Rellena variables en vivo para tus espectadores y optimiza cualquier prompt básico al instante mediante el Asistente IA de Gemini.
                 </p>
-                <p className="text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
+                <p className="ui-text-muted text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
                   Ruta beta recomendada: entra con Google, elige un pack pequeno, guarda un prompt publico como remix privado y dejanos feedback en el Foro. Nada se publica sin tu permiso.
                 </p>
               </div>
@@ -1825,7 +1833,8 @@ export default function App() {
                 <button
                   id="btn-callout-login"
                   onClick={handleSignIn}
-                  className="px-5 py-3 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer min-[430px]:col-span-2 md:col-span-1"
+                  className="ui-button-primary px-5 py-3 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer min-[430px]:col-span-2 md:col-span-1"
+                  aria-label="Crear mi biblioteca privada con Google"
                 >
                   <span>Crear mi biblioteca</span>
                   <ArrowRight size={14} className="text-white" />
@@ -1833,7 +1842,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => handleSectionChange("noticias")}
-                  className="px-5 py-3 bg-cyan-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-600/10 active:scale-[0.98] cursor-pointer"
+                  className="px-5 py-3 bg-cyan-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-600/10 active:scale-[0.98] cursor-pointer min-h-11"
                 >
                   <Newspaper size={14} />
                   <span>Explorar radar</span>
@@ -1841,7 +1850,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => handleSectionChange("prompts")}
-                  className="px-5 py-3 bg-slate-900/70 hover:bg-slate-800 text-slate-100 border border-slate-700 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                  className="ui-button-secondary px-5 py-3 border font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <GitFork size={14} />
                   <span>Remixear prompts</span>
@@ -2011,7 +2020,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => openPublicBriefing(briefing)}
-                          className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-300 transition-all hover:bg-cyan-500/15 cursor-pointer"
+                          className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-300 transition-all hover:bg-cyan-500/15 cursor-pointer"
                         >
                           <BookOpen size={13} />
                           Abrir briefing
@@ -2036,7 +2045,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleSignIn}
-                    className="px-4 py-2 bg-slate-900/70 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer w-fit"
+                    className="ui-button-secondary px-4 py-2 border text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer w-fit"
+                    aria-label="Crear mi biblioteca con Google"
                   >
                     <Plus size={13} />
                     <span>Crear mi biblioteca</span>
@@ -2125,7 +2135,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setSelectedPublicPrompt(prompt)}
-                            className="px-3 py-2 bg-slate-950/50 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="ui-button-secondary px-3 py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Globe size={12} />
                             <span>Ver prompt</span>
@@ -2133,7 +2143,8 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => void resolvePublicSavePrompt(prompt)}
-                            className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="min-h-11 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                            aria-label={`Guardar ${prompt.title} como remix privado`}
                           >
                             <GitFork size={12} />
                             <span>Guardar remix</span>
@@ -2142,7 +2153,7 @@ export default function App() {
                             <button
                               type="button"
                               onClick={() => void handleToggleSocialFavorite(prompt)}
-                              className={`px-3 py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer ${
+                              className={`min-h-11 px-3 py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer ${
                                 socialFavoritePromptIds.has(prompt.id)
                                   ? "bg-amber-500/10 text-amber-300 border-amber-500/25"
                                   : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
@@ -2158,7 +2169,7 @@ export default function App() {
                               navigator.clipboard.writeText(prompt.promptText);
                               triggerNotification("Prompt publico copiado.", "success");
                             }}
-                            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="ui-button-secondary px-3 py-2 border text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Copy size={12} />
                             <span>Copiar</span>
@@ -2166,7 +2177,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => handleUsePrompt(prompt, "public_showcase")}
-                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="ui-button-primary px-3 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Play size={12} fill="currentColor" />
                             <span>Usar</span>

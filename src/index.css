@@ -44,7 +44,7 @@
   --ui-border-strong: rgba(71, 85, 105, 0.36);
   --ui-text: #101827;
   --ui-text-soft: #334155;
-  --ui-text-muted: #64748b;
+  --ui-text-muted: #475569;
   --ui-primary: #4f46e5;
   --ui-primary-soft: rgba(79, 70, 229, 0.1);
   --ui-accent: #db2777;
@@ -54,6 +54,60 @@
     radial-gradient(circle at top right, rgba(217, 70, 239, 0.08), transparent 30rem),
     linear-gradient(180deg, var(--ui-bg) 0%, #eef4fb 52%, #f8fafc 100%) !important;
   color-scheme: light;
+}
+
+.ui-page {
+  color: var(--ui-text, #f8fafc);
+}
+
+.ui-text-primary {
+  color: var(--ui-text, #f8fafc) !important;
+}
+
+.ui-text-muted {
+  color: var(--ui-text-muted, #94a3b8) !important;
+}
+
+.ui-card {
+  background: var(--ui-surface, rgba(30, 41, 59, 0.72));
+  border-color: var(--ui-border, rgba(51, 65, 85, 0.72));
+}
+
+.ui-button-primary {
+  min-height: 44px;
+  background: linear-gradient(135deg, #4f46e5, #db2777);
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.18);
+}
+
+.ui-button-primary:hover {
+  filter: brightness(1.04);
+}
+
+.ui-button-secondary {
+  min-height: 44px;
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(100, 116, 139, 0.44);
+  color: #e2e8f0 !important;
+}
+
+.ui-button-secondary:hover {
+  background: rgba(30, 41, 59, 0.92);
+  color: #ffffff !important;
+}
+
+.ui-input {
+  min-height: 44px;
+}
+
+:where(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.72);
+  outline-offset: 3px;
+}
+
+.clear-ui :where(button, a, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline-color: rgba(79, 70, 229, 0.72);
+  box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.12);
 }
 
 .clear-ui .app-shell-main {
@@ -167,7 +221,7 @@
 
 .clear-ui input::placeholder,
 .clear-ui textarea::placeholder {
-  color: #94a3b8 !important;
+  color: #64748b !important;
 }
 
 .clear-ui code,
@@ -271,6 +325,25 @@
 
 .clear-ui .ui-action-secondary {
   background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #172033 !important;
+}
+
+.clear-ui .ui-button-secondary {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.055) !important;
+}
+
+.clear-ui .ui-button-secondary:hover {
+  background: #eef2ff !important;
+  border-color: rgba(99, 102, 241, 0.38) !important;
+  color: #312e81 !important;
+}
+
+.clear-ui .ui-input {
+  background: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #172033 !important;
 }
@@ -430,6 +503,22 @@
     content: "";
     align-self: stretch;
     flex: 0 0 0.25rem;
+  }
+
+  .nav-priority-primary {
+    order: 1;
+  }
+
+  .nav-priority-secondary {
+    order: 2;
+  }
+
+  .nav-section-button {
+    min-height: 44px;
+  }
+
+  .nav-section-count {
+    display: none;
   }
 
   .surface-card {
