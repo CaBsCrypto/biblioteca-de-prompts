@@ -64,11 +64,11 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
   };
 
   return (
-    <div id="filler-modal-backdrop" className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
-      <div id="filler-modal" className="bg-[#1e293b] rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-700/85 animate-in fade-in zoom-in-95 duration-200">
+    <div id="filler-modal-backdrop" className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4 transition-all duration-300">
+      <div id="filler-modal" className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[90vh] overflow-hidden border border-slate-700/85 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/60 bg-slate-900/40">
+        <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-md">
               <FileText size={20} />
@@ -81,7 +81,7 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
           <button 
             id="close-filler-btn"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
+            className="ui-action-secondary p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -91,13 +91,13 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left Panel: Inputs */}
-          <div className="w-full md:w-1/2 p-6 overflow-y-auto border-r border-[#334155]/60 bg-slate-900/10">
+          <div className="w-full md:w-1/2 p-4 sm:p-6 overflow-y-auto border-r border-[#334155]/60 bg-slate-900/10">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-4 flex items-center gap-1">
               <ChevronRight size={14} className="text-indigo-400" /> Variables del Prompt
             </span>
 
             {variables.length === 0 ? (
-              <div className="text-slate-400 bg-slate-950/40 p-6 rounded-2xl border border-dashed border-slate-800 text-center text-sm">
+              <div className="ui-muted-panel text-slate-400 bg-slate-950/40 p-6 rounded-2xl border border-dashed border-slate-800 text-center text-sm">
                 No se detectaron variables dinámicas (del formato <code className="bg-indigo-500/10 text-indigo-400 px-1 py-0.5 rounded font-mono text-xs">{"{{variable}}"}</code>) en este prompt. Puedes copiar el texto directamente a la derecha.
               </div>
             ) : (
@@ -141,7 +141,7 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
           </div>
 
           {/* Right Panel: Rendered Prompt Output */}
-          <div className="w-full md:w-1/2 p-6 overflow-hidden flex flex-col bg-[#0f172a] text-slate-100">
+          <div className="ui-muted-panel w-full md:w-1/2 p-4 sm:p-6 overflow-hidden flex flex-col bg-[#0f172a] text-slate-100">
             <div className="flex items-center justify-between mb-4 shrink-0">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span> Vista Previa Resultante

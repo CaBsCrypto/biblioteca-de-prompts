@@ -110,17 +110,17 @@ export default function QuickSwitcherModal({
   return (
     <div
       id="quick-switcher-backdrop"
-      className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start justify-center z-50 p-4 pt-10 sm:pt-20 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start justify-center z-50 p-3 pt-6 sm:p-4 sm:pt-20 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="quick-switcher-dialog"
-        className="bg-[#1e293b]/95 border border-slate-700/80 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="ui-modal-panel bg-[#1e293b]/95 border border-slate-700/80 rounded-2xl sm:rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh]"
       >
         {/* Search Input bar */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
+        <div className="ui-modal-header flex items-center gap-3 px-4 sm:px-5 py-4 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <Search size={18} className="text-slate-400 shrink-0" />
           <input
             ref={inputRef}
@@ -135,7 +135,7 @@ export default function QuickSwitcherModal({
           </kbd>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            className="ui-action-secondary p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
             <X size={16} />
           </button>
@@ -266,7 +266,7 @@ export default function QuickSwitcherModal({
         </div>
 
         {/* Footer shortcuts helper description bar */}
-        <div className="px-5 py-3 border-t border-slate-700/40 bg-slate-950/25 flex flex-wrap items-center justify-between text-[10px] text-slate-500 font-sans gap-2 select-none shrink-0">
+        <div className="ui-modal-footer px-4 sm:px-5 py-3 border-t border-slate-700/40 bg-slate-950/25 flex flex-wrap items-center justify-between text-[10px] text-slate-500 font-sans gap-2 select-none shrink-0">
           <div className="flex items-center gap-3">
             <span>
               <kbd className="bg-slate-800/80 text-slate-400 px-1 py-0.2 rounded font-mono font-bold">↑↓</kbd> Navegar

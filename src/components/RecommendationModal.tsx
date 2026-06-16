@@ -51,9 +51,9 @@ export default function RecommendationModal({
   onClose
 }: RecommendationModalProps) {
   return (
-    <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1e293b] rounded-3xl w-full max-w-3xl shadow-2xl border border-slate-700/80 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/60 bg-slate-900/40">
+    <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
+      <div className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl border border-slate-700/80 overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col">
+        <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-emerald-400" />
             <div>
@@ -61,12 +61,12 @@ export default function RecommendationModal({
               <p className="text-[10px] text-slate-400 font-mono">Sin costo IA. Usa solo tu biblioteca.</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
+          <button type="button" onClick={onClose} className="ui-action-secondary p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
           <div className="space-y-2">
             <label className="text-[11px] font-bold text-slate-400 uppercase">¿Qué quieres lograr?</label>
             <textarea
@@ -116,7 +116,7 @@ export default function RecommendationModal({
                     const matchedPrompt = prompts.find((prompt) => prompt.id === item.id);
                     if (!matchedPrompt) return null;
                     return (
-                      <div key={item.id} className="rounded-xl border border-indigo-500/20 bg-slate-950/35 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div key={item.id} className="surface-nested-card rounded-xl border border-indigo-500/20 bg-slate-950/35 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-extrabold text-white truncate">{matchedPrompt.title}</p>
                           <p className="text-[11px] text-slate-300 mt-1">{item.reason}</p>
@@ -143,7 +143,7 @@ export default function RecommendationModal({
                     <button
                       type="button"
                       onClick={() => onCopySuggestedPrompt(geminiRecommendation.suggestedNewPrompt?.promptText || "")}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold rounded-lg border border-slate-700 flex items-center gap-1 cursor-pointer"
+                    className="ui-action-secondary px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold rounded-lg border border-slate-700 flex items-center gap-1 cursor-pointer"
                     >
                       <Copy size={11} />
                       <span>Copiar</span>
@@ -155,19 +155,19 @@ export default function RecommendationModal({
           )}
 
           {prompts.length === 0 ? (
-            <div className="rounded-2xl border border-slate-700 border-dashed bg-slate-900/40 p-8 text-center">
+            <div className="ui-muted-panel rounded-2xl border border-slate-700 border-dashed bg-slate-900/40 p-8 text-center">
               <p className="text-sm font-extrabold text-white">Tu biblioteca aún está vacía.</p>
               <p className="text-xs text-slate-400 mt-1">Carga ejemplos o crea prompts para que el recomendador tenga material.</p>
             </div>
           ) : recommendedPrompts.length === 0 ? (
-            <div className="rounded-2xl border border-slate-700 border-dashed bg-slate-900/40 p-8 text-center">
+            <div className="ui-muted-panel rounded-2xl border border-slate-700 border-dashed bg-slate-900/40 p-8 text-center">
               <p className="text-sm font-extrabold text-white">No encontré una coincidencia clara.</p>
               <p className="text-xs text-slate-400 mt-1">Prueba con otro objetivo o limpia filtros activos.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {recommendedPrompts.map(({ prompt, score, reasons }, index) => (
-                <div key={prompt.id} className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 flex flex-col gap-3">
+                <div key={prompt.id} className="surface-nested-card rounded-2xl border border-slate-700/70 bg-slate-900/35 p-4 flex flex-col gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[10px] font-black text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">#{index + 1}</span>
@@ -187,11 +187,11 @@ export default function RecommendationModal({
                       <Play size={12} fill="currentColor" />
                       <span>Usar</span>
                     </button>
-                    <button type="button" onClick={() => onCopy(prompt)} className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer">
+                    <button type="button" onClick={() => onCopy(prompt)} className="ui-action-secondary px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer">
                       <Copy size={12} />
                       <span>Copiar</span>
                     </button>
-                    <button type="button" onClick={() => onEdit(prompt)} className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl cursor-pointer">Editar</button>
+                    <button type="button" onClick={() => onEdit(prompt)} className="ui-action-secondary px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl cursor-pointer">Editar</button>
                   </div>
                 </div>
               ))}

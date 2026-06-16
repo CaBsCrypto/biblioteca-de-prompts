@@ -75,13 +75,13 @@ export default function CopyFilledModal({
   };
 
   return (
-    <div id="copy-filled-backdrop" className="fixed inset-0 bg-[#0f172a]/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+    <div id="copy-filled-backdrop" className="fixed inset-0 bg-[#0f172a]/85 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-200">
       <div 
         id="copy-filled-dialog" 
-        className="bg-[#1e293b] rounded-3xl w-full max-w-xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-xl shadow-2xl border border-slate-700/80 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[96vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-700/50 bg-slate-900/30">
+        <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-700/50 bg-slate-900/30 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/10 shrink-0">
               <Sparkles size={17} className="animate-pulse" />
@@ -93,7 +93,7 @@ export default function CopyFilledModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
+            className="ui-action-secondary p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X size={18} />
@@ -101,14 +101,14 @@ export default function CopyFilledModal({
         </div>
 
         {/* Content area */}
-        <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4 custom-scrollbar">
-          <div className="text-xs bg-[#0f172a]/55 border border-[#334155]/30 rounded-xl p-3 text-slate-350 leading-relaxed font-sans">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 custom-scrollbar">
+          <div className="ui-muted-panel text-xs bg-[#0f172a]/55 border border-[#334155]/30 rounded-xl p-3 text-slate-350 leading-relaxed font-sans">
             <span className="font-bold text-slate-200 block mb-1">Prompt base:</span>
             <span className="text-slate-400 line-clamp-1 italic">"{prompt.title}"</span>
           </div>
 
           {variables.length === 0 ? (
-            <div className="text-slate-400 bg-slate-950/30 p-5 rounded-2xl border border-dashed border-slate-800 text-center text-xs">
+            <div className="ui-muted-panel text-slate-400 bg-slate-950/30 p-5 rounded-2xl border border-dashed border-slate-800 text-center text-xs">
               Este prompt no contiene variables con el formato <code className="bg-indigo-500/15 text-indigo-300 px-1 py-0.5 rounded font-mono">{"{{variable}}"}</code>. Se copiará en su estado original.
             </div>
           ) : (
@@ -157,11 +157,11 @@ export default function CopyFilledModal({
         </div>
 
         {/* Footer actions */}
-        <div className="px-6 py-4 border-t border-slate-700/40 bg-slate-900/20 flex items-center justify-end gap-2.5">
+        <div className="ui-modal-footer px-4 sm:px-6 py-4 border-t border-slate-700/40 bg-slate-900/20 flex items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="ui-action-secondary px-4 py-2 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             Cancelar
           </button>

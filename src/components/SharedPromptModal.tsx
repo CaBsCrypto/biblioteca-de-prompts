@@ -22,9 +22,9 @@ export default function SharedPromptModal({
   const isRemix = Boolean(prompt.forkedFromPromptId || prompt.forkedFrom);
 
   return (
-    <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1e293b] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-250">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
+    <div className="fixed inset-0 bg-[#0f172a]/90 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
+      <div className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col max-h-[96vh] sm:max-h-[90vh] animate-in fade-in zoom-in-95 duration-250">
+        <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
               <Globe size={16} className="animate-pulse" />
@@ -41,14 +41,14 @@ export default function SharedPromptModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 px-2.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white font-bold transition-all cursor-pointer shrink-0"
+            className="ui-action-secondary p-1 px-2.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white font-bold transition-all cursor-pointer shrink-0"
             title="Cerrar vista"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 text-slate-200">
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded font-bold">
@@ -89,15 +89,15 @@ export default function SharedPromptModal({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+            <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Paso 1</p>
               <p className="text-xs font-extrabold text-white mt-1">Probar</p>
             </div>
-            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+            <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Paso 2</p>
               <p className="text-xs font-extrabold text-emerald-300 mt-1">Guardar remix privado</p>
             </div>
-            <div className="rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
+            <div className="ui-muted-panel rounded-2xl border border-slate-700/70 bg-slate-900/35 p-3">
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Paso 3</p>
               <p className="text-xs font-extrabold text-pink-300 mt-1">Publicar si aporta</p>
             </div>
@@ -158,7 +158,7 @@ export default function SharedPromptModal({
           </div>
         </div>
 
-        <div className="px-6 py-5 border-t border-slate-700/60 bg-slate-900/40 flex items-center justify-between gap-3 shrink-0">
+        <div className="ui-modal-footer px-4 sm:px-6 py-4 sm:py-5 border-t border-slate-700/60 bg-slate-900/40 flex items-center justify-between gap-3 shrink-0">
           <div className="hidden md:flex items-center gap-1 font-mono text-[9px] text-slate-400 select-none">
             <Zap size={10} className="text-yellow-405 fill-current" />
             <span>{isAuthenticated ? "Guardar crea una copia privada editable." : "Conecta con Google para crear tu remix privado."}</span>
@@ -177,7 +177,7 @@ export default function SharedPromptModal({
             <button
               type="button"
               onClick={onCopy}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+              className="ui-action-secondary px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Copy size={13} />
               <span>Copiar</span>

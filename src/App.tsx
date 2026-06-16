@@ -1808,20 +1808,28 @@ export default function App() {
             <div id="welcome-callout" className="surface-card public-hero-surface bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white rounded-2xl md:rounded-3xl p-5 md:p-12 shadow-2xl border border-slate-700/80 space-y-6 relative overflow-hidden max-w-5xl mx-auto">
               <div className="space-y-3 relative z-10 max-w-3xl">
                 <span className="font-extrabold uppercase tracking-widest text-[9px] text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20 shadow-[0_0_15px_rgba(34,211,238,0.12)]">
-                  Radar social para creadores IA
+                  Empieza por aqui
                 </span>
                 <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
-                  Crea tu biblioteca privada y remixea prompts con una comunidad de creadores IA.
+                  Crea tu biblioteca privada, guarda remixes y prueba el radar de oportunidades IA.
                 </h2>
                 <p className="hidden text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
                   ¿Vas a enseñar Inteligencia Artificial en YouTube? Esta biblioteca te permite tener todas las plantillas de instrucciones organizadas en un solo lugar. Rellena variables en vivo para tus espectadores y optimiza cualquier prompt básico al instante mediante el Asistente IA de Gemini.
                 </p>
                 <p className="text-slate-350 text-sm leading-relaxed font-sans max-w-2xl">
-                  Explora recursos publicos, guarda copias privadas, usalas en tu flujo y publica tu version solo cuando este lista. Tu perfil se crea con Google, pero tu contenido privado no se comparte sin permiso.
+                  Ruta beta recomendada: entra con Google, elige un pack pequeno, guarda un prompt publico como remix privado y dejanos feedback en el Foro. Nada se publica sin tu permiso.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 pt-2 relative z-10 min-[430px]:grid-cols-2 md:flex md:flex-wrap">
+                <button
+                  id="btn-callout-login"
+                  onClick={handleSignIn}
+                  className="px-5 py-3 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer min-[430px]:col-span-2 md:col-span-1"
+                >
+                  <span>Crear mi biblioteca</span>
+                  <ArrowRight size={14} className="text-white" />
+                </button>
                 <button
                   type="button"
                   onClick={() => handleSectionChange("noticias")}
@@ -1837,14 +1845,6 @@ export default function App() {
                 >
                   <GitFork size={14} />
                   <span>Remixear prompts</span>
-                </button>
-                <button
-                  id="btn-callout-login"
-                  onClick={handleSignIn}
-                  className="px-5 py-3 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] cursor-pointer min-[430px]:col-span-2 md:col-span-1"
-                >
-                  <span>Crear mi biblioteca</span>
-                  <ArrowRight size={14} className="text-white" />
                 </button>
               </div>
 
