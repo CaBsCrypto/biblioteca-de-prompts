@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { MessageSquare, Plus, Search, Users } from "lucide-react";
+import { ClipboardCheck, Lightbulb, MessageSquare, Plus, Search, Users } from "lucide-react";
 import type { CommunityPost, CommunityPostType } from "../typesCommunity";
 import type { CommunityPostInput } from "../hooks/useCommunityPosts";
 import CommunityPostCard from "./CommunityPostCard";
@@ -75,7 +75,7 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
+      <div className="surface-card rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-300">
@@ -111,7 +111,7 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="surface-card flex flex-col gap-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((item) => (
             <button
@@ -121,7 +121,7 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
               className={`rounded-xl px-3 py-2 text-xs font-black transition-all cursor-pointer ${
                 filter === item.id
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-900 text-slate-400 hover:text-white"
+                  : "ui-action-secondary bg-slate-900 text-slate-400 hover:text-white"
               }`}
             >
               {item.label}
@@ -140,13 +140,44 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
       </div>
 
       {loading ? (
-        <div className="rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
+        <div className="surface-card rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
           Cargando conversaciones...
         </div>
       ) : forumPosts.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-10 text-center">
-          <p className="text-sm font-black text-slate-200">Todavia no hay publicaciones en esta vista.</p>
-          <p className="mt-2 text-xs text-slate-500">La primera buena pregunta suele desbloquear una comunidad completa.</p>
+        <div className="surface-card rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-5 sm:p-10 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300">
+            <MessageSquare size={18} />
+          </div>
+          <p className="mt-4 text-sm font-black text-slate-200">Todavia no hay publicaciones en esta vista.</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+            Empieza con algo pequeno: una pregunta, una idea que te gustaria validar o una busqueda de equipo para hackathon.
+          </p>
+          <div className="mt-5 grid grid-cols-1 gap-2 min-[430px]:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => openCreate("question")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/25 bg-indigo-500/10 px-3 py-2.5 text-xs font-black text-indigo-300 transition-all hover:bg-indigo-500/15 cursor-pointer"
+            >
+              <ClipboardCheck size={13} />
+              Pedir feedback
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreate("idea")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-xs font-black text-amber-300 transition-all hover:bg-amber-500/15 cursor-pointer"
+            >
+              <Lightbulb size={13} />
+              Compartir idea
+            </button>
+            <button
+              type="button"
+              onClick={() => openCreate("team")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs font-black text-emerald-300 transition-all hover:bg-emerald-500/15 cursor-pointer"
+            >
+              <Users size={13} />
+              Buscar equipo
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { Image, Plus, Search } from "lucide-react";
+import { ExternalLink, Image, Link, Plus, Search } from "lucide-react";
 import type { CommunityPost } from "../typesCommunity";
 import type { CommunityPostInput } from "../hooks/useCommunityPosts";
 import CommunityPostCard from "./CommunityPostCard";
@@ -46,7 +46,7 @@ export default function ShowcaseSection({ posts, loading, currentUser, onSignIn,
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/55 p-5 shadow-2xl md:p-7">
+      <div className="surface-card rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-pink-500/20 bg-pink-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-pink-300">
@@ -72,7 +72,7 @@ export default function ShowcaseSection({ posts, loading, currentUser, onSignIn,
         </div>
       </div>
 
-      <label className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+      <label className="surface-card flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
         <Search size={14} className="text-slate-500" />
         <input
           value={search}
@@ -83,13 +83,38 @@ export default function ShowcaseSection({ posts, loading, currentUser, onSignIn,
       </label>
 
       {loading ? (
-        <div className="rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
+        <div className="surface-card rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
           Cargando galeria...
         </div>
       ) : showcases.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-10 text-center">
-          <p className="text-sm font-black text-slate-200">La galeria esta lista para las primeras piezas.</p>
-          <p className="mt-2 text-xs text-slate-500">Empieza con una imagen alojada en Drive, Behance, GitHub, Vercel o cualquier URL publica.</p>
+        <div className="surface-card rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-5 sm:p-10 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-pink-500/20 bg-pink-500/10 text-pink-300">
+            <Image size={18} />
+          </div>
+          <p className="mt-4 text-sm font-black text-slate-200">La galeria esta lista para las primeras piezas.</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+            Empieza con una imagen alojada en Drive, Behance, GitHub, Vercel o cualquier URL publica. Sirve como portfolio vivo de resultados creados con prompts.
+          </p>
+          <div className="mt-5 grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-pink-600 px-3 py-2.5 text-xs font-black text-white transition-all hover:bg-pink-500 cursor-pointer"
+            >
+              <Plus size={13} />
+              Publicar pieza
+            </button>
+            <a
+              href="https://vercel.com/templates"
+              target="_blank"
+              rel="noreferrer"
+              className="ui-action-secondary inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-xs font-black text-slate-200 transition-all hover:border-pink-500/30 hover:text-pink-200"
+            >
+              <Link size={13} />
+              Inspiracion
+              <ExternalLink size={11} />
+            </a>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">

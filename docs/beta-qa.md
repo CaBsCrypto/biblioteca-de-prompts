@@ -8,16 +8,38 @@ Validar que una persona nueva pueda entrar con Google, entender el loop principa
 
 ## Cuentas
 
-| Tester | Cuenta Google | Dispositivo | Navegador/origen | Resultado |
-| --- | --- | --- | --- | --- |
-| Tester 1 |  |  |  | Pendiente |
-| Tester 2 |  |  |  | Pendiente |
-| Tester 3 |  |  |  | Pendiente |
+| Tester | Cuenta Google | Dispositivo | Navegador/origen | Completo | Friccion principal |
+| --- | --- | --- | --- | --- | --- |
+| Tester 1 |  |  |  | Pendiente |  |
+| Tester 2 |  |  |  | Pendiente |  |
+| Tester 3 |  |  |  | Pendiente |  |
+| Tester 4 |  |  |  | Opcional |  |
+| Tester 5 |  |  |  | Opcional |  |
+
+## Mensaje Para Copiar
+
+```text
+Estoy probando una beta privada de Biblioteca de Prompts.
+
+Es una red social + radar para guardar prompts, remixear recursos publicos, convertir tendencias en ideas y compartir briefings.
+Me ayudas probandola desde celular? Deberia tomarte 5-8 minutos.
+
+Checklist rapido:
+1. Entra con Google.
+2. Elige un pack pequeno de prompts.
+3. Guarda un prompt publico como remix privado.
+4. Abre Noticias y guarda una idea.
+5. Dejame feedback en el Foro con una captura si ves algo raro.
+
+Importante: nada se publica sin que tu lo decidas.
+
+https://biblioteca-de-prompts-ashen.vercel.app
+```
 
 ## Criterio De Exito
 
 - [ ] 3 testers entran con Google.
-- [ ] 3 testers cargan el pack inicial.
+- [ ] 3 testers eligen un pack inicial.
 - [ ] 3 testers guardan al menos un remix privado.
 - [ ] 2 testers crean una idea desde Noticias.
 - [ ] 2 testers publican feedback en Foro.
@@ -29,7 +51,7 @@ Validar que una persona nueva pueda entrar con Google, entender el loop principa
 - [ ] Abre el link desde WhatsApp o Instagram.
 - [ ] Inicia sesion con Google.
 - [ ] Confirma que entra a Mi Biblioteca despues del login.
-- [ ] Carga el pack inicial.
+- [ ] Elige un pack inicial pequeno.
 - [ ] Explora prompts publicos.
 - [ ] Guarda un prompt como remix privado.
 - [ ] Usa o copia un prompt.
@@ -57,8 +79,19 @@ Validar que una persona nueva pueda entrar con Google, entender el loop principa
 - Que fue lo mas confuso?
 - En que paso te detuviste?
 - Lo probaste desde celular? Cual navegador?
+- Hubo scroll horizontal, texto invisible o botones apretados?
 - Guardarias prompts reales aqui?
 - Compartirias tu perfil publico?
+
+## Registro De Fricciones
+
+| Fecha | Tester | Paso | Friccion | Severidad | Accion |
+| --- | --- | --- | --- | --- | --- |
+|  |  | Login |  | Alta/Media/Baja |  |
+|  |  | Pack inicial |  | Alta/Media/Baja |  |
+|  |  | Guardar remix |  | Alta/Media/Baja |  |
+|  |  | Foro/Feedback |  | Alta/Media/Baja |  |
+|  |  | Movil/UI |  | Alta/Media/Baja |  |
 
 ## Resultado
 

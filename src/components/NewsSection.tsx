@@ -170,7 +170,7 @@ export default function NewsSection({
 
   return (
     <section className="mx-auto w-full max-w-7xl space-y-6">
-      <div className="rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
+      <div className="surface-card rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/55 p-4 sm:p-5 shadow-2xl md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
@@ -185,7 +185,7 @@ export default function NewsSection({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-4">
+          <div className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/45 p-4">
             <div className="flex items-center gap-2 text-xs font-black text-slate-200">
               <Languages size={15} className="text-cyan-300" />
               Bilingue por diseno
@@ -200,7 +200,7 @@ export default function NewsSection({
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto]">
-        <div className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/40 p-2">
+        <div className="surface-card no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/40 p-2">
           {CATEGORIES.map((item) => (
             <button
               key={item.id}
@@ -209,7 +209,7 @@ export default function NewsSection({
               className={`min-w-[150px] rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer ${
                 category === item.id
                   ? "border-cyan-500/40 bg-cyan-500/15 text-white"
-                  : "border-slate-800 bg-slate-900/70 text-slate-400 hover:text-slate-100"
+                  : "ui-action-secondary border-slate-800 bg-slate-900/70 text-slate-400 hover:text-slate-100"
               }`}
             >
               <span className="block text-xs font-black">{item.label}</span>
@@ -226,14 +226,14 @@ export default function NewsSection({
                 type="button"
                 onClick={() => setLanguage(item.id)}
                 className={`rounded-xl px-3 py-2 text-xs font-black transition-all cursor-pointer ${
-                  language === item.id ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"
+              language === item.id ? "bg-cyan-600 text-white" : "text-slate-400 hover:text-white"
                 }`}
               >
                 {item.label}
               </button>
             ))}
           </div>
-          <label className="flex min-w-0 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2 sm:w-72">
+          <label className="surface-card flex min-w-0 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2 sm:w-72">
             <Search size={14} className="text-slate-500" />
             <input
               value={search}
@@ -246,7 +246,7 @@ export default function NewsSection({
       </div>
 
       {!loading && !error && digestItems.length > 0 && (
-        <section className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 sm:p-5">
+        <section className="surface-card rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +309,7 @@ export default function NewsSection({
                 href={item.url}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-xl border border-slate-800 bg-slate-950/35 p-3 transition-colors hover:border-cyan-500/25"
+                className="surface-nested-card rounded-xl border border-slate-800 bg-slate-950/35 p-3 transition-colors hover:border-cyan-500/25"
               >
                 <p className="line-clamp-2 text-[11px] font-black leading-snug text-slate-200">{item.title}</p>
                 <p className="mt-2 text-[10px] font-bold text-slate-500">{item.source}</p>
@@ -320,7 +320,7 @@ export default function NewsSection({
       )}
 
       {!loading && !error && actionQueueItems.length > 0 && (
-        <section className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 sm:p-5">
+        <section className="surface-card rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-violet-300">
@@ -342,7 +342,7 @@ export default function NewsSection({
           <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
             {actionQueueItems.map((item) => {
               return (
-                <article key={`action-${item.id}`} className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
+                <article key={`action-${item.id}`} className="surface-nested-card rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="line-clamp-2 text-xs font-black leading-snug text-white">{item.title}</p>
@@ -400,7 +400,7 @@ export default function NewsSection({
       )}
 
       {savedIdeas.length > 0 && (
-        <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 sm:p-5">
+        <section className="surface-card rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300">
@@ -419,7 +419,7 @@ export default function NewsSection({
 
           <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
             {savedIdeas.slice(0, 6).map((idea) => (
-              <article key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
+              <article key={idea.id} className="surface-nested-card rounded-xl border border-slate-800 bg-slate-950/35 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="line-clamp-2 text-xs font-black leading-snug text-white">{idea.title}</p>
@@ -467,23 +467,28 @@ export default function NewsSection({
       )}
 
       {loading ? (
-        <div className="rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
+        <div className="surface-card rounded-3xl border border-slate-800/70 bg-slate-900/40 py-16 text-center text-sm font-bold text-slate-400">
           <RefreshCw size={22} className="mx-auto mb-3 animate-spin text-cyan-300" />
           Cargando radar de noticias...
         </div>
       ) : error ? (
-        <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center text-sm font-bold text-red-200">
+        <div className="surface-card rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center text-sm font-bold text-red-200">
           {error}
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-10 text-center">
-          <p className="text-sm font-black text-slate-200">No hay noticias para este filtro.</p>
-          <p className="mt-2 text-xs text-slate-500">Prueba otra categoria o cambia el idioma.</p>
+        <div className="surface-card rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-5 sm:p-10 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+            <Newspaper size={18} />
+          </div>
+          <p className="mt-4 text-sm font-black text-slate-200">No hay noticias para este filtro.</p>
+          <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+            Prueba otra categoria, cambia el idioma o vuelve a Todo para encontrar senales que puedas guardar como idea.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {filteredItems.map((item) => (
-            <article key={item.id} className="flex min-h-full flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
+            <article key={item.id} className="surface-card flex min-h-full flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/55 shadow-xl shadow-slate-950/20">
               {item.imageUrl && (
                 <div className="aspect-[16/9] overflow-hidden bg-slate-950">
                   <img src={item.imageUrl} alt={item.title} loading="lazy" className="h-full w-full object-cover" />
@@ -536,7 +541,7 @@ export default function NewsSection({
                     href={item.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-3 py-2 text-xs font-black text-slate-200 transition-all hover:bg-slate-700"
+                    className="ui-action-secondary inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-3 py-2 text-xs font-black text-slate-200 transition-all hover:bg-slate-700"
                   >
                     Leer
                     <ExternalLink size={13} />

@@ -13,15 +13,17 @@ interface BetaInvitePanelProps {
 const inviteText = (publicUrl: string) => [
   "Estoy probando una beta privada de Biblioteca de Prompts.",
   "",
-  "La idea es guardar prompts, remixear recursos publicos, convertir tendencias en ideas y compartir briefings.",
-  "Me ayudas probandola desde celular?",
+  "Es una red social + radar para guardar prompts, remixear recursos publicos, convertir tendencias en ideas y compartir briefings.",
+  "Me ayudas probandola desde celular? Deberia tomarte 5-8 minutos.",
   "",
   "Checklist rapido:",
   "1. Entra con Google.",
-  "2. Carga el pack inicial.",
-  "3. Guarda un prompt como remix.",
-  "4. Crea una idea desde Noticias.",
-  "5. Dejame feedback en el Foro.",
+  "2. Elige un pack pequeno de prompts.",
+  "3. Guarda un prompt publico como remix privado.",
+  "4. Abre Noticias y guarda una idea.",
+  "5. Dejame feedback en el Foro con una captura si ves algo raro.",
+  "",
+  "Importante: nada se publica sin que tu lo decidas.",
   "",
   publicUrl
 ].join("\n");
@@ -52,7 +54,7 @@ export default function BetaInvitePanel({
           </p>
           <h3 className="mt-3 text-lg font-black text-white">Lista para invitar 3-10 testers.</h3>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-            Comparte el link, pide que prueben desde celular y centraliza el feedback en el foro. Nada se publica sin accion manual del usuario.
+            Comparte el link, pide una prueba de 5-8 minutos desde celular y centraliza el feedback en el foro. Nada se publica sin accion manual del usuario.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
@@ -91,7 +93,7 @@ export default function BetaInvitePanel({
             Que pedirle al tester
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-            Login con Google, cargar pack, guardar remix, crear idea desde Noticias y publicar feedback en Foro.
+            Login con Google, elegir pack pequeno, guardar remix, crear idea desde Noticias y publicar feedback en Foro.
           </p>
         </article>
         <article className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
@@ -116,8 +118,8 @@ export default function BetaInvitePanel({
 
       <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-3.5">
         <p className="text-xs font-black text-white">Criterio de exito de esta ronda</p>
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-          3 testers completan: login con Google, cargar pack inicial, guardar un remix privado y publicar feedback en Foro.
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+            3 testers completan: login con Google, elegir pack inicial, guardar un remix privado y publicar feedback en Foro.
         </p>
       </div>
     </section>
