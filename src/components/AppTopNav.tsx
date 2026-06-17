@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, Trophy, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
 import type { AppSection } from "../typesCommunity";
 
 interface AppTopNavProps {
@@ -9,6 +9,7 @@ interface AppTopNavProps {
   hackathonsCount: number;
   showcasesCount: number;
   newsCount?: number;
+  showAdmin?: boolean;
   showGuidedMode?: boolean;
   onSectionChange: (section: AppSection) => void;
   onGuidedModeClick?: () => void;
@@ -38,6 +39,7 @@ export default function AppTopNav({
   hackathonsCount,
   showcasesCount,
   newsCount = 0,
+  showAdmin = false,
   showGuidedMode = false,
   onSectionChange,
   onGuidedModeClick
@@ -68,7 +70,7 @@ export default function AppTopNav({
             </span>
           </button>
         )}
-        {NAV_ITEMS.map((item) => {
+        {[...NAV_ITEMS, ...(showAdmin ? [{ id: "admin" as AppSection, label: "Admin", icon: ShieldCheck, priority: "secondary" as const }] : [])].map((item) => {
           const Icon = item.icon === Users ? Users : item.icon;
           const isActive = currentSection === item.id;
           const count = item.countKey ? counts[item.countKey] : null;

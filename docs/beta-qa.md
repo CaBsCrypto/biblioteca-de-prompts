@@ -68,6 +68,7 @@ https://biblioteca.browns.studio
 - [ ] Abre el chat con una conexion aceptada y envia un mensaje corto.
 - [ ] Desde el perfil publico de una conexion aceptada, pulsa Mensaje y confirma que abre el chat.
 - [ ] Abre su perfil publico.
+- [ ] Con cuenta founder, abre Admin y confirma que ve cuentas/metrica sin errores de permisos.
 - [ ] Confirma que no ve contenido privado publicado automaticamente.
 
 ## Checklist De Privacidad Manual
@@ -87,6 +88,7 @@ https://biblioteca.browns.studio
 - [ ] Solo participantes pueden cancelar o aceptar una conexion.
 - [ ] Solo usuarios conectados pueden crear mensajes privados.
 - [ ] Un usuario no puede leer chats donde no participa.
+- [ ] Un usuario sin rol founder no ve la navegacion Admin.
 
 ## Preguntas De Feedback
 

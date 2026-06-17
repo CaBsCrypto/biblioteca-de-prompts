@@ -112,4 +112,4 @@ export interface Briefing {
   updatedAt: any;
 }
 
-export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca";
+export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca" | "admin";

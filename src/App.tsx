@@ -44,6 +44,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Prompt, CategoryFilter, Folder } from "./types";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
+import AdminDashboard from "./components/AdminDashboard";
 import BetaInvitePanel from "./components/BetaInvitePanel";
 import ConnectionsPanel from "./components/ConnectionsPanel";
 import CommunityExplore from "./components/CommunityExplore";
@@ -76,6 +77,7 @@ import { useSavedIdeas } from "./hooks/useSavedIdeas";
 import { useBriefings } from "./hooks/useBriefings";
 import { useConnections } from "./hooks/useConnections";
 import { useConnectionChats } from "./hooks/useConnectionChats";
+import { useAdminDashboard } from "./hooks/useAdminDashboard";
 import type { AppSection, Briefing, BriefingItem, NewsCategory, NewsItem, SavedIdea } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
@@ -213,6 +215,7 @@ export default function App() {
       window.history.replaceState({}, "", url.toString());
     }
   });
+  const isFounder = currentUserProfile?.role === "founder";
 
   const {
     connectionByTargetUid,
@@ -243,6 +246,8 @@ export default function App() {
     getAuthorIdentity,
     onNotification: triggerNotification
   });
+
+  const adminDashboard = useAdminDashboard(isFounder);
 
   const {
     prompts,
@@ -410,6 +415,12 @@ export default function App() {
     getAuthorIdentity,
     onNotification: triggerNotification
   });
+
+  useEffect(() => {
+    if (currentSection === "admin" && !isFounder) {
+      setCurrentSection("inicio");
+    }
+  }, [currentSection, isFounder]);
 
   // Shared public prompt state managers
   const [sharedPromptId, setSharedPromptId] = useState<string | null>(null);
@@ -1659,6 +1670,7 @@ export default function App() {
         hackathonsCount={hackathons.length}
         showcasesCount={showcasePostsCount}
         newsCount={savedIdeas.length}
+        showAdmin={isFounder}
         showGuidedMode={Boolean(user)}
         onSectionChange={handleSectionChange}
         onGuidedModeClick={openGuidedBetaMode}
@@ -1772,7 +1784,14 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
-          {currentSection === "foro" ? (
+          {currentSection === "admin" && isFounder ? (
+            <AdminDashboard
+              loading={adminDashboard.loading}
+              permissionIssue={adminDashboard.permissionIssue}
+              userMetrics={adminDashboard.userMetrics}
+              totals={adminDashboard.totals}
+            />
+          ) : currentSection === "foro" ? (
             <ForumSection
               posts={communityPosts}
               loading={loadingPosts}
