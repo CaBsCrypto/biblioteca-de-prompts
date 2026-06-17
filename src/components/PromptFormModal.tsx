@@ -4,6 +4,31 @@ import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { Prompt, PromptVariable, Folder } from "../types";
 
+function diffWords(oldStr: string, newStr: string) {
+  const oldWords = oldStr.split(/(\s+)/);
+  const newWords = newStr.split(/(\s+)/);
+  const diff: { type: "added" | "removed" | "normal"; value: string }[] = [];
+  
+  let o = 0;
+  let n = 0;
+  while (o < oldWords.length || n < newWords.length) {
+    if (o < oldWords.length && n < newWords.length && oldWords[o] === newWords[n]) {
+      diff.push({ type: "normal", value: oldWords[o] });
+      o++;
+      n++;
+    } else if (n < newWords.length && !oldWords.slice(o).includes(newWords[n])) {
+      diff.push({ type: "added", value: newWords[n] });
+      n++;
+    } else if (o < oldWords.length) {
+      diff.push({ type: "removed", value: oldWords[o] });
+      o++;
+    } else {
+      break;
+    }
+  }
+  return diff;
+}
+
 interface VoiceDictationButtonProps {
   onTranscript: (text: string) => void;
   onNotification?: (message: string, type: "success" | "info") => void;
@@ -165,6 +190,7 @@ export default function PromptFormModal({
   };
 
   const [versions, setVersions] = useState<{ id: string; promptText: string; createdAt: any }[]>([]);
+  const [selectedVersionForDiff, setSelectedVersionForDiff] = useState<any | null>(null);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const forkSourceTitle = prompt?.forkedFromTitle || prompt?.forkedFrom;
   const forkSourceAuthor = prompt?.forkedFromAuthorName || "";
@@ -467,7 +493,18 @@ export default function PromptFormModal({
                             {ver.promptText}
                           </p>
                           
-                          <div className="flex justify-end pt-1">
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedVersionForDiff(
+                                  selectedVersionForDiff?.id === ver.id ? null : ver
+                                );
+                              }}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>{selectedVersionForDiff?.id === ver.id ? "Ocultar Comparación" : "Comparar Cambios"}</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -476,13 +513,33 @@ export default function PromptFormModal({
                                   onNotification("Texto del prompt revertido a la versión anterior. ¡No olvides hacer clic en 'Guardar Cambios' para persistirlo!", "success");
                                 }
                               }}
-                              className="px-3 py-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 hover:border-indigo-500/50 text-indigo-300 hover:text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 p-1 pr-1.5 cursor-pointer shadow-sm hover:shadow-[0_0_10px_rgba(99,102,241,0.15)]"
+                              className="px-3 py-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 hover:border-indigo-500/50 text-indigo-300 hover:text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
                               title="Revertir el cuadro de texto del prompt a esta versión anterior"
                             >
                               <RotateCcw size={10} />
-                              <span>Revertir a esta versión</span>
+                              <span>Revertir</span>
                             </button>
                           </div>
+
+                          {selectedVersionForDiff?.id === ver.id && (
+                            <div className="bg-[#0f172a] rounded-xl p-3 border border-slate-850 text-[11px] font-mono leading-relaxed mt-2 select-text text-slate-400">
+                              <span className="text-[10px] text-slate-500 font-bold block mb-1.5">DIFERENCIAS VISUALES (Rojo = Anterior, Verde = Actual):</span>
+                              <div className="flex flex-wrap gap-x-0.5 gap-y-0.5 leading-relaxed whitespace-pre-wrap break-all">
+                                {diffWords(ver.promptText, promptText).map((token, tIdx) => {
+                                  const isWhitespace = /^\s+$/.test(token.value);
+                                  return (
+                                    <span key={tIdx} className={
+                                      token.type === "added" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 px-1 rounded font-bold" :
+                                      token.type === "removed" ? "bg-red-500/15 text-red-400 border border-red-500/20 px-1 rounded line-through" :
+                                      ""
+                                    }>
+                                      {isWhitespace ? token.value : token.value.trim()}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
