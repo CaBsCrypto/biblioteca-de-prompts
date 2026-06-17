@@ -3284,7 +3284,7 @@ export default function App() {
                 </div>
 
                 {/* Double Search Inputs: Text & Tags Autocomplete */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:max-w-xl shrink-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 w-full md:max-w-xl shrink-0">
                   {/* Search Bar Input */}
                   <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
@@ -3297,6 +3297,29 @@ export default function App() {
                       placeholder="Buscar por título, tag o texto..."
                       className="w-full text-xs rounded-full border border-slate-700 bg-[#1e293b] pl-9.5 pr-4 py-2.5 focus:outline-none focus:border-indigo-455 transition-all font-sans text-white placeholder-slate-450"
                     />
+                    {/* Visual search shortcuts suggestions helper */}
+                    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap pl-1.5">
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Atajos:</span>
+                      {[
+                        { label: "tag:ia", value: "tag:ia" },
+                        { label: "category:YouTube", value: "category:YouTube" },
+                        { label: "is:favorite", value: "is:favorite" },
+                        { label: "is:remix", value: "is:remix" }
+                      ].map((chip) => (
+                        <button
+                          key={chip.value}
+                          type="button"
+                          onClick={() => {
+                            const current = searchQuery.trim();
+                            if (current.includes(chip.value)) return;
+                            setSearchQuery(current ? `${current} ${chip.value}` : chip.value);
+                          }}
+                          className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800/60 text-slate-400 border border-slate-700/50 hover:bg-slate-700 hover:text-white hover:border-slate-650 transition-all cursor-pointer font-mono active:scale-95"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Autocomplete Tag Search Input */}
