@@ -95,7 +95,7 @@ interface AIAssistantAsideProps {
 
 export function AIAssistantAside({ presetAItext, onImportToLibrary, onClose }: AIAssistantAsideProps) {
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-[420px] lg:relative lg:inset-auto lg:w-[420px] lg:border-t-0 lg:border-l border-[#334155]/60 bg-[#1e293b]/95 lg:bg-[#1e293b]/70 backdrop-blur-md flex flex-col h-full overflow-hidden shrink-0 animate-in slide-in-from-right duration-300 shadow-2xl lg:shadow-none">
+    <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-[900px] lg:relative lg:inset-auto lg:w-[900px] lg:border-t-0 lg:border-l border-[#334155]/60 bg-[#1e293b]/95 lg:bg-[#1e293b]/70 backdrop-blur-md flex flex-col h-full overflow-hidden shrink-0 animate-in slide-in-from-right duration-300 shadow-2xl lg:shadow-none">
       <div className="flex-1 p-4 overflow-y-auto h-full">
         <Suspense fallback={<DeferredInlineFallback label="Cargando asistente..." />}>
           <AIHelperPanel
