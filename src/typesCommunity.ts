@@ -122,6 +122,7 @@ export interface ClassroomPromptPackItem {
   tags: string[];
   isFavorite?: boolean;
   suggestedVariables?: PromptVariable[];
+  teacherNotes?: string;
 }
 
 export interface Classroom {
@@ -144,6 +145,7 @@ export interface ClassroomMember {
   photoURL?: string;
   joinedAt: any;
   savedPackAt?: any;
+  savedPromptsCount?: number;
 }
 
 export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca" | "admin";

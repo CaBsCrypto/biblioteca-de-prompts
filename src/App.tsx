@@ -312,6 +312,7 @@ export default function App() {
   const {
     activeClassroom,
     activeClassMembership,
+    classMembers,
     loadingClassroomAction,
     classSavedPromptCount,
     classMissingPromptCount,
@@ -1880,6 +1881,8 @@ export default function App() {
               handleCloseClassroom();
               handleSectionChange("mi-biblioteca");
             }}
+            isInstructor={isFounder}
+            classMembers={classMembers}
           />
         </main>
       ) : sharedBriefing ? (

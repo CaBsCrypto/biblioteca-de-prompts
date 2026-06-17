@@ -19,6 +19,14 @@ const CLASS_PROMPT_TITLES = [
 ];
 
 function toClassPrompt(prompt: typeof DEFAULT_PROMPTS[number]): SeedPrompt {
+  let notes = "Consejo didáctico: Pide a tus alumnos que identifiquen las variables y las rellenen con ejemplos reales antes de ejecutar el prompt.";
+  if (prompt.title.includes("Brainstorming")) {
+    notes = "Consejo didáctico: Ideal para comenzar la clase. Haz que los alumnos lo usen para generar ideas sobre proyectos del mundo real y seleccionen las 3 mejores.";
+  } else if (prompt.title.includes("Metaprompts")) {
+    notes = "Consejo didáctico: Explica a los estudiantes la diferencia entre un meta-prompt y un prompt normal. Muestra cómo la IA genera estructuras complejas.";
+  } else if (prompt.title.includes("Auditor")) {
+    notes = "Consejo didáctico: Usa este prompt para evaluar los prompts iniciales creados por los alumnos. Analicen juntos los riesgos identificados por la IA.";
+  }
   return {
     title: prompt.title,
     description: prompt.description,
@@ -26,7 +34,8 @@ function toClassPrompt(prompt: typeof DEFAULT_PROMPTS[number]): SeedPrompt {
     category: prompt.category,
     tags: prompt.tags || [],
     isFavorite: false,
-    suggestedVariables: prompt.suggestedVariables || []
+    suggestedVariables: prompt.suggestedVariables || [],
+    teacherNotes: notes
   };
 }
 

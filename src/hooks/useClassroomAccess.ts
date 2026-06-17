@@ -34,6 +34,7 @@ export function useClassroomAccess({
 }: UseClassroomAccessOptions) {
   const [activeClassroom, setActiveClassroom] = useState<Classroom | null>(null);
   const [activeClassMembership, setActiveClassMembership] = useState<ClassroomMember | null>(null);
+  const [classMembers, setClassMembers] = useState<ClassroomMember[]>([]);
   const [loadingClassroomAction, setLoadingClassroomAction] = useState(false);
 
   useEffect(() => {
@@ -55,6 +56,25 @@ export function useClassroomAccess({
     );
   }, [activeClassroom, user]);
 
+  // Load all members for instructors to track
+  useEffect(() => {
+    if (!activeClassroom) {
+      setClassMembers([]);
+      return;
+    }
+    const membersQuery = collection(db, "classes", activeClassroom.id, "members");
+    return onSnapshot(
+      membersQuery,
+      (snapshot) => {
+        setClassMembers(snapshot.docs.map(mapClassMember));
+      },
+      (error) => {
+        console.error("Error loading class members: ", error);
+        setClassMembers([]);
+      }
+    );
+  }, [activeClassroom]);
+
   const classSavedPromptCount = useMemo(() => {
     if (!activeClassroom) return 0;
     const classTitles = new Set(activeClassroom.promptPack.map((prompt) => normalizeTextKey(prompt.title)));
@@ -66,6 +86,17 @@ export function useClassroomAccess({
   const classMissingPromptCount = activeClassroom
     ? Math.max(activeClassroom.promptPack.length - classSavedPromptCount, 0)
     : 0;
+
+  // Synchronize student progress back to membership doc so instructors can see in real-time
+  useEffect(() => {
+    if (!activeClassroom || !user || !activeClassMembership) return;
+    if (activeClassMembership.savedPromptsCount !== classSavedPromptCount) {
+      const memberRef = doc(db, "classes", activeClassroom.id, "members", user.uid);
+      updateDoc(memberRef, {
+        savedPromptsCount: classSavedPromptCount
+      }).catch(err => console.error("Error updating savedPromptsCount:", err));
+    }
+  }, [activeClassroom, user, activeClassMembership, classSavedPromptCount]);
 
   const resolveClassroomCode = (code: string) => findClassroomByCode(code);
   const resolveClassroomId = (classId: string) => findClassroomById(classId);
@@ -181,6 +212,7 @@ export function useClassroomAccess({
   return {
     activeClassroom,
     activeClassMembership,
+    classMembers,
     loadingClassroomAction,
     classSavedPromptCount,
     classMissingPromptCount,
