@@ -1,3 +1,5 @@
+import type { Prompt, PromptVariable } from "./types";
+
 export type CommunityPostType = "idea" | "question" | "team" | "showcase";
 
 export interface CommunityPost {
@@ -110,6 +112,38 @@ export interface Briefing {
   isPublished: boolean;
   createdAt: any;
   updatedAt: any;
+}
+
+export interface ClassroomPromptPackItem {
+  title: string;
+  description: string;
+  promptText: string;
+  category: Prompt["category"];
+  tags: string[];
+  isFavorite?: boolean;
+  suggestedVariables?: PromptVariable[];
+}
+
+export interface Classroom {
+  id: string;
+  title: string;
+  description: string;
+  institution: string;
+  eventDate: string;
+  accessCode: string;
+  isActive: boolean;
+  promptPack: ClassroomPromptPackItem[];
+  createdAt?: any;
+}
+
+export interface ClassroomMember {
+  id: string;
+  uid: string;
+  displayName: string;
+  handle?: string;
+  photoURL?: string;
+  joinedAt: any;
+  savedPackAt?: any;
 }
 
 export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca" | "admin";

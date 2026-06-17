@@ -40,6 +40,29 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'founder';
     }
 
+    function isAllowedClassId(classId) {
+      return classId in ['prompting-universidad-v1'];
+    }
+
+    function isValidClassMemberCreate(data, memberId) {
+      return data.uid == memberId
+        && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 200
+        && (!('handle' in data) || (data.handle is string && data.handle.size() <= 40))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.joinedAt == request.time
+        && data.keys().hasOnly(['uid', 'displayName', 'handle', 'photoURL', 'joinedAt']);
+    }
+
+    function isValidClassMemberPackSave(data) {
+      return data.uid == existing().uid
+        && data.displayName == existing().displayName
+        && data.handle == existing().handle
+        && data.photoURL == existing().photoURL
+        && data.joinedAt == existing().joinedAt
+        && data.savedPackAt == request.time
+        && data.diff(existing()).affectedKeys().hasOnly(['savedPackAt']);
+    }
+
     function isValidUserProfile(data, userId) {
       return data.uid == userId
         && data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 120
@@ -74,6 +97,8 @@ service cloud.firestore {
         && (!('forkedFromAuthorName' in data) || (data.forkedFromAuthorName is string && data.forkedFromAuthorName.size() <= 200))
         && (!('forkedFromAuthorHandle' in data) || (data.forkedFromAuthorHandle is string && data.forkedFromAuthorHandle.size() <= 40))
         && (!('forkedFromTitle' in data) || (data.forkedFromTitle is string && data.forkedFromTitle.size() <= 200))
+        && (!('sourceClassId' in data) || (data.sourceClassId is string && data.sourceClassId.size() <= 128))
+        && (!('sourceClassTitle' in data) || (data.sourceClassTitle is string && data.sourceClassTitle.size() <= 200))
         && (!('suggestedVariables' in data) || data.suggestedVariables is list)
         && (!('folderId' in data) || ownsFolder(data.folderId));
     }
@@ -388,6 +413,29 @@ service cloud.firestore {
         && existing().authorUid == request.auth.uid;
     }
 
+    match /classes/{classId} {
+      allow get: if isFounder();
+      allow list: if isFounder();
+      allow create, update, delete: if isFounder();
+
+      match /members/{memberId} {
+        allow get: if isFounder() || (isSignedIn() && request.auth.uid == memberId);
+        allow list: if isFounder();
+
+        allow create: if isSignedIn()
+          && isAllowedClassId(classId)
+          && memberId == request.auth.uid
+          && isValidClassMemberCreate(incoming(), memberId);
+
+        allow update: if isSignedIn()
+          && isAllowedClassId(classId)
+          && memberId == request.auth.uid
+          && isValidClassMemberPackSave(incoming());
+
+        allow delete: if false;
+      }
+    }
+
     match /chats/{chatId} {
       allow get, list: if isChatParticipant(resource.data);
 
@@ -663,7 +711,7 @@ service cloud.firestore {
             && isValidPrompt(incoming())
             && incoming().createdAt == existing().createdAt
             && incoming().updatedAt == request.time
-            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'forkedFromPromptId', 'forkedFromUserId', 'forkedFromAuthorName', 'forkedFromAuthorHandle', 'forkedFromTitle', 'updatedAt', 'folderId']))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'forkedFromPromptId', 'forkedFromUserId', 'forkedFromAuthorName', 'forkedFromAuthorHandle', 'forkedFromTitle', 'sourceClassId', 'sourceClassTitle', 'updatedAt', 'folderId']))
           ||
           // Case 2: Non-owner social interaction (liking/unliking shared prompts)
           (existing().isShared == true

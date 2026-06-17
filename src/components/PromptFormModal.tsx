@@ -286,6 +286,8 @@ export default function PromptFormModal({
       forkedFromAuthorName: prompt?.forkedFromAuthorName,
       forkedFromAuthorHandle: prompt?.forkedFromAuthorHandle,
       forkedFromTitle: prompt?.forkedFromTitle,
+      sourceClassId: prompt?.sourceClassId,
+      sourceClassTitle: prompt?.sourceClassTitle,
       folderId: folderId || null
     });
   };

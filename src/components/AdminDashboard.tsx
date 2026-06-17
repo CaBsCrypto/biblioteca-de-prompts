@@ -1,6 +1,7 @@
 import { Activity, AlertTriangle, BookOpen, GitFork, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { AdminUserMetric } from "../hooks/useAdminDashboard";
+import type { AdminUserMetric, ClassroomMetric } from "../hooks/useAdminDashboard";
+import ClassroomAdminSummary from "./ClassroomAdminSummary";
 
 interface AdminDashboardProps {
   loading: boolean;
@@ -17,7 +18,10 @@ interface AdminDashboardProps {
     publicBriefings: number;
     hackathons: number;
     connections: number;
+    classes: number;
+    classMembers: number;
   };
+  classroomMetrics: ClassroomMetric[];
 }
 
 function formatDate(value: any) {
@@ -81,7 +85,7 @@ function StatCard({
   );
 }
 
-export default function AdminDashboard({ loading, permissionIssue, userMetrics, totals }: AdminDashboardProps) {
+export default function AdminDashboard({ loading, permissionIssue, userMetrics, totals, classroomMetrics }: AdminDashboardProps) {
   const [accountFilter, setAccountFilter] = useState<"todos" | "nuevos" | "activos" | "creadores" | "sinPublicar" | "founder">("todos");
   const now = Date.now();
   const filteredMetrics = useMemo(() => {
@@ -141,8 +145,10 @@ export default function AdminDashboard({ loading, permissionIssue, userMetrics, 
         <StatCard label="Prompts" value={totals.prompts} helper={`${totals.publicPrompts} publicos.`} icon={BookOpen} tone="emerald" />
         <StatCard label="Remixes" value={totals.remixes} helper="Copias/adaptaciones creadas." icon={GitFork} tone="pink" />
         <StatCard label="Comunidad" value={totals.posts + totals.showcases} helper={`${totals.posts} posts, ${totals.showcases} galeria.`} icon={MessageSquare} tone="cyan" />
-        <StatCard label="Radar" value={totals.briefings + totals.hackathons} helper={`${totals.publicBriefings} briefings publicos.`} icon={Newspaper} tone="amber" />
+        <StatCard label="Radar / clases" value={totals.briefings + totals.hackathons + totals.classes} helper={`${totals.publicBriefings} briefings, ${totals.classMembers} alumnos.`} icon={Newspaper} tone="amber" />
       </div>
+
+      <ClassroomAdminSummary classroomMetrics={classroomMetrics} />
 
       <div className="rounded-2xl md:rounded-3xl border border-slate-700/80 bg-[#1e293b]/80 shadow-xl overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 p-4 md:p-5">

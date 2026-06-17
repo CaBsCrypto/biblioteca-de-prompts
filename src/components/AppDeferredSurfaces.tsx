@@ -5,6 +5,7 @@ import type { GeminiRecommendationResult } from "./RecommendationModal";
 import type { PublicProfileTab } from "./PublicProfileView";
 import type { LocalRecommendation } from "../utils/recommendations";
 import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
+import ProfileModal from "./ProfileModal";
 
 const PromptFormModal = lazy(() => import("./PromptFormModal"));
 const PromptFillerModal = lazy(() => import("./PromptFillerModal"));
@@ -12,7 +13,6 @@ const CopyFilledModal = lazy(() => import("./CopyFilledModal"));
 const AIHelperPanel = lazy(() => import("./AIHelperPanel"));
 const QuickSwitcherModal = lazy(() => import("./QuickSwitcherModal"));
 const RecommendationModal = lazy(() => import("./RecommendationModal"));
-const ProfileModal = lazy(() => import("./ProfileModal"));
 const CreateFolderModal = lazy(() => import("./CreateFolderModal"));
 const ShareFolderModal = lazy(() => import("./ShareFolderModal"));
 const SharedPromptModal = lazy(() => import("./SharedPromptModal"));

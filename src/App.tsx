@@ -36,7 +36,8 @@ import {
   TrendingUp,
   Newspaper,
   Moon,
-  Sun
+  Sun,
+  ShieldCheck
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -59,6 +60,8 @@ import ShowcaseSection from "./components/ShowcaseSection";
 import NewsSection from "./components/NewsSection";
 import PublicBriefingView from "./components/PublicBriefingView";
 import SeedPackModal from "./components/SeedPackModal";
+import ClassroomView from "./components/ClassroomView";
+import JoinClassModal from "./components/JoinClassModal";
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
@@ -78,6 +81,7 @@ import { useBriefings } from "./hooks/useBriefings";
 import { useConnections } from "./hooks/useConnections";
 import { useConnectionChats } from "./hooks/useConnectionChats";
 import { useAdminDashboard } from "./hooks/useAdminDashboard";
+import { useClassroomAccess } from "./hooks/useClassroomAccess";
 import type { AppSection, Briefing, BriefingItem, NewsCategory, NewsItem, SavedIdea } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
@@ -157,6 +161,7 @@ export default function App() {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showRecommendationModal, setShowRecommendationModal] = useState(false);
   const [showSeedPackModal, setShowSeedPackModal] = useState(false);
+  const [showJoinClassModal, setShowJoinClassModal] = useState(false);
   const [recommendationGoal, setRecommendationGoal] = useState("");
   const [geminiRecommendation, setGeminiRecommendation] = useState<GeminiRecommendationResult | null>(null);
   const [geminiRecommendationLoading, setGeminiRecommendationLoading] = useState(false);
@@ -273,6 +278,25 @@ export default function App() {
     editingPrompt,
     setEditingPrompt,
     setShowFormModal,
+    getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const {
+    activeClassroom,
+    activeClassMembership,
+    loadingClassroomAction,
+    classSavedPromptCount,
+    classMissingPromptCount,
+    resolveClassroomCode,
+    resolveClassroomId,
+    openClassroom,
+    closeClassroom,
+    joinClassroom,
+    saveClassroomPack
+  } = useClassroomAccess({
+    user,
+    prompts,
     getAuthorIdentity,
     onNotification: triggerNotification
   });
@@ -471,6 +495,7 @@ export default function App() {
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
+    url.searchParams.delete("class");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -496,6 +521,7 @@ export default function App() {
     setSharedCollectionPrompts([]);
     setSharedBriefing(null);
     setSharedBriefingId(null);
+    closeClassroom();
 
     if (section === "prompts") {
       setCurrentTab("comunidad");
@@ -510,6 +536,7 @@ export default function App() {
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
+    url.searchParams.delete("class");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -529,12 +556,14 @@ export default function App() {
     setSharedCollectionPrompts([]);
     setSharedBriefing(null);
     setSharedBriefingId(null);
+    closeClassroom();
 
     const url = new URL(window.location.href);
     url.searchParams.delete("user");
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
+    url.searchParams.delete("class");
     window.history.replaceState({}, "", url.toString());
   };
 
@@ -1006,6 +1035,25 @@ export default function App() {
       const colId = searchParams.get("collection");
       const userId = searchParams.get("user");
       const briefingId = searchParams.get("briefing");
+      const classId = searchParams.get("class");
+
+      if (classId && !briefingId && !shareId && !colId && !userId) {
+        const classroom = resolveClassroomId(classId);
+        if (classroom) {
+          openClassroom(classroom);
+          setCurrentSection("inicio");
+          setCurrentTab("mi-biblioteca");
+          setSharedPrompt(null);
+          setSharedPromptId(null);
+          setSharedCollection(null);
+          setSharedCollectionId(null);
+          setSharedBriefing(null);
+          setSharedBriefingId(null);
+          setSelectedAuthor(null);
+        } else {
+          triggerNotification("La clase no existe o ya no esta activa.", "info");
+        }
+      }
 
       if (briefingId && !shareId && !colId) {
         setSharedBriefingId(briefingId);
@@ -1177,6 +1225,36 @@ export default function App() {
   const handleSeedSelectedPack = (selectedPrompts: typeof DEFAULT_PROMPTS) => {
     void handleSeedDefaults(selectedPrompts);
     setShowSeedPackModal(false);
+  };
+
+  const handleOpenClassroom = (classroom: NonNullable<typeof activeClassroom>) => {
+    openClassroom(classroom);
+    setCurrentSection("inicio");
+    setCurrentTab("mi-biblioteca");
+    setSelectedAuthor(null);
+    setSharedPrompt(null);
+    setSharedPromptId(null);
+    setSharedCollection(null);
+    setSharedCollectionId(null);
+    setSharedCollectionPrompts([]);
+    setSharedBriefing(null);
+    setSharedBriefingId(null);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("class", classroom.id);
+    url.searchParams.delete("user");
+    url.searchParams.delete("share");
+    url.searchParams.delete("collection");
+    url.searchParams.delete("briefing");
+    window.history.replaceState({}, "", url.toString());
+    triggerNotification("Clase privada cargada.", "success");
+  };
+
+  const handleCloseClassroom = () => {
+    closeClassroom();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("class");
+    window.history.replaceState({}, "", url.toString());
   };
 
   // Live trigger optimize with AI directly from Form
@@ -1539,10 +1617,10 @@ export default function App() {
   useEffect(() => {
     if (!user || authLoading) return;
     if (currentSection !== "inicio") return;
-    if (sharedBriefing || sharedPrompt || sharedCollection || selectedAuthor) return;
+    if (activeClassroom || sharedBriefing || sharedPrompt || sharedCollection || selectedAuthor) return;
     setCurrentSection("mi-biblioteca");
     setCurrentTab("mi-biblioteca");
-  }, [authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
+  }, [activeClassroom, authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
 
   return (
     <div className={`ui-page min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200 ${uiThemeMode === "clear" ? "clear-ui" : "dark-ui"}`}>
@@ -1618,6 +1696,16 @@ export default function App() {
                 </p>
               </div>
               <button
+                type="button"
+                onClick={() => setShowJoinClassModal(true)}
+                className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-amber-500/15 hover:text-amber-300 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                title="Ingresar codigo de clase"
+                aria-label="Ingresar codigo de clase"
+              >
+                <BookOpen size={12} />
+                <span className="hidden md:inline">Clase</span>
+              </button>
+              <button
                 id="btn-edit-profile"
                 onClick={handleOpenProfileModal}
                 className="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-indigo-500/15 hover:text-indigo-300 rounded-lg border border-slate-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
@@ -1627,6 +1715,19 @@ export default function App() {
                 <UserCheck size={12} />
                 <span className="hidden md:inline">Perfil</span>
               </button>
+              {isFounder && (
+                <button
+                  id="btn-founder-admin"
+                  type="button"
+                  onClick={() => handleSectionChange("admin")}
+                  className="p-2 sm:px-2.5 sm:py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg border border-indigo-400/40 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-lg shadow-indigo-800/10"
+                  title="Abrir panel admin"
+                  aria-label="Abrir panel admin"
+                >
+                  <ShieldCheck size={12} />
+                  <span className="hidden md:inline">Admin</span>
+                </button>
+              )}
               <button
                 id="btn-logout"
                 onClick={handleSignOut}
@@ -1687,7 +1788,26 @@ export default function App() {
       />
 
       {/* Main Core Area layout */}
-      {sharedBriefing ? (
+      {activeClassroom ? (
+        <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12">
+          <ClassroomView
+            classroom={activeClassroom}
+            user={user}
+            membership={activeClassMembership}
+            savedCount={classSavedPromptCount}
+            missingCount={classMissingPromptCount}
+            loading={loadingClassroomAction}
+            onBack={handleCloseClassroom}
+            onSignIn={handleSignIn}
+            onJoin={() => void joinClassroom(activeClassroom)}
+            onSavePack={() => void saveClassroomPack(activeClassroom)}
+            onOpenLibrary={() => {
+              handleCloseClassroom();
+              handleSectionChange("mi-biblioteca");
+            }}
+          />
+        </main>
+      ) : sharedBriefing ? (
         <PublicBriefingView
           briefing={sharedBriefing}
           loading={loadingSharedBriefing}
@@ -1800,6 +1920,7 @@ export default function App() {
               permissionIssue={adminDashboard.permissionIssue}
               userMetrics={adminDashboard.userMetrics}
               totals={adminDashboard.totals}
+              classroomMetrics={adminDashboard.classroomMetrics}
             />
           ) : currentSection === "foro" ? (
             <ForumSection
@@ -1936,6 +2057,14 @@ export default function App() {
                 >
                   <GitFork size={14} />
                   <span>Remixear prompts</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowJoinClassModal(true)}
+                  className="px-5 py-3 bg-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-amber-400 transition-all shadow-lg shadow-amber-700/10 active:scale-[0.98] cursor-pointer min-h-11"
+                >
+                  <BookOpen size={14} />
+                  <span>Tengo codigo de clase</span>
                 </button>
               </div>
 
@@ -3453,6 +3582,13 @@ export default function App() {
           loading={loadingPrompts}
           onClose={() => setShowSeedPackModal(false)}
           onSeedPack={handleSeedSelectedPack}
+        />
+      )}
+      {showJoinClassModal && (
+        <JoinClassModal
+          onClose={() => setShowJoinClassModal(false)}
+          onResolve={resolveClassroomCode}
+          onOpenClassroom={handleOpenClassroom}
         />
       )}
       {/* Humble Footer */}

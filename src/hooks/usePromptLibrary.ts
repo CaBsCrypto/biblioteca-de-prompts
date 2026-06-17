@@ -111,7 +111,9 @@ export function usePromptLibrary({
         ["forkedFromUserId", promptData.forkedFromUserId],
         ["forkedFromAuthorName", promptData.forkedFromAuthorName],
         ["forkedFromAuthorHandle", promptData.forkedFromAuthorHandle],
-        ["forkedFromTitle", promptData.forkedFromTitle]
+        ["forkedFromTitle", promptData.forkedFromTitle],
+        ["sourceClassId", promptData.sourceClassId],
+        ["sourceClassTitle", promptData.sourceClassTitle]
       ].filter(([, value]) => value !== undefined)
     );
 

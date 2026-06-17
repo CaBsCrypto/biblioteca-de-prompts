@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, collectionGroup, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Folder, Prompt, UserConnection, UserProfile } from "../types";
-import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
+import type { Briefing, ClassroomMember, CommunityPost, HackathonOpportunity } from "../typesCommunity";
+import { CLASSROOM_SEEDS } from "../data/classroomSeeds";
 import { mapFolderDoc, mapPromptDoc } from "../utils/firestoreMappers";
 
 export interface AdminUserMetric {
@@ -26,6 +27,21 @@ export interface AdminUserMetric {
   hackathonsCount: number;
   connectionsCount: number;
   lastActivityAt: any;
+}
+
+export interface ClassroomMetric {
+  id: string;
+  title: string;
+  institution: string;
+  eventDate: string;
+  isActive: boolean;
+  promptPackCount: number;
+  membersCount: number;
+  savedPackCount: number;
+}
+
+interface AdminClassroomMember extends ClassroomMember {
+  classId: string;
 }
 
 function mapUserDoc<T extends { id: string; data: () => unknown }>(docSnap: T): UserProfile {
@@ -72,6 +88,14 @@ function mapConnectionDoc<T extends { id: string; data: () => unknown }>(docSnap
   } as UserConnection;
 }
 
+function mapClassroomMemberDoc<T extends { id: string; data: () => unknown; ref?: any }>(docSnap: T): AdminClassroomMember {
+  return {
+    id: docSnap.id,
+    classId: docSnap.ref?.parent?.parent?.id || "",
+    ...(docSnap.data() as Record<string, unknown>)
+  } as AdminClassroomMember;
+}
+
 function getTime(value: any) {
   if (!value) return 0;
   if (typeof value.toMillis === "function") return value.toMillis();
@@ -93,6 +117,7 @@ export function useAdminDashboard(isFounder: boolean) {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [hackathons, setHackathons] = useState<HackathonOpportunity[]>([]);
   const [connections, setConnections] = useState<UserConnection[]>([]);
+  const [classMembers, setClassMembers] = useState<AdminClassroomMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [permissionIssue, setPermissionIssue] = useState(false);
 
@@ -105,6 +130,7 @@ export function useAdminDashboard(isFounder: boolean) {
       setBriefings([]);
       setHackathons([]);
       setConnections([]);
+      setClassMembers([]);
       setLoading(false);
       setPermissionIssue(false);
       return;
@@ -112,7 +138,7 @@ export function useAdminDashboard(isFounder: boolean) {
 
     setLoading(true);
     setPermissionIssue(false);
-    let pending = 7;
+    let pending = 8;
     const markLoaded = () => {
       pending -= 1;
       if (pending <= 0) setLoading(false);
@@ -151,7 +177,11 @@ export function useAdminDashboard(isFounder: boolean) {
       onSnapshot(collectionGroup(db, "connections"), (snapshot) => {
         setConnections(snapshot.docs.map(mapConnectionDoc));
         markLoaded();
-      }, handleError("connections"))
+      }, handleError("connections")),
+      onSnapshot(collectionGroup(db, "members"), (snapshot) => {
+        setClassMembers(snapshot.docs.map(mapClassroomMemberDoc));
+        markLoaded();
+      }, handleError("class members"))
     ];
 
     return () => {
@@ -211,13 +241,32 @@ export function useAdminDashboard(isFounder: boolean) {
     briefings: briefings.length,
     publicBriefings: briefings.filter((briefing) => briefing.isPublished).length,
     hackathons: hackathons.length,
-    connections: connections.filter((connection) => connection.status === "connected").length / 2
-  }), [briefings, connections, hackathons, posts, prompts, users]);
+    connections: connections.filter((connection) => connection.status === "connected").length / 2,
+    classes: CLASSROOM_SEEDS.length,
+    classMembers: classMembers.length
+  }), [briefings, classMembers, connections, hackathons, posts, prompts, users]);
+
+  const classroomMetrics = useMemo<ClassroomMetric[]>(() => {
+    return CLASSROOM_SEEDS.map((classroom) => {
+      const members = classMembers.filter((member) => member.classId === classroom.id);
+      return {
+        id: classroom.id,
+        title: classroom.title,
+        institution: classroom.institution,
+        eventDate: classroom.eventDate,
+        isActive: classroom.isActive,
+        promptPackCount: classroom.promptPack.length,
+        membersCount: members.length,
+        savedPackCount: members.filter((member) => Boolean(member.savedPackAt)).length
+      };
+    });
+  }, [classMembers]);
 
   return {
     loading,
     permissionIssue,
     userMetrics,
-    totals
+    totals,
+    classroomMetrics
   };
 }

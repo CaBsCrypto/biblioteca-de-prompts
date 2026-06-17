@@ -27,6 +27,8 @@ export interface Prompt {
   forkedFromAuthorName?: string;
   forkedFromAuthorHandle?: string;
   forkedFromTitle?: string;
+  sourceClassId?: string;
+  sourceClassTitle?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   folderId?: string | null; // Custom folder grouping
