@@ -45,6 +45,7 @@ import { Prompt, CategoryFilter, Folder } from "./types";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
 import BetaInvitePanel from "./components/BetaInvitePanel";
+import ConnectionsPanel from "./components/ConnectionsPanel";
 import CommunityExplore from "./components/CommunityExplore";
 import CreatorGrowthPanel from "./components/CreatorGrowthPanel";
 import DailyMissionPanel from "./components/DailyMissionPanel";
@@ -73,6 +74,7 @@ import type { CommunityPostInput } from "./hooks/useCommunityPosts";
 import { useHackathons } from "./hooks/useHackathons";
 import { useSavedIdeas } from "./hooks/useSavedIdeas";
 import { useBriefings } from "./hooks/useBriefings";
+import { useConnections } from "./hooks/useConnections";
 import type { AppSection, Briefing, BriefingItem, NewsCategory, NewsItem, SavedIdea } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
@@ -209,6 +211,20 @@ export default function App() {
       url.searchParams.delete("user");
       window.history.replaceState({}, "", url.toString());
     }
+  });
+
+  const {
+    connectionByTargetUid,
+    sendConnectionRequest,
+    acceptConnection,
+    removeConnection,
+    connectedConnections,
+    incomingConnectionRequests,
+    outgoingConnectionRequests
+  } = useConnections({
+    user,
+    currentUserIdentity: getAuthorIdentity,
+    onNotification: triggerNotification
   });
 
   const {
@@ -1797,12 +1813,16 @@ export default function App() {
                 activeTab={publicProfileTab}
                 currentUser={user}
                 followedCreatorUids={followedCreatorUids}
+                connectionStatus={selectedAuthor ? connectionByTargetUid.get(selectedAuthor.uid)?.status : undefined}
                 socialFavoritePromptIds={socialFavoritePromptIds}
                 onTabChange={setPublicProfileTab}
                 onBack={closePublicProfile}
                 onCopyProfileLink={handleCopyPublicProfileLink}
                 onOpenBriefing={openPublicBriefing}
                 onToggleFollow={handleToggleFollowCreator}
+                onSendConnectionRequest={(target) => void sendConnectionRequest(target)}
+                onAcceptConnection={(targetUid) => void acceptConnection(targetUid)}
+                onRemoveConnection={(targetUid) => void removeConnection(targetUid)}
                 onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                 onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
                 onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
@@ -2456,12 +2476,16 @@ export default function App() {
                   activeTab={publicProfileTab}
                   currentUser={user}
                   followedCreatorUids={followedCreatorUids}
+                  connectionStatus={connectionByTargetUid.get(selectedAuthor.uid)?.status}
                   socialFavoritePromptIds={socialFavoritePromptIds}
                   onTabChange={setPublicProfileTab}
                   onBack={closePublicProfile}
                   onCopyProfileLink={handleCopyPublicProfileLink}
                   onOpenBriefing={openPublicBriefing}
                   onToggleFollow={handleToggleFollowCreator}
+                  onSendConnectionRequest={(target) => void sendConnectionRequest(target)}
+                  onAcceptConnection={(targetUid) => void acceptConnection(targetUid)}
+                  onRemoveConnection={(targetUid) => void removeConnection(targetUid)}
                   onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                   onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
                   onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
@@ -2512,6 +2536,16 @@ export default function App() {
                   savedIdeasCount={savedIdeas.length}
                   onCopy={(text, message) => void handleCopyText(text, message)}
                   onCreateFeedbackPost={handleCreateBetaFeedbackPost}
+                />
+              )}
+
+              {user && currentTab === "mi-biblioteca" && (
+                <ConnectionsPanel
+                  connectedConnections={connectedConnections}
+                  incomingConnectionRequests={incomingConnectionRequests}
+                  outgoingConnectionRequests={outgoingConnectionRequests}
+                  onAccept={(targetUid) => void acceptConnection(targetUid)}
+                  onRemove={(targetUid) => void removeConnection(targetUid)}
                 />
               )}
 

@@ -104,6 +104,35 @@ service cloud.firestore {
         && data.keys().hasOnly(['postId', 'userId', 'userName', 'userAvatar', 'text', 'createdAt']);
     }
 
+    function isValidConnection(data, ownerUid, targetUid) {
+      return data.ownerUid == ownerUid
+        && data.targetUid == targetUid
+        && data.targetName is string && data.targetName.size() > 0 && data.targetName.size() <= 200
+        && (!('targetAvatar' in data) || (data.targetAvatar is string && data.targetAvatar.size() <= 1000))
+        && (!('targetHandle' in data) || (data.targetHandle is string && data.targetHandle.size() <= 40))
+        && data.status in ['pending_sent', 'pending_received', 'connected']
+        && data.requestedBy is string && data.requestedBy.size() <= 128
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && data.keys().hasOnly(['ownerUid', 'targetUid', 'targetName', 'targetAvatar', 'targetHandle', 'status', 'requestedBy', 'createdAt', 'updatedAt']);
+    }
+
+    function isConnectionParticipant(userId, connectionId) {
+      return isSignedIn() && (request.auth.uid == userId || request.auth.uid == connectionId);
+    }
+
+    function preservesConnectionIdentity() {
+      return incoming().ownerUid == existing().ownerUid
+        && incoming().targetUid == existing().targetUid
+        && incoming().targetName == existing().targetName
+        && incoming().targetAvatar == existing().targetAvatar
+        && incoming().targetHandle == existing().targetHandle
+        && incoming().requestedBy == existing().requestedBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+    }
+
     function isValidHackathon(data) {
       return data.title is string && data.title.size() > 0 && data.title.size() <= 160
         && data.description is string && data.description.size() > 0 && data.description.size() <= 2500
@@ -339,6 +368,46 @@ service cloud.firestore {
         allow update: if false;
 
         allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /connections/{connectionId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && isValidId(connectionId)
+          && userId != connectionId
+          && (
+            (
+              request.auth.uid == userId
+              && incoming().status == 'pending_sent'
+              && incoming().requestedBy == request.auth.uid
+              && isValidConnection(incoming(), userId, connectionId)
+            )
+            ||
+            (
+              request.auth.uid == connectionId
+              && incoming().status == 'pending_received'
+              && incoming().requestedBy == request.auth.uid
+              && isValidConnection(incoming(), userId, connectionId)
+            )
+          );
+
+        allow update: if isConnectionParticipant(userId, connectionId)
+          && incoming().status == 'connected'
+          && preservesConnectionIdentity()
+          && (
+            (
+              request.auth.uid == userId
+              && existing().status == 'pending_received'
+            )
+            ||
+            (
+              request.auth.uid == connectionId
+              && existing().status == 'pending_sent'
+            )
+          );
+
+        allow delete: if isConnectionParticipant(userId, connectionId);
       }
 
       match /events/{eventId} {

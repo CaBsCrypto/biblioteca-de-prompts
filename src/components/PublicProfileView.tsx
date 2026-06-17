@@ -1,6 +1,6 @@
-import { ArrowLeft, BookOpen, Copy, ExternalLink, FolderOpen, GitFork, Globe, Heart, Image, Layers3, MessageSquare, Newspaper, Share2, Sparkles, Tags, TrendingUp, Trophy, UserCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, BookOpen, Copy, ExternalLink, FolderOpen, GitFork, Globe, Heart, Image, Layers3, MessageSquare, Newspaper, Share2, Sparkles, Tags, TrendingUp, Trophy, UserCheck, UserPlus, Users } from "lucide-react";
 import type { User } from "firebase/auth";
-import type { Folder, Prompt } from "../types";
+import type { ConnectionStatus, Folder, Prompt } from "../types";
 import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
 import PromptCard from "./PromptCard";
 
@@ -17,12 +17,16 @@ interface PublicProfileViewProps {
   activeTab: PublicProfileTab;
   currentUser: User | null;
   followedCreatorUids: string[];
+  connectionStatus?: ConnectionStatus;
   socialFavoritePromptIds: Set<string>;
   onTabChange: (tab: PublicProfileTab) => void;
   onBack: () => void;
   onCopyProfileLink: () => void;
   onOpenBriefing: (briefing: Briefing) => void;
   onToggleFollow: (creatorUid: string) => void;
+  onSendConnectionRequest: (target: { uid: string; name: string; avatar?: string; handle?: string }) => void;
+  onAcceptConnection: (targetUid: string) => void;
+  onRemoveConnection: (targetUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
   onFork: (prompt: Prompt) => void;
@@ -45,12 +49,16 @@ export default function PublicProfileView({
   activeTab,
   currentUser,
   followedCreatorUids,
+  connectionStatus,
   socialFavoritePromptIds,
   onTabChange,
   onBack,
   onCopyProfileLink,
   onOpenBriefing,
   onToggleFollow,
+  onSendConnectionRequest,
+  onAcceptConnection,
+  onRemoveConnection,
   onUsePrompt,
   onCopyFilled,
   onFork,
@@ -72,6 +80,31 @@ export default function PublicProfileView({
   const likesCount = prompts.reduce((sum, prompt) => sum + (prompt.likesCount || prompt.likedBy?.length || 0), 0);
   const isFollowing = followedCreatorUids.includes(author.uid);
   const displayHandle = author.handle || prompts.find((prompt) => prompt.authorHandle)?.authorHandle || "";
+  const canConnectWithAuthor = currentUser?.uid !== author.uid;
+  const connectionLabel =
+    connectionStatus === "connected"
+      ? "Conectados"
+      : connectionStatus === "pending_sent"
+        ? "Solicitud enviada"
+        : connectionStatus === "pending_received"
+          ? "Aceptar conexion"
+          : "Conectar";
+  const handleConnectionAction = () => {
+    if (connectionStatus === "pending_received") {
+      onAcceptConnection(author.uid);
+      return;
+    }
+    if (connectionStatus === "connected" || connectionStatus === "pending_sent") {
+      onRemoveConnection(author.uid);
+      return;
+    }
+    onSendConnectionRequest({
+      uid: author.uid,
+      name: author.name,
+      avatar: author.avatar,
+      handle: displayHandle
+    });
+  };
   const sourceIds = new Set(prompts.map((prompt) => prompt.forkedFromPromptId || prompt.id));
   const knownRemixCount = allCommunityPrompts.filter((prompt) =>
     prompt.userId !== author.uid && sourceIds.has(prompt.forkedFromPromptId || "")
@@ -175,6 +208,12 @@ export default function PublicProfileView({
                     Siguiendo
                   </span>
                 )}
+                {connectionStatus && (
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Users size={11} />
+                    {connectionStatus === "connected" ? "Conectado" : connectionStatus === "pending_received" ? "Solicitud recibida" : "Solicitud enviada"}
+                  </span>
+                )}
                 {publicActivityCount > 0 && (
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">
                     <TrendingUp size={11} />
@@ -205,6 +244,24 @@ export default function PublicProfileView({
               {isFollowing ? <UserCheck size={14} /> : <UserPlus size={14} />}
               <span>{isFollowing ? "Siguiendo" : "Seguir creador"}</span>
             </button>
+            {canConnectWithAuthor && (
+              <button
+                type="button"
+                onClick={handleConnectionAction}
+                className={`px-5 py-3 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer border shadow-lg ${
+                  connectionStatus === "connected"
+                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
+                    : connectionStatus === "pending_received"
+                      ? "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                      : connectionStatus === "pending_sent"
+                        ? "bg-slate-950/60 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-800"
+                        : "bg-indigo-500/10 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
+                }`}
+              >
+                {connectionStatus === "connected" ? <UserCheck size={14} /> : <UserPlus size={14} />}
+                <span>{connectionLabel}</span>
+              </button>
+            )}
             {highlightedPrompt && (
               <button
                 type="button"

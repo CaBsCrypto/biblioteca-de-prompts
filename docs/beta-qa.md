@@ -31,6 +31,7 @@ Checklist rapido:
 4. Abre Noticias y guarda una idea.
 5. Dejame feedback en el Foro con una captura si ves algo raro.
 6. Responde un hilo del Foro si encuentras una conversacion abierta.
+7. Abre el perfil de otro creador y envia una solicitud de conexion.
 
 Importante: nada se publica sin que tu lo decidas.
 
@@ -45,6 +46,7 @@ https://biblioteca.browns.studio
 - [ ] 2 testers crean una idea desde Noticias.
 - [ ] 2 testers publican feedback en Foro.
 - [ ] 2 testers responden al menos un hilo del Foro.
+- [ ] 2 testers prueban enviar/aceptar una conexion.
 - [ ] 0 testers reportan que contenido privado aparece publico.
 
 ## Checklist Por Tester
@@ -60,6 +62,8 @@ https://biblioteca.browns.studio
 - [ ] Abre Noticias y guarda una idea.
 - [ ] Crea un post de feedback en Foro.
 - [ ] Abre un post del Foro y responde en la conversacion.
+- [ ] Abre un perfil publico y envia una solicitud de conexion.
+- [ ] Con una segunda cuenta, acepta o cancela una solicitud.
 - [ ] Abre su perfil publico.
 - [ ] Confirma que no ve contenido privado publicado automaticamente.
 
@@ -76,6 +80,8 @@ https://biblioteca.browns.studio
 - [ ] Un usuario no puede editar/borrar posts de otro usuario.
 - [ ] Un usuario solo puede borrar sus propias respuestas de Foro, salvo el autor del post moderando su hilo.
 - [ ] Un usuario no puede editar/borrar hackathons de otro usuario.
+- [ ] Un usuario solo ve sus propias conexiones y solicitudes.
+- [ ] Solo participantes pueden cancelar o aceptar una conexion.
 
 ## Preguntas De Feedback
 

@@ -1,6 +1,6 @@
 import { lazy, Suspense, type FormEvent } from "react";
 import type { User } from "firebase/auth";
-import type { Prompt, Folder, PromptVariable, UserProfile } from "../types";
+import type { ConnectionStatus, Prompt, Folder, PromptVariable, UserProfile } from "../types";
 import type { GeminiRecommendationResult } from "./RecommendationModal";
 import type { PublicProfileTab } from "./PublicProfileView";
 import type { LocalRecommendation } from "../utils/recommendations";
@@ -50,12 +50,16 @@ interface PublicProfileSurfaceProps {
   activeTab: PublicProfileTab;
   currentUser: User | null;
   followedCreatorUids: string[];
+  connectionStatus?: ConnectionStatus;
   socialFavoritePromptIds: Set<string>;
   onTabChange: (tab: PublicProfileTab) => void;
   onBack: () => void;
   onCopyProfileLink: () => void;
   onOpenBriefing: (briefing: Briefing) => void;
   onToggleFollow: (creatorUid: string) => void;
+  onSendConnectionRequest: (target: { uid: string; name: string; avatar?: string; handle?: string }) => void;
+  onAcceptConnection: (targetUid: string) => void;
+  onRemoveConnection: (targetUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
   onFork: (prompt: Prompt) => void;

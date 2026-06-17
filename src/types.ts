@@ -81,6 +81,21 @@ export interface HiddenPrompt {
   createdAt: any; // Firestore Timestamp
 }
 
+export type ConnectionStatus = "pending_sent" | "pending_received" | "connected";
+
+export interface UserConnection {
+  id: string;
+  ownerUid: string;
+  targetUid: string;
+  targetName: string;
+  targetAvatar?: string;
+  targetHandle?: string;
+  status: ConnectionStatus;
+  requestedBy: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
 export interface UserEvent {
   id: string;
   type:
