@@ -75,6 +75,7 @@ import { useHackathons } from "./hooks/useHackathons";
 import { useSavedIdeas } from "./hooks/useSavedIdeas";
 import { useBriefings } from "./hooks/useBriefings";
 import { useConnections } from "./hooks/useConnections";
+import { useConnectionChats } from "./hooks/useConnectionChats";
 import type { AppSection, Briefing, BriefingItem, NewsCategory, NewsItem, SavedIdea } from "./typesCommunity";
 import { buildLocalRecommendations } from "./utils/recommendations";
 import { getActivationChecklistState, type ActivationStepId } from "./utils/activationChecklist";
@@ -224,6 +225,22 @@ export default function App() {
   } = useConnections({
     user,
     currentUserIdentity: getAuthorIdentity,
+    onNotification: triggerNotification
+  });
+
+  const {
+    activeChatConnection,
+    chatMessages,
+    chatDraft,
+    setChatDraft,
+    loadingChatMessages,
+    openChat,
+    closeChat,
+    sendChatMessage
+  } = useConnectionChats({
+    user,
+    connectedConnections,
+    getAuthorIdentity,
     onNotification: triggerNotification
   });
 
@@ -2544,8 +2561,17 @@ export default function App() {
                   connectedConnections={connectedConnections}
                   incomingConnectionRequests={incomingConnectionRequests}
                   outgoingConnectionRequests={outgoingConnectionRequests}
+                  activeChatConnection={activeChatConnection}
+                  chatMessages={chatMessages}
+                  chatDraft={chatDraft}
+                  loadingChatMessages={loadingChatMessages}
+                  currentUserUid={user.uid}
                   onAccept={(targetUid) => void acceptConnection(targetUid)}
                   onRemove={(targetUid) => void removeConnection(targetUid)}
+                  onOpenChat={openChat}
+                  onCloseChat={closeChat}
+                  onChatDraftChange={setChatDraft}
+                  onSendChatMessage={() => void sendChatMessage()}
                 />
               )}
 

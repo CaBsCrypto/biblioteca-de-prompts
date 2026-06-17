@@ -133,6 +133,45 @@ service cloud.firestore {
         && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
     }
 
+    function isChatParticipant(data) {
+      return isSignedIn()
+        && data.participants is list
+        && data.participants.size() == 2
+        && request.auth.uid in data.participants;
+    }
+
+    function isConnectedTo(targetUid) {
+      return isSignedIn()
+        && targetUid is string
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/connections/$(targetUid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)/connections/$(targetUid)).data.status == 'connected';
+    }
+
+    function isValidChatThread(data) {
+      return isChatParticipant(data)
+        && data.participantNames is map
+        && data.participantHandles is map
+        && data.participantAvatars is map
+        && (!('lastMessage' in data) || (data.lastMessage is string && data.lastMessage.size() <= 1000))
+        && (!('lastMessageSenderUid' in data) || data.lastMessageSenderUid in data.participants)
+        && (!('lastMessageAt' in data) || data.lastMessageAt == request.time)
+        && data.updatedAt == request.time
+        && data.keys().hasOnly(['participants', 'participantNames', 'participantHandles', 'participantAvatars', 'lastMessage', 'lastMessageSenderUid', 'lastMessageAt', 'createdAt', 'updatedAt']);
+    }
+
+    function isValidChatMessage(data, chatId) {
+      return data.chatId == chatId
+        && data.senderUid == request.auth.uid
+        && data.recipientUid is string
+        && data.recipientUid != request.auth.uid
+        && isConnectedTo(data.recipientUid)
+        && data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 200
+        && (!('senderAvatar' in data) || (data.senderAvatar is string && data.senderAvatar.size() <= 1000))
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+        && data.createdAt == request.time
+        && data.keys().hasOnly(['chatId', 'senderUid', 'senderName', 'senderAvatar', 'recipientUid', 'text', 'createdAt']);
+    }
+
     function isValidHackathon(data) {
       return data.title is string && data.title.size() > 0 && data.title.size() <= 160
         && data.description is string && data.description.size() > 0 && data.description.size() <= 2500
@@ -327,6 +366,43 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
         && existing().authorUid == request.auth.uid;
+    }
+
+    match /chats/{chatId} {
+      allow get, list: if isChatParticipant(resource.data);
+
+      allow create: if isSignedIn()
+        && isValidId(chatId)
+        && isValidChatThread(incoming())
+        && incoming().createdAt == request.time
+        && (!('lastMessageSenderUid' in incoming()) || incoming().lastMessageSenderUid == request.auth.uid)
+        && isConnectedTo(incoming().participants[0] == request.auth.uid ? incoming().participants[1] : incoming().participants[0]);
+
+      allow update: if isSignedIn()
+        && isValidId(chatId)
+        && isChatParticipant(existing())
+        && isValidChatThread(incoming())
+        && incoming().participants == existing().participants
+        && incoming().createdAt == existing().createdAt
+        && incoming().lastMessageSenderUid == request.auth.uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['participantNames', 'participantHandles', 'participantAvatars', 'lastMessage', 'lastMessageSenderUid', 'lastMessageAt', 'updatedAt'])
+        && isConnectedTo(incoming().participants[0] == request.auth.uid ? incoming().participants[1] : incoming().participants[0]);
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow get, list: if isSignedIn()
+          && exists(/databases/$(database)/documents/chats/$(chatId))
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        allow create: if isSignedIn()
+          && isValidId(messageId)
+          && request.auth.uid in getAfter(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && incoming().recipientUid in getAfter(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && isValidChatMessage(incoming(), chatId);
+
+        allow update, delete: if false;
+      }
     }
 
     match /users/{userId} {

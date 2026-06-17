@@ -96,6 +96,30 @@ export interface UserConnection {
   updatedAt: any;
 }
 
+export interface ChatThread {
+  id: string;
+  participants: string[];
+  participantNames?: Record<string, string>;
+  participantHandles?: Record<string, string>;
+  participantAvatars?: Record<string, string>;
+  lastMessage?: string;
+  lastMessageSenderUid?: string;
+  lastMessageAt?: any;
+  updatedAt: any;
+  createdAt: any;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderUid: string;
+  senderName: string;
+  senderAvatar?: string;
+  recipientUid: string;
+  text: string;
+  createdAt: any;
+}
+
 export interface UserEvent {
   id: string;
   type:
