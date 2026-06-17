@@ -168,7 +168,7 @@ interface AppModalLayerProps {
   isSavingFolderShare: boolean;
   setIsFolderSharedInput: (value: boolean) => void;
   setPublishFolderPromptsInput: (value: boolean) => void;
-  onSaveFolderShareSettings: (event: FormEvent) => void | Promise<void>;
+  onSaveFolderShareSettings: (event: FormEvent, collaborators?: any) => void | Promise<void>;
   onCloseShareFolder: () => void;
   sharedPrompt: Prompt | null;
   onCloseSharedPrompt: () => void;

@@ -1,5 +1,5 @@
-import type { FormEvent } from "react";
-import { Copy, Share2, X } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { Copy, Share2, X, Plus, User, Trash2 } from "lucide-react";
 import type { Folder, Prompt } from "../types";
 
 interface ShareFolderModalProps {
@@ -10,7 +10,7 @@ interface ShareFolderModalProps {
   isSavingFolderShare: boolean;
   setIsFolderSharedInput: (value: boolean) => void;
   setPublishFolderPromptsInput: (value: boolean) => void;
-  onSave: (event: FormEvent) => void;
+  onSave: (event: FormEvent, collaborators?: any) => void;
   onClose: () => void;
   onNotification: (message: string, type?: "success" | "info") => void;
 }
@@ -30,13 +30,43 @@ export default function ShareFolderModal({
   const privatePromptsCount = prompts.filter((prompt) => prompt.folderId === folder.id && !prompt.isShared).length;
   const publicLink = `${window.location.origin}${window.location.pathname}?collection=${folder.id}`;
 
+  const [collaborators, setCollaborators] = useState<any>(folder.collaborators || {});
+  const [collabInput, setCollabInput] = useState("");
+  const [collabRole, setCollabRole] = useState<"viewer" | "editor">("viewer");
+
+  const handleAddCollaborator = () => {
+    if (!collabInput.trim()) return;
+    const cleanId = collabInput.trim();
+    setCollaborators((prev: any) => ({
+      ...prev,
+      [cleanId]: {
+        type: "user",
+        role: collabRole
+      }
+    }));
+    setCollabInput("");
+    onNotification("Colaborador agregado a la lista. Recuerda guardar los cambios.", "info");
+  };
+
+  const handleRemoveCollaborator = (id: string) => {
+    setCollaborators((prev: any) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+    onNotification("Colaborador removido de la lista. Recuerda guardar los cambios.", "info");
+  };
+
   return (
     <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
-      <form onSubmit={onSave} className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-lg shadow-2xl border border-slate-700/80 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[96vh] overflow-y-auto">
+      <form
+        onSubmit={(e) => onSave(e, collaborators)}
+        className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-lg shadow-2xl border border-slate-700/80 space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[96vh] overflow-y-auto"
+      >
         <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Share2 size={18} className="text-emerald-400" />
-            <h3 className="font-extrabold text-white text-md">Compartir Colección</h3>
+            <h3 className="font-extrabold text-white text-md">Configuración de la Carpeta</h3>
           </div>
           <button
             type="button"
@@ -53,6 +83,65 @@ export default function ShareFolderModal({
               Colección: <span className="text-indigo-400">{folder.name}</span>
             </p>
             <p className="text-[11px] text-slate-400">{folder.description || "Sin descripción establecida."}</p>
+          </div>
+
+          {/* Colaboradores Directos */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black tracking-wider text-indigo-400 uppercase">Colaboradores (Permisos)</label>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="ID de usuario de Firebase del colaborador"
+                value={collabInput}
+                onChange={(e) => setCollabInput(e.target.value)}
+                className="flex-1 text-[11px] rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-350 focus:outline-none"
+              />
+              <select
+                value={collabRole}
+                onChange={(e) => setCollabRole(e.target.value as any)}
+                className="text-[11px] rounded-xl border border-slate-700 bg-slate-950 px-2 text-slate-300 focus:outline-none"
+              >
+                <option value="viewer">Lector</option>
+                <option value="editor">Editor</option>
+              </select>
+              <button
+                type="button"
+                onClick={handleAddCollaborator}
+                className="px-3 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={13} />
+                <span>Agregar</span>
+              </button>
+            </div>
+
+            {/* Listado de colaboradores actuales */}
+            <div className="bg-slate-950/40 rounded-2xl border border-slate-850 p-2 max-h-[140px] overflow-y-auto space-y-1.5">
+              {Object.keys(collaborators).length === 0 ? (
+                <p className="text-[10px] text-slate-500 italic p-1">No hay colaboradores específicos añadidos aún.</p>
+              ) : (
+                Object.entries(collaborators).map(([uid, details]: any) => (
+                  <div key={uid} className="flex items-center justify-between bg-slate-900/60 p-2 rounded-xl border border-slate-800/60">
+                    <div className="flex items-center gap-2 truncate">
+                      <User size={12} className="text-slate-400" />
+                      <span className="text-[10px] font-mono text-slate-300 truncate" title={uid}>{uid}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-mono uppercase ${
+                        details.role === "editor" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                      }`}>
+                        {details.role === "editor" ? "Editor" : "Lector"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCollaborator(uid)}
+                      className="p-1 hover:bg-red-500/15 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="ui-muted-panel flex items-center justify-between bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
@@ -126,7 +215,7 @@ export default function ShareFolderModal({
           <button
             type="button"
             onClick={onClose}
-            className="ui-action-secondary px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-350 text-xs font-bold transition-colors cursor-pointer"
+            className="ui-action-secondary px-4 py-2 hover:bg-slate-800 rounded-xl text-slate-355 text-xs font-bold transition-colors cursor-pointer"
           >
             Cancelar
           </button>

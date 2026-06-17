@@ -42,6 +42,13 @@ export interface Folder {
   isShared?: boolean;
   authorName?: string;
   authorHandle?: string;
+  parentId?: string | null;
+  collaborators?: {
+    [id: string]: {
+      type: "user" | "classroom";
+      role: "viewer" | "editor";
+    };
+  };
   createdAt: any; // Firestore Timestamp
 }
 

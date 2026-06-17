@@ -341,6 +341,8 @@ export default function App() {
     newFolderDesc,
     setNewFolderDesc,
     isSavingFolder,
+    newFolderParentId,
+    setNewFolderParentId,
     showShareFolderModal,
     setShowShareFolderModal,
     isFolderSharedInput,
@@ -2455,6 +2457,7 @@ export default function App() {
                 loadingPrompts={loadingPrompts}
                 loadingCommunityPrompts={loadingCommunityPrompts}
                 filteredPrompts={filteredPrompts}
+                setNewFolderParentId={setNewFolderParentId}
                 folders={folders}
                 loadingFolders={loadingFolders}
                 selectedAuthor={selectedAuthor}

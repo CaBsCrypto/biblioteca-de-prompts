@@ -657,9 +657,19 @@ service cloud.firestore {
     }
 
     match /folders/{folderId} {
-      allow list: if resource.data.isShared == true || isFounder() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if resource.data.isShared == true 
+        || isFounder() 
+        || (isSignedIn() && (
+            resource.data.userId == request.auth.uid 
+            || (resource.data.collaborators != null && request.auth.uid in resource.data.collaborators)
+           ));
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
-      allow get: if isFounder() || (isSignedIn() && existing().userId == request.auth.uid) || (existing().isShared == true);
+      allow get: if isFounder() 
+        || (isSignedIn() && (
+            existing().userId == request.auth.uid 
+            || (existing().collaborators != null && request.auth.uid in existing().collaborators)
+           )) 
+        || (existing().isShared == true);
       
       allow create: if isSignedIn()
         && isValidId(folderId)
@@ -669,19 +679,37 @@ service cloud.firestore {
         && (!('isShared' in incoming()) || incoming().isShared is bool)
         && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
         && (!('authorHandle' in incoming()) || (incoming().authorHandle is string && incoming().authorHandle.size() <= 40))
+        && (!('parentId' in incoming()) || incoming().parentId == null || (incoming().parentId is string && incoming().parentId.size() <= 128))
+        && (!('collaborators' in incoming()) || incoming().collaborators is map)
         && incoming().createdAt == request.time;
         
       allow update: if isSignedIn()
         && isValidId(folderId)
-        && existing().userId == request.auth.uid
-        && incoming().userId == request.auth.uid
-        && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
-        && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
-        && (!('isShared' in incoming()) || incoming().isShared is bool)
-        && (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 200))
-        && (!('authorHandle' in incoming()) || (incoming().authorHandle is string && incoming().authorHandle.size() <= 40))
-        && incoming().createdAt == existing().createdAt
-        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'authorName', 'authorHandle']);
+        && (
+          // Owner edit
+          (existing().userId == request.auth.uid
+            && incoming().userId == request.auth.uid
+            && incoming().createdAt == existing().createdAt
+            && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+            && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
+            && (!('isShared' in incoming()) || incoming().isShared is bool)
+            && (!('parentId' in incoming()) || incoming().parentId == null || (incoming().parentId is string && incoming().parentId.size() <= 128))
+            && (!('collaborators' in incoming()) || incoming().collaborators is map)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'authorName', 'authorHandle', 'parentId', 'collaborators']))
+          ||
+          // Collaborator edit (role == 'editor')
+          (existing().collaborators != null
+            && request.auth.uid in existing().collaborators
+            && existing().collaborators[request.auth.uid].role == 'editor'
+            && incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+            && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
+            && (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 500))
+            && (!('isShared' in incoming()) || incoming().isShared is bool)
+            && (!('parentId' in incoming()) || incoming().parentId == null || (incoming().parentId is string && incoming().parentId.size() <= 128))
+            && incoming().collaborators == existing().collaborators
+            && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'isShared', 'parentId']))
+        );
     }
 
     match /prompts/{promptId} {

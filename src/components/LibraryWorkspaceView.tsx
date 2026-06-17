@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import type { Prompt, Folder, CategoryFilter } from "../types";
 import type { LibraryViewFilter, CommunitySort, SelectedAuthor, CommunityScope } from "../utils/promptFilters";
 import PromptCard from "./PromptCard";
+import FolderTreeView from "./FolderTreeView";
 
 interface LibraryWorkspaceViewProps {
   user: User | null;
@@ -13,6 +14,7 @@ interface LibraryWorkspaceViewProps {
   loadingPrompts: boolean;
   loadingCommunityPrompts: boolean;
   filteredPrompts: Prompt[];
+  setNewFolderParentId: (id: string | null) => void;
   folders: Folder[];
   loadingFolders: boolean;
   selectedAuthor: SelectedAuthor;
@@ -104,6 +106,7 @@ export function LibraryWorkspaceView({
   loadingPrompts,
   loadingCommunityPrompts,
   filteredPrompts,
+  setNewFolderParentId,
   folders,
   loadingFolders,
   selectedAuthor,
@@ -544,86 +547,28 @@ export function LibraryWorkspaceView({
               <span>Sin carpeta ({prompts.filter(p => !p.folderId).length})</span>
             </button>
 
-            {folders.map((folder) => {
-              const count = prompts.filter((p) => p.folderId === folder.id).length;
-              const isSelected = selectedFolderId === folder.id;
-              return (
-                <div
-                  key={folder.id}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (dragOverFolderId !== folder.id) {
-                      setDragOverFolderId(folder.id);
-                    }
-                  }}
-                  onDragLeave={() => {
-                    setDragOverFolderId(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOverFolderId(null);
-                    const promptId = e.dataTransfer.getData("text/plain");
-                    if (promptId) {
-                      handleMovePromptToFolder(promptId, folder.id);
-                    }
-                  }}
-                  className={`flex items-center gap-1 border rounded-xl pl-3.5 pr-2 py-1.5 text-xs font-bold transition-all relative ${
-                    isSelected
-                      ? "bg-pink-500/10 border-pink-500/40 text-pink-400"
-                      : dragOverFolderId === folder.id
-                      ? "bg-indigo-505/20 border-dashed border-indigo-500 text-indigo-300 scale-105 ring-2 ring-indigo-500/30"
-                      : "bg-slate-900/60 text-slate-355 border-slate-800/80 hover:border-slate-730 hover:text-white"
-                  }`}
-                >
-                  <button
-                    onClick={() => setSelectedFolderId(folder.id)}
-                    className="text-left flex items-center gap-1.5 cursor-pointer truncate max-w-[120px]"
-                    title={folder.description || "Sin descripción"}
-                  >
-                    <span>{folder.name}</span>
-                    <span className="text-[10px] opacity-75">({count})</span>
-                  </button>
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenShareFolderModal(folder);
-                    }}
-                    className={`p-1 hover:bg-indigo-500/15 rounded transition-all ml-1 cursor-pointer flex items-center justify-center ${
-                      folder.isShared
-                        ? "text-emerald-400 hover:text-emerald-300"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                    title={
-                      folder.isShared
-                        ? "Colección compartida públicamente. Haz clic para copiar enlace o ajustar configuración."
-                        : "Compartir Colección públicamente"
-                    }
-                  >
-                    <Share2 size={11} className={folder.isShared ? "animate-pulse" : ""} />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm(`¿Estás seguro de eliminar la carpeta "${folder.name}"? Los prompts seguirán existiendo fuera de esta carpeta.`)) {
-                        handleDeleteFolder(folder.id);
-                      }
-                    }}
-                    className="p-0.5 hover:bg-red-500/15 hover:text-red-400 rounded transition-all ml-1 cursor-pointer"
-                    title="Eliminar carpeta de organización"
-                  >
-                    <X size={11} className="stroke-[3]" />
-                  </button>
-                </div>
-              );
-            })}
+            <div className="w-full mt-2 space-y-1">
+              <FolderTreeView
+                folders={folders}
+                prompts={prompts}
+                selectedFolderId={selectedFolderId}
+                setSelectedFolderId={setSelectedFolderId}
+                dragOverFolderId={dragOverFolderId}
+                setDragOverFolderId={setDragOverFolderId}
+                handleMovePromptToFolder={handleMovePromptToFolder}
+                handleDeleteFolder={handleDeleteFolder}
+                handleOpenShareFolderModal={handleOpenShareFolderModal}
+                setShowCreateFolder={setShowCreateFolder}
+                setNewFolderParentId={setNewFolderParentId}
+                user={user}
+              />
+            </div>
 
             {loadingFolders && (
               <span className="text-[10px] text-slate-400 italic">Sincronizando carpetas...</span>
             )}
             {!loadingFolders && folders.length === 0 && (
-              <span className="text-[11px] text-slate-455 italic ml-1">No tienes carpetas organizacionales creadas aún.</span>
+              <span className="text-[11px] text-slate-400 italic ml-1">No tienes carpetas organizacionales creadas aún.</span>
             )}
           </div>
         </div>
