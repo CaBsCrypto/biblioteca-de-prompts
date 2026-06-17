@@ -5,7 +5,9 @@ import {
   getDoc,
   query,
   where,
-  getDocs
+  getDocs,
+  setDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import {
   Sparkles,
@@ -44,6 +46,7 @@ import { auth, db } from "./firebase";
 import { motion, AnimatePresence } from "motion/react";
 import { Prompt, CategoryFilter, Folder } from "./types";
 import WelcomeHeroSection from "./components/WelcomeHeroSection";
+import PromptPlaylistPlayer from "./components/PromptPlaylistPlayer";
 import { LibraryWorkspaceView } from "./components/LibraryWorkspaceView";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
@@ -492,6 +495,50 @@ export default function App() {
   const [sharedCollectionId, setSharedCollectionId] = useState<string | null>(null);
   const [sharedCollection, setSharedCollection] = useState<Folder | null>(null);
   const [sharedCollectionPrompts, setSharedCollectionPrompts] = useState<Prompt[]>([]);
+  const [isCloningCollection, setIsCloningCollection] = useState(false);
+
+  const handleCloneCollection = async () => {
+    if (!user || !sharedCollection) return;
+    setIsCloningCollection(true);
+    try {
+      // 1. Create a new folder document
+      const foldersCollectionPath = "folders";
+      const newFolderRef = doc(collection(db, foldersCollectionPath));
+      await setDoc(newFolderRef, {
+        userId: user.uid,
+        name: sharedCollection.name,
+        description: sharedCollection.description || "",
+        createdAt: serverTimestamp()
+      });
+
+      // 2. Clone all prompts under the new folder
+      const promptsCollectionPath = "prompts";
+      const batchPromises = sharedCollectionPrompts.map(async (p) => {
+        const newPromptRef = doc(collection(db, promptsCollectionPath));
+        return setDoc(newPromptRef, {
+          userId: user.uid,
+          title: p.title,
+          description: p.description,
+          promptText: p.promptText,
+          category: p.category,
+          tags: p.tags || [],
+          suggestedVariables: p.suggestedVariables || [],
+          folderId: newFolderRef.id,
+          isFavorite: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      await Promise.all(batchPromises);
+      triggerNotification("¡Playlist guardada con éxito en tu biblioteca!", "success");
+    } catch (err) {
+      console.error("Error cloning collection: ", err);
+      triggerNotification("Error al guardar la playlist en tu biblioteca.", "info");
+    } finally {
+      setIsCloningCollection(false);
+    }
+  };
   const [loadingSharedCollection, setLoadingSharedCollection] = useState(false);
 
   const handleHideCommunityPrompt = async (prompt: Prompt) => {
@@ -1847,96 +1894,24 @@ export default function App() {
           onCreateForumPost={(item) => void handleCreateForumPostFromBriefingItem(item)}
         />
       ) : sharedCollection ? (
-        <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 max-w-6xl mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-300">
-          {/* Header of the Shared Collection */}
-          <div className="surface-card bg-[#1e293b]/50 rounded-2xl md:rounded-3xl p-5 md:p-8 border border-slate-700/60 shadow-2xl space-y-6 relative overflow-hidden transition-all duration-300">
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2.5 py-1 rounded-full font-extrabold uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                    <Globe size={11} className="animate-pulse" />
-                    Colección Pública Compartida
-                  </span>
-                </div>
-                <h2 className="text-3xl font-black text-white leading-tight">{sharedCollection.name}</h2>
-                <p className="text-sm text-slate-400 font-sans max-w-2xl leading-relaxed">
-                  {sharedCollection.description || "Esta colección no tiene una descripción adicional."}
-                </p>
-                <div className="flex items-center gap-2 pt-1 text-xs text-slate-400 font-bold font-sans">
-                  <span>Creador:</span>
-                  <span className="text-pink-400 font-extrabold">{sharedCollection.authorName || "Miembro de la biblioteca"}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    setSharedCollection(null);
-                    // Clear the query parameter
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete("collection");
-                    window.history.replaceState({}, "", url.toString());
-                  }}
-                  className="px-4 py-2 bg-gradient-to-r from-[#4f46e5] to-[#9333ea] hover:opacity-95 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-[0.98]"
-                >
-                  <ArrowLeft size={14} />
-                  <span>Ir a la Biblioteca General</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* List or grid of public prompts inside this collection */}
-          <div className="space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-300 flex items-center gap-2 font-sans">
-                <span>Prompts en esta Colección</span>
-                <span className="bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 rounded-full px-2.5 py-0.5 text-[11px] font-black pointer-events-none">
-                  {sharedCollectionPrompts.length}
-                </span>
-              </h3>
-            </div>
-
-            {loadingSharedCollection ? (
-              <div className="text-center py-24 space-y-4">
-                <div className="w-8 h-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin mx-auto"></div>
-                <p className="text-xs text-slate-400 italic font-sans animate-pulse">Cargando los prompts de la colección...</p>
-              </div>
-            ) : sharedCollectionPrompts.length === 0 ? (
-              <div className="surface-card text-center py-24 bg-[#1e293b]/25 rounded-3xl border border-dashed border-slate-800 text-slate-400 space-y-2">
-                <p className="text-sm font-bold">Esta colección no tiene ningún prompt guardado o visible aún.</p>
-                <p className="text-xs font-sans text-slate-500">Los prompts agregados a esta carpeta por su creador aparecerán aquí en tiempo real.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sharedCollectionPrompts.map((p) => (
-                  <PromptCard
-                    key={p.id}
-                    prompt={p}
-                    folders={[]}
-                    onFavoriteToggle={() => {}}
-                    onEdit={handleOpenEdit}
-                    onDelete={() => {}}
-                    onUse={(p) => handleUsePrompt(p, "shared_collection")}
-                    onCopyFilled={(p) => handleCopyFilledPrompt(p)}
-                    onNotification={triggerNotification}
-                    isCommunityView={true}
-                    currentUser={user}
-                    onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
-                    onLikeToggle={handleLikeToggle}
-                    onAuthorClick={openPublicProfile}
-                    onViewDetails={setSelectedPublicPrompt}
-                    onSocialFavoriteToggle={handleToggleSocialFavorite}
-                    onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
-                    onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
-                    isSocialFavorite={socialFavoritePromptIds.has(p.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <PromptPlaylistPlayer
+          collectionName={sharedCollection.name}
+          collectionDescription={sharedCollection.description}
+          authorName={sharedCollection.authorName}
+          prompts={sharedCollectionPrompts}
+          onClose={() => {
+            setSharedCollection(null);
+            const url = new URL(window.location.href);
+            url.searchParams.delete("collection");
+            window.history.replaceState({}, "", url.toString());
+          }}
+          user={user}
+          onCloneCollection={handleCloneCollection}
+          isCloning={isCloningCollection}
+          onNotification={triggerNotification}
+          handleUsePrompt={handleUsePrompt}
+          handleCopyFilledPrompt={handleCopyFilledPrompt}
+        />
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
