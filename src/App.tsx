@@ -120,7 +120,7 @@ export default function App() {
   const [currentSection, setCurrentSection] = useState<AppSection>("inicio");
   const [uiThemeMode, setUiThemeMode] = useState<UiThemeMode>(() => {
     const savedTheme = window.localStorage.getItem("biblioteca-ui-theme");
-    return savedTheme === "clear" ? "clear" : "dark";
+    return savedTheme === "dark" ? "dark" : "clear";
   });
 
   // Filters
@@ -237,15 +237,25 @@ export default function App() {
     chatDraft,
     setChatDraft,
     loadingChatMessages,
+    blockedUserIds,
     openChat,
     closeChat,
-    sendChatMessage
+    sendChatMessage,
+    blockUser,
+    reportChat
   } = useConnectionChats({
     user,
     connectedConnections,
     getAuthorIdentity,
     onNotification: triggerNotification
   });
+
+  const handleBlockConnection = async (connection: Parameters<typeof blockUser>[0]) => {
+    const blocked = await blockUser(connection);
+    if (blocked) {
+      await removeConnection(connection.targetUid);
+    }
+  };
 
   const adminDashboard = useAdminDashboard(isFounder);
 
@@ -2599,9 +2609,12 @@ export default function App() {
                   chatMessages={chatMessages}
                   chatDraft={chatDraft}
                   loadingChatMessages={loadingChatMessages}
+                  blockedUserIds={blockedUserIds}
                   currentUserUid={user.uid}
                   onAccept={(targetUid) => void acceptConnection(targetUid)}
                   onRemove={(targetUid) => void removeConnection(targetUid)}
+                  onBlock={(connection) => void handleBlockConnection(connection)}
+                  onReportChat={() => void reportChat()}
                   onOpenChat={openChat}
                   onCloseChat={closeChat}
                   onChatDraftChange={setChatDraft}

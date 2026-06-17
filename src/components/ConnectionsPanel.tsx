@@ -1,4 +1,4 @@
-import { MessageCircle, Send, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { Ban, Flag, MessageCircle, Send, UserCheck, UserPlus, Users, X } from "lucide-react";
 import type { ChatMessage, UserConnection } from "../types";
 
 interface ConnectionsPanelProps {
@@ -9,9 +9,12 @@ interface ConnectionsPanelProps {
   chatMessages: ChatMessage[];
   chatDraft: string;
   loadingChatMessages: boolean;
+  blockedUserIds: Set<string>;
   currentUserUid?: string;
   onAccept: (targetUid: string) => void;
   onRemove: (targetUid: string) => void;
+  onBlock: (connection: UserConnection) => void;
+  onReportChat: () => void;
   onOpenChat: (connection: UserConnection) => void | Promise<void>;
   onCloseChat: () => void;
   onChatDraftChange: (value: string) => void;
@@ -56,9 +59,12 @@ export default function ConnectionsPanel({
   chatMessages,
   chatDraft,
   loadingChatMessages,
+  blockedUserIds,
   currentUserUid,
   onAccept,
   onRemove,
+  onBlock,
+  onReportChat,
   onOpenChat,
   onCloseChat,
   onChatDraftChange,
@@ -152,13 +158,25 @@ export default function ConnectionsPanel({
                 <div key={connection.targetUid} className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900/45 p-2.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <ConnectionAvatar connection={connection} />
-                    <ConnectionIdentity connection={connection} />
+                    <div className="min-w-0">
+                      <ConnectionIdentity connection={connection} />
+                      {blockedUserIds.has(connection.targetUid) && (
+                        <p className="mt-0.5 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-red-300">
+                          <Ban size={9} />
+                          Bloqueado
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => onOpenChat(connection)}
+                      disabled={blockedUserIds.has(connection.targetUid)}
                       className={`rounded-lg border p-2 cursor-pointer ${
+                        blockedUserIds.has(connection.targetUid)
+                          ? "border-slate-800 bg-slate-900/30 text-slate-600 cursor-not-allowed"
+                          :
                         activeChatConnection?.targetUid === connection.targetUid
                           ? "border-indigo-500/35 bg-indigo-500/15 text-indigo-300"
                           : "border-slate-700 bg-slate-800/70 text-slate-300 hover:text-white hover:bg-slate-700"
@@ -166,6 +184,14 @@ export default function ConnectionsPanel({
                       aria-label={`Abrir chat con ${connection.targetName}`}
                     >
                       <MessageCircle size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onBlock(connection)}
+                      className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-300 hover:bg-red-500/20 cursor-pointer"
+                      aria-label={`Bloquear a ${connection.targetName}`}
+                    >
+                      <Ban size={12} />
                     </button>
                     <button
                       type="button"
@@ -287,6 +313,24 @@ export default function ConnectionsPanel({
                   <p className="mt-2 text-[10px] text-slate-500">
                     MVP beta: mensajes privados simples. Archivos, grupos y moderacion avanzada vendran despues.
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={onReportChat}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-1.5 text-[10px] font-black text-amber-300 hover:bg-amber-500/20 cursor-pointer"
+                    >
+                      <Flag size={11} />
+                      Reportar chat
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onBlock(activeChatConnection)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-2.5 py-1.5 text-[10px] font-black text-red-300 hover:bg-red-500/20 cursor-pointer"
+                    >
+                      <Ban size={11} />
+                      Bloquear usuario
+                    </button>
+                  </div>
                 </form>
               </>
             ) : (

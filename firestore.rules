@@ -144,7 +144,9 @@ service cloud.firestore {
       return isSignedIn()
         && targetUid is string
         && exists(/databases/$(database)/documents/users/$(request.auth.uid)/connections/$(targetUid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)/connections/$(targetUid)).data.status == 'connected';
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)/connections/$(targetUid)).data.status == 'connected'
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid)/blockedUsers/$(targetUid))
+        && !exists(/databases/$(database)/documents/users/$(targetUid)/blockedUsers/$(request.auth.uid));
     }
 
     function isValidChatThread(data) {
@@ -170,6 +172,24 @@ service cloud.firestore {
         && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
         && data.createdAt == request.time
         && data.keys().hasOnly(['chatId', 'senderUid', 'senderName', 'senderAvatar', 'recipientUid', 'text', 'createdAt']);
+    }
+
+    function isValidBlockedUser(data, targetUid) {
+      return data.targetUid == targetUid
+        && data.targetName is string && data.targetName.size() > 0 && data.targetName.size() <= 200
+        && (!('targetHandle' in data) || (data.targetHandle is string && data.targetHandle.size() <= 40))
+        && (!('reason' in data) || (data.reason is string && data.reason.size() <= 120))
+        && data.createdAt == request.time
+        && data.keys().hasOnly(['targetUid', 'targetName', 'targetHandle', 'reason', 'createdAt']);
+    }
+
+    function isValidChatReport(data) {
+      return data.reporterUid == request.auth.uid
+        && data.reportedUid is string
+        && data.reportedUid != request.auth.uid
+        && data.reason is string && data.reason.size() > 0 && data.reason.size() <= 120
+        && data.createdAt == request.time
+        && data.keys().hasOnly(['reporterUid', 'reportedUid', 'reason', 'createdAt']);
     }
 
     function isValidHackathon(data) {
@@ -403,6 +423,20 @@ service cloud.firestore {
 
         allow update, delete: if false;
       }
+
+      match /reports/{reporterId} {
+        allow get, list: if isFounder()
+          || (isSignedIn() && reporterId == request.auth.uid);
+
+        allow create: if isSignedIn()
+          && reporterId == request.auth.uid
+          && exists(/databases/$(database)/documents/chats/$(chatId))
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && incoming().reportedUid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && isValidChatReport(incoming());
+
+        allow update, delete: if false;
+      }
     }
 
     match /users/{userId} {
@@ -452,6 +486,8 @@ service cloud.firestore {
         allow create: if isSignedIn()
           && isValidId(connectionId)
           && userId != connectionId
+          && !exists(/databases/$(database)/documents/users/$(userId)/blockedUsers/$(connectionId))
+          && !exists(/databases/$(database)/documents/users/$(connectionId)/blockedUsers/$(userId))
           && (
             (
               request.auth.uid == userId
@@ -484,6 +520,20 @@ service cloud.firestore {
           );
 
         allow delete: if isConnectionParticipant(userId, connectionId);
+      }
+
+      match /blockedUsers/{targetUid} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && isValidId(targetUid)
+          && targetUid != userId
+          && isValidBlockedUser(incoming(), targetUid);
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
       match /events/{eventId} {

@@ -120,6 +120,23 @@ export interface ChatMessage {
   createdAt: any;
 }
 
+export interface BlockedUser {
+  id: string;
+  targetUid: string;
+  targetName: string;
+  targetHandle?: string;
+  reason?: string;
+  createdAt: any;
+}
+
+export interface ChatReport {
+  id: string;
+  reporterUid: string;
+  reportedUid: string;
+  reason: string;
+  createdAt: any;
+}
+
 export interface UserEvent {
   id: string;
   type:

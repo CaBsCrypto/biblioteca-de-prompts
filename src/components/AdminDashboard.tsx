@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, BookOpen, GitFork, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { AdminUserMetric } from "../hooks/useAdminDashboard";
 
 interface AdminDashboardProps {
@@ -32,6 +33,15 @@ function formatDate(value: any) {
     month: "short",
     year: "numeric"
   }).format(date);
+}
+
+function getTime(value: any) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function StatCard({
@@ -72,6 +82,27 @@ function StatCard({
 }
 
 export default function AdminDashboard({ loading, permissionIssue, userMetrics, totals }: AdminDashboardProps) {
+  const [accountFilter, setAccountFilter] = useState<"todos" | "nuevos" | "activos" | "creadores" | "sinPublicar" | "founder">("todos");
+  const now = Date.now();
+  const filteredMetrics = useMemo(() => {
+    return userMetrics.filter((metric) => {
+      if (accountFilter === "nuevos") return now - getTime(metric.createdAt) <= 1000 * 60 * 60 * 24 * 7;
+      if (accountFilter === "activos") return now - getTime(metric.lastActivityAt) <= 1000 * 60 * 60 * 24 * 14;
+      if (accountFilter === "creadores") return metric.publicPromptsCount > 0 || metric.postsCount > 0 || metric.showcasePostsCount > 0 || metric.publicBriefingsCount > 0;
+      if (accountFilter === "sinPublicar") return metric.publicPromptsCount === 0 && metric.postsCount === 0 && metric.showcasePostsCount === 0 && metric.publicBriefingsCount === 0;
+      if (accountFilter === "founder") return metric.role === "founder";
+      return true;
+    });
+  }, [accountFilter, now, userMetrics]);
+  const filters = [
+    { id: "todos" as const, label: "Todos", count: userMetrics.length },
+    { id: "nuevos" as const, label: "Nuevos 7d", count: userMetrics.filter((metric) => now - getTime(metric.createdAt) <= 1000 * 60 * 60 * 24 * 7).length },
+    { id: "activos" as const, label: "Activos 14d", count: userMetrics.filter((metric) => now - getTime(metric.lastActivityAt) <= 1000 * 60 * 60 * 24 * 14).length },
+    { id: "creadores" as const, label: "Creadores", count: userMetrics.filter((metric) => metric.publicPromptsCount > 0 || metric.postsCount > 0 || metric.showcasePostsCount > 0 || metric.publicBriefingsCount > 0).length },
+    { id: "sinPublicar" as const, label: "Sin publicar", count: userMetrics.filter((metric) => metric.publicPromptsCount === 0 && metric.postsCount === 0 && metric.showcasePostsCount === 0 && metric.publicBriefingsCount === 0).length },
+    { id: "founder" as const, label: "Founder", count: userMetrics.filter((metric) => metric.role === "founder").length }
+  ];
+
   return (
     <section className="mx-auto w-full max-w-7xl space-y-5 md:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="rounded-2xl md:rounded-3xl border border-indigo-500/25 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-900 p-5 md:p-7 shadow-2xl">
@@ -123,8 +154,26 @@ export default function AdminDashboard({ loading, permissionIssue, userMetrics, 
             <p className="mt-1 text-xs text-slate-500">Ordenadas por actividad reciente estimada.</p>
           </div>
           <span className="rounded-full border border-slate-700 bg-slate-950/35 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-            {loading ? "Cargando..." : `${userMetrics.length} cuentas`}
+            {loading ? "Cargando..." : `${filteredMetrics.length}/${userMetrics.length} cuentas`}
           </span>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto border-b border-slate-800 px-4 py-3 no-scrollbar">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              onClick={() => setAccountFilter(filter.id)}
+              className={`shrink-0 rounded-xl border px-3 py-2 text-[11px] font-black transition-all cursor-pointer ${
+                accountFilter === filter.id
+                  ? "border-indigo-500/45 bg-indigo-600 text-white"
+                  : "border-slate-700 bg-slate-950/25 text-slate-400 hover:text-white hover:bg-slate-900"
+              }`}
+            >
+              {filter.label}
+              <span className="ml-2 rounded-md bg-slate-950/25 px-1.5 py-0.5 font-mono text-[10px]">{filter.count}</span>
+            </button>
+          ))}
         </div>
 
         <div className="overflow-x-auto">
@@ -143,14 +192,14 @@ export default function AdminDashboard({ loading, permissionIssue, userMetrics, 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
-              {userMetrics.length === 0 ? (
+              {filteredMetrics.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
-                    {loading ? "Cargando cuentas..." : "Todavia no hay usuarios para mostrar."}
+                    {loading ? "Cargando cuentas..." : "No hay cuentas para este filtro."}
                   </td>
                 </tr>
               ) : (
-                userMetrics.map((metric) => (
+                filteredMetrics.map((metric) => (
                   <tr key={metric.uid} className="text-xs text-slate-300 hover:bg-slate-900/45">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">

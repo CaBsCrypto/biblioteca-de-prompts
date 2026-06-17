@@ -67,6 +67,8 @@ https://biblioteca.browns.studio
 - [ ] Con una segunda cuenta, acepta o cancela una solicitud.
 - [ ] Abre el chat con una conexion aceptada y envia un mensaje corto.
 - [ ] Desde el perfil publico de una conexion aceptada, pulsa Mensaje y confirma que abre el chat.
+- [ ] Reporta un chat de prueba y confirma que no rompe la conversacion.
+- [ ] Bloquea una conexion de prueba y confirma que ya no puede abrir chat contigo.
 - [ ] Abre su perfil publico.
 - [ ] Con cuenta founder, abre Admin y confirma que ve cuentas/metrica sin errores de permisos.
 - [ ] Confirma que no ve contenido privado publicado automaticamente.
@@ -88,6 +90,8 @@ https://biblioteca.browns.studio
 - [ ] Solo participantes pueden cancelar o aceptar una conexion.
 - [ ] Solo usuarios conectados pueden crear mensajes privados.
 - [ ] Un usuario no puede leer chats donde no participa.
+- [ ] Un usuario bloqueado no puede crear nueva conexion ni enviar mensaje.
+- [ ] Un reporte de chat solo lo ve quien reporto o founder.
 - [ ] Un usuario sin rol founder no ve la navegacion Admin.
 
 ## Preguntas De Feedback

@@ -13,7 +13,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
-import type { ChatMessage, UserConnection } from "../types";
+import type { BlockedUser, ChatMessage, UserConnection } from "../types";
 
 interface UseConnectionChatsOptions {
   user: User | null;
@@ -44,6 +44,18 @@ function mapMessageDoc<T extends { id: string; data: () => unknown }>(docSnap: T
   };
 }
 
+function mapBlockedUserDoc<T extends { id: string; data: () => unknown }>(docSnap: T): BlockedUser {
+  const data = docSnap.data() as Partial<BlockedUser>;
+  return {
+    id: docSnap.id,
+    targetUid: data.targetUid || docSnap.id,
+    targetName: data.targetName || "Usuario bloqueado",
+    targetHandle: data.targetHandle || "",
+    reason: data.reason || "",
+    createdAt: data.createdAt
+  };
+}
+
 export function useConnectionChats({
   user,
   connectedConnections,
@@ -54,6 +66,26 @@ export function useConnectionChats({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState("");
   const [loadingChatMessages, setLoadingChatMessages] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setBlockedUsers([]);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, "users", user.uid, "blockedUsers"),
+      (snapshot) => {
+        setBlockedUsers(snapshot.docs.map(mapBlockedUserDoc));
+      },
+      (error) => {
+        console.error("Error subscribing to blocked users:", error);
+      }
+    );
+
+    return unsubscribe;
+  }, [user]);
 
   const connectionByUid = useMemo(() => {
     return connectedConnections.reduce((map, connection) => {
@@ -64,6 +96,7 @@ export function useConnectionChats({
 
   const activeChatConnection = activeChatTargetUid ? connectionByUid.get(activeChatTargetUid) || null : null;
   const activeChatId = user && activeChatConnection ? getChatId(user.uid, activeChatConnection.targetUid) : null;
+  const blockedUserIds = useMemo(() => new Set(blockedUsers.map((blockedUser) => blockedUser.targetUid)), [blockedUsers]);
 
   useEffect(() => {
     if (!user || !activeChatConnection || !activeChatId) {
@@ -102,6 +135,10 @@ export function useConnectionChats({
     }
     if (connection.status !== "connected") {
       onNotification("Solo puedes chatear con conexiones aceptadas.", "info");
+      return;
+    }
+    if (blockedUserIds.has(connection.targetUid)) {
+      onNotification("Este usuario esta bloqueado. Desbloquealo desde una version futura para volver a conversar.", "info");
       return;
     }
 
@@ -147,6 +184,10 @@ export function useConnectionChats({
   const sendChatMessage = async () => {
     if (!user || !activeChatConnection || !activeChatId) {
       onNotification("Abre una conexion para enviar un mensaje.", "info");
+      return;
+    }
+    if (blockedUserIds.has(activeChatConnection.targetUid)) {
+      onNotification("No puedes enviar mensajes a un usuario bloqueado.", "info");
       return;
     }
 
@@ -208,6 +249,54 @@ export function useConnectionChats({
     }
   };
 
+  const blockUser = async (connection: UserConnection, reason = "manual") => {
+    if (!user) {
+      onNotification("Inicia sesion para bloquear usuarios.", "info");
+      return false;
+    }
+
+    try {
+      await setDoc(doc(db, "users", user.uid, "blockedUsers", connection.targetUid), {
+        targetUid: connection.targetUid,
+        targetName: connection.targetName,
+        targetHandle: connection.targetHandle || "",
+        reason,
+        createdAt: serverTimestamp()
+      });
+      if (activeChatTargetUid === connection.targetUid) {
+        closeChat();
+      }
+      onNotification("Usuario bloqueado. Ya no podra abrir chat contigo.", "info");
+      return true;
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      onNotification("No se pudo bloquear el usuario.", "info");
+      return false;
+    }
+  };
+
+  const reportChat = async (reason = "Conversacion inapropiada") => {
+    if (!user || !activeChatConnection || !activeChatId) {
+      onNotification("Abre un chat para reportarlo.", "info");
+      return false;
+    }
+
+    try {
+      await setDoc(doc(db, "chats", activeChatId, "reports", user.uid), {
+        reporterUid: user.uid,
+        reportedUid: activeChatConnection.targetUid,
+        reason: reason.slice(0, 120),
+        createdAt: serverTimestamp()
+      });
+      onNotification("Reporte enviado. Gracias por cuidar la comunidad.", "success");
+      return true;
+    } catch (error) {
+      console.error("Error reporting chat:", error);
+      onNotification("No se pudo enviar el reporte.", "info");
+      return false;
+    }
+  };
+
   return {
     activeChatConnection,
     activeChatId,
@@ -215,8 +304,11 @@ export function useConnectionChats({
     chatDraft,
     setChatDraft,
     loadingChatMessages,
+    blockedUserIds,
     openChat,
     closeChat,
-    sendChatMessage
+    sendChatMessage,
+    blockUser,
+    reportChat
   };
 }
