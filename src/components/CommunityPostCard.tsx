@@ -1,7 +1,9 @@
-import { Edit3, ExternalLink, Heart, Link, Trash2, Users } from "lucide-react";
+import { useState } from "react";
+import { Edit3, ExternalLink, Heart, Link, MessageCircle, Trash2, Users } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { Key } from "react";
 import type { CommunityPost } from "../typesCommunity";
+import ForumCommentsSection from "./ForumCommentsSection";
 
 const TYPE_LABELS = {
   idea: "Idea",
@@ -25,9 +27,12 @@ interface CommunityPostCardProps {
   onLike: (post: CommunityPost) => void;
   onEdit: (post: CommunityPost) => void;
   onDelete: (post: CommunityPost) => void;
+  onSignIn: () => void;
+  onNotification: (message: string, type?: "success" | "info") => void;
 }
 
-export default function CommunityPostCard({ post, currentUser, onAuthorClick, onLike, onEdit, onDelete }: CommunityPostCardProps) {
+export default function CommunityPostCard({ post, currentUser, onAuthorClick, onLike, onEdit, onDelete, onSignIn, onNotification }: CommunityPostCardProps) {
+  const [showComments, setShowComments] = useState(false);
   const isOwner = currentUser?.uid === post.authorUid;
   const isLiked = Boolean(currentUser && post.likedBy.includes(currentUser.uid));
   const openAuthor = () => {
@@ -138,6 +143,20 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
             </span>
           )}
 
+          <button
+            type="button"
+            onClick={() => setShowComments((current) => !current)}
+            className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-bold transition-colors cursor-pointer ${
+              showComments
+                ? "border-indigo-500/35 bg-indigo-500/15 text-indigo-300"
+                : "ui-action-secondary border-slate-800 bg-slate-950/50 text-slate-400 hover:text-indigo-300"
+            }`}
+            aria-expanded={showComments}
+          >
+            <MessageCircle size={13} />
+            {showComments ? "Ocultar hilo" : "Conversar"}
+          </button>
+
           {onAuthorClick && (
             <button
               type="button"
@@ -169,6 +188,15 @@ export default function CommunityPostCard({ post, currentUser, onAuthorClick, on
             </div>
           )}
         </div>
+
+        {showComments && (
+          <ForumCommentsSection
+            post={post}
+            currentUser={currentUser}
+            onSignIn={onSignIn}
+            onNotification={onNotification}
+          />
+        )}
       </div>
     </article>
   );

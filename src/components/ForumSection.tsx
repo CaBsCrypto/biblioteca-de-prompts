@@ -22,11 +22,12 @@ interface ForumSectionProps {
   onDelete: (post: CommunityPost) => void;
   onLike: (post: CommunityPost) => void;
   onAuthorClick: (author: { name: string; uid: string; avatar?: string; handle?: string }) => void;
+  onNotification: (message: string, type?: "success" | "info") => void;
   initialDraft?: CommunityPostInput | null;
   onDraftConsumed?: () => void;
 }
 
-export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, onAuthorClick, initialDraft, onDraftConsumed }: ForumSectionProps) {
+export default function ForumSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, onAuthorClick, onNotification, initialDraft, onDraftConsumed }: ForumSectionProps) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | CommunityPostType>("all");
   const [initialPostType, setInitialPostType] = useState<CommunityPostType>("idea");
@@ -83,10 +84,10 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
               Foro creativo
             </span>
             <h2 className="text-2xl font-black leading-tight text-white md:text-4xl">
-              Ideas, preguntas y equipos para construir con prompts.
+              Conversaciones para construir con prompts.
             </h2>
             <p className="text-sm leading-relaxed text-slate-400">
-              Publica aprendizajes, pide feedback o encuentra companeros para hackathons, canales, agentes y productos.
+              Publica aprendizajes, pide feedback, responde hilos y encuentra companeros para hackathons, canales, agentes y productos.
             </p>
           </div>
 
@@ -193,6 +194,8 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
                 setShowCreateModal(true);
               }}
               onDelete={onDelete}
+              onSignIn={onSignIn}
+              onNotification={onNotification}
             />
           ))}
         </div>

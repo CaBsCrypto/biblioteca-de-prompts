@@ -15,9 +15,10 @@ interface ShowcaseSectionProps {
   onDelete: (post: CommunityPost) => void;
   onLike: (post: CommunityPost) => void;
   onAuthorClick: (author: { name: string; uid: string; avatar?: string; handle?: string }) => void;
+  onNotification: (message: string, type?: "success" | "info") => void;
 }
 
-export default function ShowcaseSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, onAuthorClick }: ShowcaseSectionProps) {
+export default function ShowcaseSection({ posts, loading, currentUser, onSignIn, onSave, onDelete, onLike, onAuthorClick, onNotification }: ShowcaseSectionProps) {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
@@ -130,6 +131,8 @@ export default function ShowcaseSection({ posts, loading, currentUser, onSignIn,
                 setShowCreateModal(true);
               }}
               onDelete={onDelete}
+              onSignIn={onSignIn}
+              onNotification={onNotification}
             />
           ))}
         </div>

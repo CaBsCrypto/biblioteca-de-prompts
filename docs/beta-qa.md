@@ -30,6 +30,7 @@ Checklist rapido:
 3. Guarda un prompt publico como remix privado.
 4. Abre Noticias y guarda una idea.
 5. Dejame feedback en el Foro con una captura si ves algo raro.
+6. Responde un hilo del Foro si encuentras una conversacion abierta.
 
 Importante: nada se publica sin que tu lo decidas.
 
@@ -43,6 +44,7 @@ https://biblioteca.browns.studio
 - [ ] 3 testers guardan al menos un remix privado.
 - [ ] 2 testers crean una idea desde Noticias.
 - [ ] 2 testers publican feedback en Foro.
+- [ ] 2 testers responden al menos un hilo del Foro.
 - [ ] 0 testers reportan que contenido privado aparece publico.
 
 ## Checklist Por Tester
@@ -57,6 +59,7 @@ https://biblioteca.browns.studio
 - [ ] Usa o copia un prompt.
 - [ ] Abre Noticias y guarda una idea.
 - [ ] Crea un post de feedback en Foro.
+- [ ] Abre un post del Foro y responde en la conversacion.
 - [ ] Abre su perfil publico.
 - [ ] Confirma que no ve contenido privado publicado automaticamente.
 
@@ -71,6 +74,7 @@ https://biblioteca.browns.studio
 - [ ] Un briefing publicado abre sin login.
 - [ ] Un reporte de prompt solo lo ve el dueno del prompt o founder.
 - [ ] Un usuario no puede editar/borrar posts de otro usuario.
+- [ ] Un usuario solo puede borrar sus propias respuestas de Foro, salvo el autor del post moderando su hilo.
 - [ ] Un usuario no puede editar/borrar hackathons de otro usuario.
 
 ## Preguntas De Feedback

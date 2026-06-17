@@ -18,6 +18,16 @@ export interface CommunityPost {
   updatedAt: any;
 }
 
+export interface CommunityPostComment {
+  id: string;
+  postId: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  text: string;
+  createdAt: any;
+}
+
 export type HackathonRole = "diseno" | "dev" | "ia" | "3d" | "marketing" | "research";
 
 export interface HackathonOpportunity {
