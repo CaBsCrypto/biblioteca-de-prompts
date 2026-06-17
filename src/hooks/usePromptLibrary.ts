@@ -241,6 +241,114 @@ export function usePromptLibrary({
     }
   };
 
+  const handleExportJSON = () => {
+    if (prompts.length === 0) {
+      onNotification("No hay prompts para exportar.", "info");
+      return;
+    }
+
+    const dataToExport = prompts.map((p) => ({
+      title: p.title || "",
+      description: p.description || "",
+      promptText: p.promptText || "",
+      category: p.category || "General",
+      tags: p.tags || [],
+      isFavorite: p.isFavorite || false,
+      isShared: p.isShared || false,
+      notas: p.notas || "",
+      suggestedVariables: p.suggestedVariables || [],
+      folderId: p.folderId || null
+    }));
+
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    link.href = url;
+    link.download = `biblioteca_prompts_${dateStr}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    onNotification("Biblioteca exportada con éxito.");
+  };
+
+  const handleImportJSON = async (fileContent: string): Promise<{ successCount: number; error?: string }> => {
+    if (!user) {
+      onNotification("Inicia sesión antes de importar prompts.", "info");
+      return { successCount: 0, error: "No autenticado" };
+    }
+
+    try {
+      const parsed = JSON.parse(fileContent);
+      if (!Array.isArray(parsed)) {
+        throw new Error("El archivo JSON debe contener una lista de prompts (array).");
+      }
+
+      setLoadingPrompts(true);
+      const promptsCollectionPath = "prompts";
+
+      const validPrompts = parsed.filter((item: any) => {
+        return (
+          item &&
+          typeof item === "object" &&
+          typeof item.title === "string" &&
+          item.title.trim().length > 0 &&
+          typeof item.promptText === "string" &&
+          item.promptText.trim().length > 0
+        );
+      });
+
+      if (validPrompts.length === 0) {
+        throw new Error("No se encontraron prompts válidos en el archivo JSON (se requiere título y texto del prompt).");
+      }
+
+      await Promise.all(
+        validPrompts.map((p: any) => {
+          const docRef = doc(collection(db, promptsCollectionPath));
+          const docData = {
+            title: p.title.slice(0, 150),
+            description: typeof p.description === "string" ? p.description.slice(0, 1000) : "",
+            promptText: p.promptText.slice(0, 10000),
+            category: typeof p.category === "string" ? p.category.slice(0, 50) : "General",
+            tags: Array.isArray(p.tags) ? p.tags.slice(0, 10).map((t: any) => String(t).slice(0, 50)) : [],
+            isFavorite: Boolean(p.isFavorite),
+            isShared: Boolean(p.isShared),
+            notas: typeof p.notas === "string" ? p.notas.slice(0, 6000) : "",
+            suggestedVariables: Array.isArray(p.suggestedVariables)
+              ? p.suggestedVariables.map((v: any) => ({
+                  name: typeof v.name === "string" ? v.name.slice(0, 100) : "",
+                  description: typeof v.description === "string" ? v.description.slice(0, 500) : "",
+                  defaultValue: typeof v.defaultValue === "string" ? v.defaultValue.slice(0, 500) : ""
+                }))
+              : [],
+            userId: user.uid,
+            folderId: typeof p.folderId === "string" ? p.folderId.slice(0, 128) : null,
+            ...getAuthorIdentity(),
+            likedBy: [],
+            likesCount: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+
+          return setDoc(docRef, docData);
+        })
+      );
+
+      onNotification(`Se importaron ${validPrompts.length} prompts correctamente.`);
+      return { successCount: validPrompts.length };
+    } catch (err) {
+      console.error("Error importing JSON:", err);
+      const msg = err instanceof Error ? err.message : "Error al procesar el archivo JSON";
+      onNotification(msg, "info");
+      return { successCount: 0, error: msg };
+    } finally {
+      setLoadingPrompts(false);
+    }
+  };
+
   return {
     prompts,
     loadingPrompts,
@@ -249,6 +357,8 @@ export function usePromptLibrary({
     handleSavePrompt,
     handleFavoriteToggle,
     handleDeletePrompt,
-    handleImportFromAI
+    handleImportFromAI,
+    handleExportJSON,
+    handleImportJSON
   };
 }

@@ -69,6 +69,67 @@ function selectPromptSource({
     });
 }
 
+export interface ParsedQuery {
+  tags: string[];
+  categories: string[];
+  authors: string[];
+  isFavorite?: boolean;
+  isShared?: boolean;
+  isPrivate?: boolean;
+  isRemix?: boolean;
+  textTerms: string[];
+}
+
+export function parseSearchQuery(queryStr: string): ParsedQuery {
+  const result: ParsedQuery = {
+    tags: [],
+    categories: [],
+    authors: [],
+    textTerms: []
+  };
+
+  const cleanQuery = queryStr.trim();
+  if (!cleanQuery) return result;
+
+  // Supports key:value and key:"value with spaces"
+  const regex = /(?:(tag|etiqueta|category|categoria|author|autor|is):(?:([^"\s]+)|"([^"]+)"))|([^\s"]+)|"([^"]+)"/gi;
+  let match;
+
+  while ((match = regex.exec(cleanQuery)) !== null) {
+    if (match[1]) {
+      const key = match[1].toLowerCase();
+      const val = (match[2] || match[3] || "").trim();
+      if (!val) continue;
+
+      if (key === "tag" || key === "etiqueta") {
+        result.tags.push(val.toLowerCase());
+      } else if (key === "category" || key === "categoria") {
+        result.categories.push(val.toLowerCase());
+      } else if (key === "author" || key === "autor") {
+        result.authors.push(val.toLowerCase());
+      } else if (key === "is") {
+        const flag = val.toLowerCase();
+        if (flag === "favorite" || flag === "favorito") {
+          result.isFavorite = true;
+        } else if (flag === "shared" || flag === "public" || flag === "publico") {
+          result.isShared = true;
+        } else if (flag === "private" || flag === "privado") {
+          result.isPrivate = true;
+        } else if (flag === "remix") {
+          result.isRemix = true;
+        }
+      }
+    } else {
+      const term = (match[4] || match[5] || "").trim();
+      if (term) {
+        result.textTerms.push(term.toLowerCase());
+      }
+    }
+  }
+
+  return result;
+}
+
 export function filterPrompts(input: BasePromptSelectionInput & {
   selectedCategory: CategoryFilter;
   searchQuery: string;
@@ -76,7 +137,10 @@ export function filterPrompts(input: BasePromptSelectionInput & {
   selectedFolderId: string | null;
 }) {
   const targetSource = selectPromptSource(input);
+  const parsed = parseSearchQuery(input.searchQuery);
+
   return targetSource.filter((p) => {
+    // 1. Folder constraints
     if (input.currentTab === "mi-biblioteca" && input.selectedFolderId) {
       if (input.selectedFolderId === "uncategorized") {
         if (p.folderId) return false;
@@ -85,6 +149,7 @@ export function filterPrompts(input: BasePromptSelectionInput & {
       }
     }
 
+    // 2. Category sidebar / header filter
     if (input.selectedCategory === "Favoritos" && input.currentTab === "comunidad") {
       if (!input.socialFavoritePromptIds?.has(p.id)) return false;
     } else if (input.selectedCategory === "Favoritos") {
@@ -93,6 +158,7 @@ export function filterPrompts(input: BasePromptSelectionInput & {
       return false;
     }
 
+    // 3. Selected Tags constraints
     if (input.selectedTags.length > 0) {
       const matchesAllSelectedTags = input.selectedTags.every((selTag) =>
         p.tags?.some((t) => t.toLowerCase() === selTag.toLowerCase())
@@ -100,19 +166,65 @@ export function filterPrompts(input: BasePromptSelectionInput & {
       if (!matchesAllSelectedTags) return false;
     }
 
-    if (input.searchQuery.trim() !== "") {
-      const queryClean = input.searchQuery.toLowerCase().trim();
-      const titleMatch = p.title?.toLowerCase().includes(queryClean);
-      const descMatch = p.description?.toLowerCase().includes(queryClean);
-      const promptMatch = p.promptText?.toLowerCase().includes(queryClean);
-      const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(queryClean));
-      const authorMatch = p.authorName?.toLowerCase().includes(queryClean);
-      return titleMatch || descMatch || promptMatch || tagMatch || authorMatch;
+    // 4. Smart Query Attributes Matching
+    if (parsed.categories.length > 0) {
+      const matchesCategory = parsed.categories.some((cat) =>
+        p.category?.toLowerCase() === cat
+      );
+      if (!matchesCategory) return false;
+    }
+
+    if (parsed.tags.length > 0) {
+      const matchesAllQueryTags = parsed.tags.every((qTag) =>
+        p.tags?.some((t) => t.toLowerCase() === qTag)
+      );
+      if (!matchesAllQueryTags) return false;
+    }
+
+    if (parsed.authors.length > 0) {
+      const matchesAuthor = parsed.authors.some((auth) =>
+        p.authorName?.toLowerCase().includes(auth) || p.authorHandle?.toLowerCase().includes(auth)
+      );
+      if (!matchesAuthor) return false;
+    }
+
+    if (parsed.isFavorite !== undefined) {
+      const isFav = input.currentTab === "comunidad"
+        ? Boolean(input.socialFavoritePromptIds?.has(p.id))
+        : Boolean(p.isFavorite);
+      if (isFav !== parsed.isFavorite) return false;
+    }
+
+    if (parsed.isShared !== undefined) {
+      if (Boolean(p.isShared) !== parsed.isShared) return false;
+    }
+
+    if (parsed.isPrivate !== undefined) {
+      if (Boolean(!p.isShared) !== parsed.isPrivate) return false;
+    }
+
+    if (parsed.isRemix !== undefined) {
+      const isRem = Boolean(p.forkedFromPromptId || p.forkedFrom);
+      if (isRem !== parsed.isRemix) return false;
+    }
+
+    // 5. Smart Query Text Terms Matching (AND across all terms)
+    if (parsed.textTerms.length > 0) {
+      const matchesAllTerms = parsed.textTerms.every((term) => {
+        const titleMatch = p.title?.toLowerCase().includes(term);
+        const descMatch = p.description?.toLowerCase().includes(term);
+        const promptMatch = p.promptText?.toLowerCase().includes(term);
+        const tagMatch = p.tags?.some((t) => t.toLowerCase().includes(term));
+        const authorMatch = p.authorName?.toLowerCase().includes(term) || p.authorHandle?.toLowerCase().includes(term);
+        return titleMatch || descMatch || promptMatch || tagMatch || authorMatch;
+      });
+      if (!matchesAllTerms) return false;
     }
 
     return true;
   });
 }
+
 
 export function getAvailableTags(input: BasePromptSelectionInput) {
   const tagsSet = new Set<string>();

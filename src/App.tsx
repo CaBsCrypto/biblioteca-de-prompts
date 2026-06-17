@@ -178,6 +178,26 @@ export default function App() {
   const [pendingBriefingPromptItem, setPendingBriefingPromptItem] = useState<BriefingItem | null>(null);
   const [pendingBriefingForumItem, setPendingBriefingForumItem] = useState<BriefingItem | null>(null);
   const trackedBriefingOpenRef = useRef<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target?.result;
+      if (typeof text === "string") {
+        await handleImportJSON(text);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
@@ -272,7 +292,9 @@ export default function App() {
     handleSavePrompt,
     handleFavoriteToggle,
     handleDeletePrompt,
-    handleImportFromAI
+    handleImportFromAI,
+    handleExportJSON,
+    handleImportJSON
   } = usePromptLibrary({
     user,
     editingPrompt,
@@ -1623,7 +1645,11 @@ export default function App() {
   }, [activeClassroom, authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
 
   return (
-    <div className={`ui-page min-h-screen bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)] text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-colors duration-200 ${uiThemeMode === "clear" ? "clear-ui" : "dark-ui"}`}>
+    <div className={`ui-page min-h-screen text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-all duration-200 ${
+      uiThemeMode === "clear"
+        ? "clear-ui"
+        : "dark-ui bg-[#0f172a] bg-[radial-gradient(circle_at_top_right,#1e1b4b,#0f172a)]"
+    }`}>
       
       {/* Toast Notification HUD */}
       {notification && (
@@ -2919,13 +2945,43 @@ export default function App() {
 
               {user && currentTab === "mi-biblioteca" && (
                 <div className="bg-[#1e293b]/50 p-3.5 rounded-2xl border border-slate-800/85 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1 border-b border-slate-800/40">
                     <div>
                       <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">Vista de mi biblioteca</h3>
                       <p className="text-[11px] text-slate-500 font-sans mt-0.5">
                         Separa privados, publicaciones, remixes, favoritos propios y referencias sociales guardadas.
                       </p>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".json"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleImportClick}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer"
+                        title="Importar prompts desde archivo JSON"
+                      >
+                        <Plus size={12} />
+                        <span>Importar JSON</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportJSON}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer"
+                        title="Exportar biblioteca como archivo JSON"
+                      >
+                        <Share2 size={12} />
+                        <span>Exportar JSON</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
                       {LIBRARY_VIEW_FILTERS.map((filter) => {
                         const count = filter.id === "todos"
