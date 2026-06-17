@@ -60,6 +60,7 @@ interface PublicProfileSurfaceProps {
   onSendConnectionRequest: (target: { uid: string; name: string; avatar?: string; handle?: string }) => void;
   onAcceptConnection: (targetUid: string) => void;
   onRemoveConnection: (targetUid: string) => void;
+  onOpenConnectionChat: (targetUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
   onFork: (prompt: Prompt) => void;

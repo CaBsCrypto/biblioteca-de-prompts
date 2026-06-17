@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Copy, ExternalLink, FolderOpen, GitFork, Globe, Heart, Image, Layers3, MessageSquare, Newspaper, Share2, Sparkles, Tags, TrendingUp, Trophy, UserCheck, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, BookOpen, Copy, ExternalLink, FolderOpen, GitFork, Globe, Heart, Image, Layers3, MessageCircle, MessageSquare, Newspaper, Share2, Sparkles, Tags, TrendingUp, Trophy, UserCheck, UserPlus, Users } from "lucide-react";
 import type { User } from "firebase/auth";
 import type { ConnectionStatus, Folder, Prompt } from "../types";
 import type { Briefing, CommunityPost, HackathonOpportunity } from "../typesCommunity";
@@ -27,6 +27,7 @@ interface PublicProfileViewProps {
   onSendConnectionRequest: (target: { uid: string; name: string; avatar?: string; handle?: string }) => void;
   onAcceptConnection: (targetUid: string) => void;
   onRemoveConnection: (targetUid: string) => void;
+  onOpenConnectionChat: (targetUid: string) => void;
   onUsePrompt: (prompt: Prompt) => void;
   onCopyFilled: (prompt: Prompt) => void;
   onFork: (prompt: Prompt) => void;
@@ -59,6 +60,7 @@ export default function PublicProfileView({
   onSendConnectionRequest,
   onAcceptConnection,
   onRemoveConnection,
+  onOpenConnectionChat,
   onUsePrompt,
   onCopyFilled,
   onFork,
@@ -260,6 +262,16 @@ export default function PublicProfileView({
               >
                 {connectionStatus === "connected" ? <UserCheck size={14} /> : <UserPlus size={14} />}
                 <span>{connectionLabel}</span>
+              </button>
+            )}
+            {canConnectWithAuthor && connectionStatus === "connected" && (
+              <button
+                type="button"
+                onClick={() => onOpenConnectionChat(author.uid)}
+                className="px-5 py-3 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer border bg-cyan-500/10 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20 shadow-lg"
+              >
+                <MessageCircle size={14} />
+                <span>Mensaje</span>
               </button>
             )}
             {highlightedPrompt && (

@@ -66,6 +66,7 @@ https://biblioteca.browns.studio
 - [ ] Abre un perfil publico y envia una solicitud de conexion.
 - [ ] Con una segunda cuenta, acepta o cancela una solicitud.
 - [ ] Abre el chat con una conexion aceptada y envia un mensaje corto.
+- [ ] Desde el perfil publico de una conexion aceptada, pulsa Mensaje y confirma que abre el chat.
 - [ ] Abre su perfil publico.
 - [ ] Confirma que no ve contenido privado publicado automaticamente.
 

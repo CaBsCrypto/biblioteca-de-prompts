@@ -326,6 +326,19 @@ export default function App() {
     onNotification: triggerNotification
   });
 
+  const handleOpenConnectionChatFromProfile = (targetUid: string) => {
+    const connection = connectionByTargetUid.get(targetUid);
+    if (!connection || connection.status !== "connected") {
+      triggerNotification("Primero necesitas una conexion aceptada para abrir chat.", "info");
+      return;
+    }
+
+    setCurrentSection("prompts");
+    setCurrentTab("mi-biblioteca");
+    setSelectedAuthor(null);
+    void openChat(connection);
+  };
+
   const {
     socialFavorites,
     socialFavoritePromptIds,
@@ -1840,6 +1853,7 @@ export default function App() {
                 onSendConnectionRequest={(target) => void sendConnectionRequest(target)}
                 onAcceptConnection={(targetUid) => void acceptConnection(targetUid)}
                 onRemoveConnection={(targetUid) => void removeConnection(targetUid)}
+                onOpenConnectionChat={handleOpenConnectionChatFromProfile}
                 onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                 onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
                 onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
@@ -2503,6 +2517,7 @@ export default function App() {
                   onSendConnectionRequest={(target) => void sendConnectionRequest(target)}
                   onAcceptConnection={(targetUid) => void acceptConnection(targetUid)}
                   onRemoveConnection={(targetUid) => void removeConnection(targetUid)}
+                  onOpenConnectionChat={handleOpenConnectionChatFromProfile}
                   onUsePrompt={(prompt) => handleUsePrompt(prompt, "public_profile")}
                   onCopyFilled={(prompt) => handleCopyFilledPrompt(prompt)}
                   onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
