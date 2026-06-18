@@ -1,8 +1,63 @@
 import React, { useState, useEffect } from "react";
 import { X, Save, Plus, Trash2, Tag, HelpCircle, Sparkles, StickyNote, Globe, History, RotateCcw, Mic, MicOff, GitFork } from "lucide-react";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { Prompt, PromptVariable, Folder } from "../types";
+
+function extractVariables(text: string): string[] {
+  const matches = text.match(/\{\{([^}]+)\}\}/g);
+  if (!matches) return [];
+  const unique = new Set(matches.map(m => m.slice(2, -2).trim()));
+  return Array.from(unique);
+}
+
+interface QualityScore {
+  score: number;
+  hasRole: boolean;
+  hasContext: boolean;
+  hasVariables: boolean;
+  hasOutputFormat: boolean;
+  tips: string[];
+}
+
+function calculateQualityScore(text: string): QualityScore {
+  const lowercase = text.toLowerCase();
+  const tips: string[] = [];
+  let score = 0;
+
+  const roleKeywords = ["eres un", "actúa como", "diseña como", "experto", "como un", "role", "act as", "you are a", "profesional"];
+  const hasRole = roleKeywords.some(kw => lowercase.includes(kw));
+  if (hasRole) {
+    score += 25;
+  } else {
+    tips.push("Define un Rol claro para la IA (ej: 'Eres un copywriter experto...').");
+  }
+
+  const hasContext = text.trim().length > 60;
+  if (hasContext) {
+    score += 25;
+  } else {
+    tips.push("Añade Contexto o detalles de la tarea (mínimo 60 caracteres).");
+  }
+
+  const variables = extractVariables(text);
+  const hasVariables = variables.length > 0;
+  if (hasVariables) {
+    score += 25;
+  } else {
+    tips.push("Usa variables dinámicas {{ejemplo}} para flexibilizar la instrucción.");
+  }
+
+  const formatKeywords = ["salida", "output", "formato", "json", "markdown", "lista", "tabla", "estructura", "formato de respuesta"];
+  const hasOutputFormat = formatKeywords.some(kw => lowercase.includes(kw));
+  if (hasOutputFormat) {
+    score += 25;
+  } else {
+    tips.push("Define la estructura o Formato de Salida (ej: 'Responde en Markdown').");
+  }
+
+  return { score, hasRole, hasContext, hasVariables, hasOutputFormat, tips };
+}
 
 function diffWords(oldStr: string, newStr: string) {
   const oldWords = oldStr.split(/(\s+)/);
@@ -172,6 +227,62 @@ export default function PromptFormModal({
   const [isShared, setIsShared] = useState(false);
   const [folderId, setFolderId] = useState<string>("");
 
+  const [showAIOptimizer, setShowAIOptimizer] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [mockValues, setMockValues] = useState<Record<string, string>>({});
+
+  const activeVariables = React.useMemo(() => {
+    return extractVariables(promptText);
+  }, [promptText]);
+
+  const filledPreview = React.useMemo(() => {
+    let filled = promptText;
+    activeVariables.forEach(v => {
+      const val = mockValues[v] || `[${v}]`;
+      const regex = new RegExp(`\\{\\{\\s*${v}\\s*\\}\\}`, "g");
+      filled = filled.replace(regex, val);
+    });
+    return filled;
+  }, [promptText, activeVariables, mockValues]);
+
+  const handleAIOptimize = async () => {
+    if (!promptText.trim()) return;
+    setLoadingAI(true);
+    setAiError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Inicia sesión para usar el asistente de IA.");
+
+      const response = await fetch("/api/ai/optimizar", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          promptText: promptText.trim(),
+          instructions: aiInstructions.trim() || undefined
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error al optimizar.");
+
+      if (data.promptText) {
+        setPromptText(data.promptText);
+        if (data.title && !title.trim()) setTitle(data.title);
+        if (data.description && !description.trim()) setDescription(data.description);
+        if (onNotification) onNotification("Prompt optimizado con éxito usando Gemini.", "success");
+      }
+    } catch (err: any) {
+      setAiError(err.message || "Ocurrió un error.");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+
   // Voice dictation state-update helpers
   const handleDictateTitle = (transcript: string) => {
     setTitle(prev => prev ? prev.trim() + " " + transcript : transcript);
@@ -320,7 +431,8 @@ export default function PromptFormModal({
 
   return (
     <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
-      <div className="ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col my-2 sm:my-8 max-h-[96vh] sm:max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className={`ui-modal-panel bg-[#1e293b] rounded-2xl sm:rounded-3xl w-full shadow-2xl overflow-hidden border border-slate-700/80 flex flex-col my-2 sm:my-8 max-h-[96vh] sm:max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 transition-all ${showAIOptimizer ? "max-w-6xl" : "max-w-3xl"}`}>
+
         
         {/* Header */}
         <div className="ui-modal-header flex items-center justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-700/60 bg-slate-900/40 shrink-0">
@@ -339,7 +451,10 @@ export default function PromptFormModal({
         </div>
 
         {/* Scrollable Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-slate-200">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 text-slate-200">
+          <div className={`grid grid-cols-1 ${showAIOptimizer ? "lg:grid-cols-2 gap-6" : "space-y-5"}`}>
+            <div className="space-y-5">
+
           {forkSourceTitle && (
             <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-3.5 text-xs text-indigo-200 flex items-start gap-2.5">
               <GitFork size={14} className="mt-0.5 text-indigo-300 shrink-0" />
@@ -430,15 +545,19 @@ export default function PromptFormModal({
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Instrucción / Prompt *</label>
               <div className="flex flex-wrap justify-end items-center gap-1.5">
                 <VoiceDictationButton onTranscript={handleDictatePromptText} onNotification={onNotification} tooltipText="Dictar instrucción con voz" />
-                {onOptimizeWithAI && promptText.trim().length > 20 && (
+                {promptText.trim().length > 10 && (
                   <button
                     type="button"
-                    onClick={() => onOptimizeWithAI(promptText)}
-                    className="text-[10px] font-bold text-pink-400 hover:text-pink-350 flex items-center gap-1 bg-pink-500/10 px-2.5 py-1 rounded-lg border border-pink-500/20 transition-all shadow-sm cursor-pointer"
-                    title="Optimizar este texto usando Inteligencia Artificial"
+                    onClick={() => setShowAIOptimizer(!showAIOptimizer)}
+                    className={`text-[10px] font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-all shadow-sm cursor-pointer ${
+                      showAIOptimizer
+                        ? "bg-pink-550 text-pink-200 border-pink-500/40"
+                        : "text-pink-400 hover:text-pink-350 bg-pink-500/10 border-pink-500/20"
+                    }`}
+                    title="Toggle evaluador y optimizador de IA"
                   >
-                    <Sparkles size={11} className="animate-pulse" />
-                    <span>Optimizar con IA</span>
+                    <Sparkles size={11} className={showAIOptimizer ? "" : "animate-pulse"} />
+                    <span>{showAIOptimizer ? "Ocultar Asistente" : "Analizar con IA / Evaluar"}</span>
                   </button>
                 )}
               </div>
@@ -675,6 +794,123 @@ export default function PromptFormModal({
             )}
           </div>
 
+            </div>
+
+            {/* Right Panel: AI Optimizer & Quality Meter */}
+            {showAIOptimizer && (
+              <div className="space-y-5 border-t lg:border-t-0 lg:border-l border-slate-700/60 lg:pl-6 pt-5 lg:pt-0">
+                {(() => {
+                  const qs = calculateQualityScore(promptText);
+                  return (
+                    <>
+                      <div className="bg-slate-900/40 p-4.5 rounded-2xl border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-300">Medidor de Calidad</span>
+                          <span className={`text-sm font-extrabold ${qs.score >= 75 ? "text-emerald-400" : qs.score >= 50 ? "text-amber-400" : "text-red-400"}`}>{qs.score}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-300 ${qs.score >= 75 ? "bg-emerald-500" : qs.score >= 50 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${qs.score}%` }}></div>
+                        </div>
+                        <div className="space-y-2 mt-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Rol de IA</span>
+                            <span className={qs.hasRole ? "text-emerald-400 font-bold" : "text-slate-500"}>{qs.hasRole ? "✔ Incluido" : "✘ Falta"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Contexto descriptivo</span>
+                            <span className={qs.hasContext ? "text-emerald-400 font-bold" : "text-slate-500"}>{qs.hasContext ? "✔ Incluido" : "✘ Falta"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Variables dinámicas</span>
+                            <span className={qs.hasVariables ? "text-emerald-400 font-bold" : "text-slate-500"}>{qs.hasVariables ? "✔ Incluido" : "✘ Falta"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Formato de respuesta</span>
+                            <span className={qs.hasOutputFormat ? "text-emerald-400 font-bold" : "text-slate-500"}>{qs.hasOutputFormat ? "✔ Incluido" : "✘ Falta"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {qs.tips.length > 0 && (
+                        <div className="bg-amber-500/5 border border-amber-500/20 p-3.5 rounded-2xl space-y-1.5">
+                          <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider">Consejos de Mejora:</span>
+                          <ul className="text-[10px] text-slate-350 space-y-1 list-disc pl-4 leading-normal">
+                            {qs.tips.map((tip, idx) => (
+                              <li key={idx}>{tip}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* AI Refiner */}
+                <div className="bg-[#1e293b]/60 p-4.5 rounded-2xl border border-slate-700/60 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-pink-400 animate-pulse" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-200">Refinar con Gemini</span>
+                  </div>
+                  <textarea
+                    value={aiInstructions}
+                    onChange={(e) => setAiInstructions(e.target.value)}
+                    placeholder="Instrucciones especiales para mejorar (ej: 'Hazlo sonar más formal y estructúralo en una tabla')"
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-705 p-3 text-xs bg-[#0f172a] text-slate-100 placeholder-slate-500 focus:outline-none"
+                  />
+                  {aiError && (
+                    <div className="text-[10px] text-red-400 font-semibold p-2 bg-red-500/10 border border-red-500/20 rounded-xl">
+                      {aiError}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    disabled={loadingAI}
+                    onClick={handleAIOptimize}
+                    className="w-full py-2 bg-gradient-to-r from-pink-600 to-indigo-600 hover:opacity-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {loadingAI ? "Optimizando..." : "Enviar Instrucciones a Gemini"}
+                  </button>
+                </div>
+
+                {/* Variables Testing */}
+                {activeVariables.length > 0 && (
+                  <div className="bg-slate-900/40 p-4.5 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <HelpCircle size={14} className="text-indigo-400" />
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-200">Playground de Variables</span>
+                    </div>
+                    <div className="space-y-2">
+                      {activeVariables.map((variable) => (
+                        <div key={variable} className="flex flex-col gap-1">
+                          <label className="text-[10px] font-bold text-slate-400 font-mono">{"{{" + variable + "}}"}</label>
+                          <input
+                            type="text"
+                            value={mockValues[variable] || ""}
+                            onChange={(e) => {
+                              setMockValues((prev) => ({
+                                ...prev,
+                                [variable]: e.target.value
+                              }));
+                            }}
+                            placeholder="Escribe un valor de prueba..."
+                            className="w-full text-xs rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-200 focus:outline-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-1 mt-3">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Previsualización:</span>
+                      <pre className="bg-slate-950 p-3 rounded-xl text-[10px] font-mono whitespace-pre-wrap leading-relaxed border border-slate-850 text-slate-300 max-h-[150px] overflow-y-auto select-text select-all">
+                        {filledPreview}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </form>
 
         {/* Footer Actions */}
