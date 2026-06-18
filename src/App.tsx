@@ -39,7 +39,8 @@ import {
   Newspaper,
   Moon,
   Sun,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3
 } from "lucide-react";
 
 import { auth, db } from "./firebase";
@@ -48,6 +49,7 @@ import { Prompt, CategoryFilter, Folder } from "./types";
 import WelcomeHeroSection from "./components/WelcomeHeroSection";
 import PromptPlaylistPlayer from "./components/PromptPlaylistPlayer";
 import { LibraryWorkspaceView } from "./components/LibraryWorkspaceView";
+import AnalyticsDashboardView from "./components/AnalyticsDashboardView";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
 import AdminDashboard from "./components/AdminDashboard";
@@ -125,7 +127,7 @@ const STARTER_PROMPT_GOAL = 8;
 
 export default function App() {
   // Social / Community navigation
-  const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad">("mi-biblioteca");
+  const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad" | "dashboard">("mi-biblioteca");
   const [currentSection, setCurrentSection] = useState<AppSection>("inicio");
   const [uiThemeMode, setUiThemeMode] = useState<UiThemeMode>(() => {
     const savedTheme = window.localStorage.getItem("biblioteca-ui-theme");
@@ -2092,6 +2094,20 @@ export default function App() {
                     {visibleCommunityCatalogPrompts.length}
                   </span>
                 </button>
+                <button
+                  onClick={() => {
+                    setCurrentTab("dashboard");
+                    closePublicProfile();
+                  }}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    currentTab === "dashboard"
+                      ? "bg-gradient-to-r from-indigo-650 to-indigo-555 text-white shadow-md shadow-indigo-600/10"
+                      : "text-slate-450 hover:text-slate-205"
+                  }`}
+                >
+                  <BarChart3 size={13} />
+                  <span>Dashboard</span>
+                </button>
               </div>
 
               {currentTab === "comunidad" && !selectedAuthor && (
@@ -2450,83 +2466,87 @@ export default function App() {
                 />
               )}
 
-              <LibraryWorkspaceView
-                user={user}
-                currentTab={currentTab}
-                prompts={prompts}
-                loadingPrompts={loadingPrompts}
-                loadingCommunityPrompts={loadingCommunityPrompts}
-                filteredPrompts={filteredPrompts}
-                setNewFolderParentId={setNewFolderParentId}
-                folders={folders}
-                loadingFolders={loadingFolders}
-                selectedAuthor={selectedAuthor}
-                setSelectedAuthor={setSelectedAuthor}
-                selectedAuthorPrompts={selectedAuthorPrompts}
-                followedCreatorUids={followedCreatorUids}
-                socialFavorites={socialFavorites}
-                socialFavoritePrompts={[]}
-                socialFavoritePromptIds={socialFavoritePromptIds}
-                knownRemixCountsByPromptId={knownRemixCountsByPromptId}
-                visibleCommunityCatalogPrompts={visibleCommunityCatalogPrompts}
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                selectedTags={selectedTags}
-                setSelectedTags={setSelectedTags}
-                tagSearchInput={tagSearchInput}
-                setTagSearchInput={setTagSearchInput}
-                isTagDropdownOpen={isTagDropdownOpen}
-                setIsTagDropdownOpen={setIsTagDropdownOpen}
-                tagSuggestions={tagSuggestions}
-                allAvailableTags={allAvailableTags}
-                libraryViewFilter={libraryViewFilter}
-                setLibraryViewFilter={setLibraryViewFilter}
-                communitySort={communitySort}
-                setCommunitySort={setCommunitySort}
-                communityScope={communityScope}
-                setCommunityScope={setCommunityScope}
-                selectedFolderId={selectedFolderId}
-                setSelectedFolderId={setSelectedFolderId}
-                dragOverFolderId={dragOverFolderId}
-                setDragOverFolderId={setDragOverFolderId}
-                showAIAssistant={showAIAssistant}
-                setShowAIAssistant={setShowAIAssistant}
-                setPresetAItext={setPresetAItext}
-                setShowQuickSwitcher={setShowQuickSwitcher}
-                setShowRecommendationModal={setShowRecommendationModal}
-                setShowSeedPackModal={setShowSeedPackModal}
-                setShowJoinClassModal={setShowJoinClassModal}
-                setShowCreateFolder={setShowCreateFolder}
-                setGeminiRecommendation={setGeminiRecommendation}
-                setGeminiRecommendationError={setGeminiRecommendationError}
-                handleOpenAdd={handleOpenAdd}
-                handleOpenEdit={handleOpenEdit}
-                handleDeletePrompt={handleDeletePrompt}
-                handleFavoriteToggle={handleFavoriteToggle}
-                handleUsePrompt={handleUsePrompt}
-                handleCopyFilledPrompt={handleCopyFilledPrompt}
-                handleLikeToggle={handleLikeToggle}
-                handleToggleSocialFavorite={handleToggleSocialFavorite}
-                handleHideCommunityPrompt={handleHideCommunityPrompt}
-                handleReportCommunityPrompt={handleReportCommunityPrompt}
-                openPublicProfile={openPublicProfile}
-                setSelectedPublicPrompt={setSelectedPublicPrompt}
-                resolvePublicSavePrompt={resolvePublicSavePrompt}
-                trackUserEvent={trackUserEvent}
-                triggerNotification={triggerNotification}
-                handleExportJSON={handleExportJSON}
-                handleImportJSON={handleImportJSON}
-                handleMovePromptToFolder={handleMovePromptToFolder}
-                handleDeleteFolder={handleDeleteFolder}
-                handleOpenShareFolderModal={handleOpenShareFolderModal}
-                missingDefaultPromptCount={missingDefaultPromptCount}
-                existingDefaultPromptCount={existingDefaultPromptCount}
-                STARTER_PROMPT_GOAL={STARTER_PROMPT_GOAL}
-                forumPostsCount={forumPostsCount}
-                showcasePostsCount={showcasePostsCount}
-              />
+              {currentTab === "dashboard" ? (
+                <AnalyticsDashboardView prompts={prompts} folders={folders} />
+              ) : (
+                <LibraryWorkspaceView
+                  user={user}
+                  currentTab={currentTab}
+                  prompts={prompts}
+                  loadingPrompts={loadingPrompts}
+                  loadingCommunityPrompts={loadingCommunityPrompts}
+                  filteredPrompts={filteredPrompts}
+                  setNewFolderParentId={setNewFolderParentId}
+                  folders={folders}
+                  loadingFolders={loadingFolders}
+                  selectedAuthor={selectedAuthor}
+                  setSelectedAuthor={setSelectedAuthor}
+                  selectedAuthorPrompts={selectedAuthorPrompts}
+                  followedCreatorUids={followedCreatorUids}
+                  socialFavorites={socialFavorites}
+                  socialFavoritePrompts={[]}
+                  socialFavoritePromptIds={socialFavoritePromptIds}
+                  knownRemixCountsByPromptId={knownRemixCountsByPromptId}
+                  visibleCommunityCatalogPrompts={visibleCommunityCatalogPrompts}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  selectedTags={selectedTags}
+                  setSelectedTags={setSelectedTags}
+                  tagSearchInput={tagSearchInput}
+                  setTagSearchInput={setTagSearchInput}
+                  isTagDropdownOpen={isTagDropdownOpen}
+                  setIsTagDropdownOpen={setIsTagDropdownOpen}
+                  tagSuggestions={tagSuggestions}
+                  allAvailableTags={allAvailableTags}
+                  libraryViewFilter={libraryViewFilter}
+                  setLibraryViewFilter={setLibraryViewFilter}
+                  communitySort={communitySort}
+                  setCommunitySort={setCommunitySort}
+                  communityScope={communityScope}
+                  setCommunityScope={setCommunityScope}
+                  selectedFolderId={selectedFolderId}
+                  setSelectedFolderId={setSelectedFolderId}
+                  dragOverFolderId={dragOverFolderId}
+                  setDragOverFolderId={setDragOverFolderId}
+                  showAIAssistant={showAIAssistant}
+                  setShowAIAssistant={setShowAIAssistant}
+                  setPresetAItext={setPresetAItext}
+                  setShowQuickSwitcher={setShowQuickSwitcher}
+                  setShowRecommendationModal={setShowRecommendationModal}
+                  setShowSeedPackModal={setShowSeedPackModal}
+                  setShowJoinClassModal={setShowJoinClassModal}
+                  setShowCreateFolder={setShowCreateFolder}
+                  setGeminiRecommendation={setGeminiRecommendation}
+                  setGeminiRecommendationError={setGeminiRecommendationError}
+                  handleOpenAdd={handleOpenAdd}
+                  handleOpenEdit={handleOpenEdit}
+                  handleDeletePrompt={handleDeletePrompt}
+                  handleFavoriteToggle={handleFavoriteToggle}
+                  handleUsePrompt={handleUsePrompt}
+                  handleCopyFilledPrompt={handleCopyFilledPrompt}
+                  handleLikeToggle={handleLikeToggle}
+                  handleToggleSocialFavorite={handleToggleSocialFavorite}
+                  handleHideCommunityPrompt={handleHideCommunityPrompt}
+                  handleReportCommunityPrompt={handleReportCommunityPrompt}
+                  openPublicProfile={openPublicProfile}
+                  setSelectedPublicPrompt={setSelectedPublicPrompt}
+                  resolvePublicSavePrompt={resolvePublicSavePrompt}
+                  trackUserEvent={trackUserEvent}
+                  triggerNotification={triggerNotification}
+                  handleExportJSON={handleExportJSON}
+                  handleImportJSON={handleImportJSON}
+                  handleMovePromptToFolder={handleMovePromptToFolder}
+                  handleDeleteFolder={handleDeleteFolder}
+                  handleOpenShareFolderModal={handleOpenShareFolderModal}
+                  missingDefaultPromptCount={missingDefaultPromptCount}
+                  existingDefaultPromptCount={existingDefaultPromptCount}
+                  STARTER_PROMPT_GOAL={STARTER_PROMPT_GOAL}
+                  forumPostsCount={forumPostsCount}
+                  showcasePostsCount={showcasePostsCount}
+                />
+              )}
             </div>
           )}
             </>
