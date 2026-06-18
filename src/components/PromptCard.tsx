@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork } from "lucide-react";
+import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork, CheckCircle2, RotateCcw } from "lucide-react";
 import { Prompt, Folder as FolderType } from "../types";
 import { User } from "firebase/auth";
 import CommentsSection from "./CommentsSection";
@@ -472,6 +472,40 @@ ${notesStr}
               <span className="font-extrabold block mb-0.5 text-indigo-200">Tip de ejecución:</span>
               <p className="text-slate-250">{prompt.notas}</p>
             </div>
+          </div>
+        )}
+
+        {/* Feedback from Instructor in classrooms */}
+        {prompt.feedbackStatus && prompt.feedbackStatus !== "pending" && (
+          <div className={`mb-5 p-3.5 rounded-2xl border text-xs flex flex-col gap-2 ${
+            prompt.feedbackStatus === "approved"
+              ? "bg-emerald-500/5 border-emerald-500/25 text-emerald-450"
+              : "bg-amber-500/5 border-amber-500/25 text-amber-450"
+          }`}>
+            <div className="flex items-center gap-1.5 font-extrabold uppercase tracking-wider text-[10px]">
+              {prompt.feedbackStatus === "approved" ? (
+                <>
+                  <CheckCircle2 size={13} className="text-emerald-450" />
+                  <span>Aprobado por el Profesor</span>
+                </>
+              ) : (
+                <>
+                  <RotateCcw size={13} className="text-amber-405 animate-pulse" />
+                  <span>Revisión Requerida por el Profesor</span>
+                </>
+              )}
+            </div>
+            {prompt.feedbackComments && prompt.feedbackComments.length > 0 && (
+              <div className="space-y-1.5 mt-1 border-t border-slate-700/40 pt-2 text-slate-300">
+                <span className="text-[9px] font-black text-slate-500 block uppercase">Comentarios del Profesor:</span>
+                {prompt.feedbackComments.map((comment, cIdx) => (
+                  <div key={cIdx} className="text-[10px] leading-relaxed">
+                    <span className="font-extrabold text-indigo-450">{comment.authorName}: </span>
+                    <span>{comment.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

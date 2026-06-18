@@ -32,6 +32,8 @@ export interface Prompt {
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   folderId?: string | null; // Custom folder grouping
+  feedbackStatus?: "approved" | "revision_required" | "pending";
+  feedbackComments?: { authorName: string; text: string; createdAt: any }[];
 }
 
 export interface Folder {

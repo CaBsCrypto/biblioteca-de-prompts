@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { User } from "firebase/auth";
-import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, LockKeyhole, School, Sparkles, Users, HelpCircle, ChevronDown, ChevronUp, UserCheck, BarChart3 } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, LockKeyhole, School, Sparkles, Users, HelpCircle, ChevronDown, ChevronUp, UserCheck, BarChart3, MessageSquare, Check, RotateCcw } from "lucide-react";
+import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { db } from "../firebase";
+import type { Prompt } from "../types";
 import type { Classroom, ClassroomMember } from "../typesCommunity";
 
 interface ClassroomViewProps {
@@ -44,6 +47,69 @@ export default function ClassroomView({
 
   // Expanded teacher notes state per prompt index
   const [expandedNotes, setExpandedNotes] = useState<Record<number, boolean>>({});
+
+  const [selectedStudent, setSelectedStudent] = useState<ClassroomMember | null>(null);
+  const [studentPrompts, setStudentPrompts] = useState<Prompt[]>([]);
+  const [loadingStudentPrompts, setLoadingStudentPrompts] = useState(false);
+  const [newCommentTexts, setNewCommentTexts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!selectedStudent || !classroom) {
+      setStudentPrompts([]);
+      return;
+    }
+    setLoadingStudentPrompts(true);
+    const q = query(
+      collection(db, "prompts"),
+      where("sourceClassId", "==", classroom.id),
+      where("userId", "==", selectedStudent.uid)
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setStudentPrompts(snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Prompt)));
+        setLoadingStudentPrompts(false);
+      },
+      (error) => {
+        console.error("Error loading student prompts:", error);
+        setLoadingStudentPrompts(false);
+      }
+    );
+    return unsubscribe;
+  }, [selectedStudent, classroom]);
+
+  const handleUpdateFeedbackStatus = async (promptId: string, status: "approved" | "revision_required" | "pending") => {
+    try {
+      const promptRef = doc(db, "prompts", promptId);
+      await updateDoc(promptRef, {
+        feedbackStatus: status
+      });
+    } catch (error) {
+      console.error("Error updating feedback status:", error);
+    }
+  };
+
+  const handleAddFeedbackComment = async (promptId: string) => {
+    const text = newCommentTexts[promptId];
+    if (!text || !text.trim()) return;
+
+    try {
+      const promptRef = doc(db, "prompts", promptId);
+      await updateDoc(promptRef, {
+        feedbackComments: arrayUnion({
+          authorName: user?.displayName || "Instructor",
+          text: text.trim(),
+          createdAt: new Date().toISOString()
+        })
+      });
+      setNewCommentTexts(prev => ({
+        ...prev,
+        [promptId]: ""
+      }));
+    } catch (error) {
+      console.error("Error adding feedback comment:", error);
+    }
+  };
 
   const toggleNotes = (idx: number) => {
     setExpandedNotes(prev => ({
@@ -273,29 +339,130 @@ export default function ClassroomView({
                   {classMembers.map((member) => {
                     const progress = member.savedPromptsCount || 0;
                     const percent = Math.round((progress / classroom.promptPack.length) * 100);
+                    const isSelected = selectedStudent?.uid === member.uid;
                     return (
-                      <div key={member.id} className="p-3.5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {member.photoURL ? (
-                            <img src={member.photoURL} alt={member.displayName} className="w-8 h-8 rounded-full border border-slate-750 shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
-                              {member.displayName.charAt(0)}
+                      <div key={member.id} className="flex flex-col border-b border-slate-800/60 last:border-0">
+                        <div
+                          onClick={() => setSelectedStudent(isSelected ? null : member)}
+                          className={`p-3.5 flex items-center justify-between gap-4 cursor-pointer transition-colors ${
+                            isSelected ? "bg-[#0f172a]/70" : "hover:bg-slate-900/30"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {member.photoURL ? (
+                              <img src={member.photoURL} alt={member.displayName} className="w-8 h-8 rounded-full border border-slate-750 shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                                {member.displayName.charAt(0)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white truncate">{member.displayName}</p>
+                              <p className="text-[10px] text-slate-500 font-mono truncate">@{member.handle || member.uid.slice(0, 6)}</p>
                             </div>
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">{member.displayName}</p>
-                            <p className="text-[10px] text-slate-500 font-mono truncate">@{member.handle || member.uid.slice(0, 6)}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded ${
+                              percent === 100 ? "bg-emerald-500/10 text-emerald-450" : "bg-slate-800 text-slate-400"
+                            }`}>
+                              {progress}/{classroom.promptPack.length} ({percent}%)
+                            </span>
+                            <span className="text-indigo-400 hover:text-indigo-300 text-[10px] font-extrabold select-none">
+                              {isSelected ? "Cerrar" : "Revisar"}
+                            </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded ${
-                            percent === 100 ? "bg-emerald-500/10 text-emerald-450" : "bg-slate-800 text-slate-400"
-                          }`}>
-                            {progress}/{classroom.promptPack.length} ({percent}%)
-                          </span>
-                        </div>
+                        {isSelected && (
+                          <div className="px-4 pb-4 pt-1.5 bg-slate-950/65 space-y-4 border-t border-slate-900/80 animate-in fade-in duration-150">
+                            <h4 className="text-[10px] font-black tracking-wider text-indigo-400 uppercase">Prompts Guardados:</h4>
+                            {loadingStudentPrompts ? (
+                              <p className="text-[10px] text-slate-500 italic p-1">Cargando prompts...</p>
+                            ) : studentPrompts.length === 0 ? (
+                              <p className="text-[10px] text-slate-500 italic p-1">El estudiante aún no ha guardado ningún prompt de este pack.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {studentPrompts.map((prompt) => (
+                                  <div key={prompt.id} className="bg-slate-900/80 border border-slate-800/80 p-3 rounded-2xl space-y-2.5">
+                                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                                      <div className="min-w-0">
+                                        <h5 className="text-xs font-extrabold text-white truncate">{prompt.title}</h5>
+                                        <p className="text-[10px] text-slate-450 font-sans mt-0.5 line-clamp-1">{prompt.description}</p>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateFeedbackStatus(prompt.id, "approved")}
+                                          className={`px-2.5 py-1 text-[9px] font-bold rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
+                                            prompt.feedbackStatus === "approved"
+                                              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-extrabold"
+                                              : "bg-slate-950/40 text-slate-500 border-slate-800/85 hover:text-slate-400"
+                                          }`}
+                                        >
+                                          <Check size={9} className="stroke-[3]" />
+                                          <span>Aprobar</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateFeedbackStatus(prompt.id, "revision_required")}
+                                          className={`px-2.5 py-1 text-[9px] font-bold rounded-lg transition-all flex items-center gap-1 border cursor-pointer ${
+                                            prompt.feedbackStatus === "revision_required"
+                                              ? "bg-amber-500/15 text-amber-400 border-amber-500/30 font-extrabold"
+                                              : "bg-slate-950/40 text-slate-500 border-slate-800/85 hover:text-slate-400"
+                                          }`}
+                                        >
+                                          <RotateCcw size={9} className="stroke-[3]" />
+                                          <span>Revisión</span>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <pre className="bg-[#0f172a]/95 p-3 rounded-xl text-[10px] font-mono text-slate-300 leading-relaxed whitespace-pre-wrap select-text border border-slate-850 max-h-[120px] overflow-y-auto">
+                                      {prompt.promptText}
+                                    </pre>
+
+                                    <div className="space-y-2 pt-2 border-t border-slate-800/75">
+                                      <span className="text-[9px] font-black tracking-wider text-slate-500 uppercase flex items-center gap-1">
+                                        <MessageSquare size={10} /> Canal de Retroalimentación:
+                                      </span>
+                                      
+                                      {prompt.feedbackComments && prompt.feedbackComments.length > 0 ? (
+                                        <div className="space-y-1.5 bg-slate-950/70 p-3 rounded-xl border border-slate-850">
+                                          {prompt.feedbackComments.map((comment, cIdx) => (
+                                            <div key={cIdx} className="text-[10px] font-sans leading-normal">
+                                              <span className="font-extrabold text-indigo-400">{comment.authorName}: </span>
+                                              <span className="text-slate-200">{comment.text}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-[9px] text-slate-600 italic pl-1">No hay comentarios de revisión aún.</p>
+                                      )}
+
+                                      <div className="flex gap-2 mt-2">
+                                        <input
+                                          type="text"
+                                          placeholder="Escribe un consejo para el alumno..."
+                                          value={newCommentTexts[prompt.id] || ""}
+                                          onChange={(e) => setNewCommentTexts((prev) => ({ ...prev, [prompt.id]: e.target.value }))}
+                                          className="flex-1 text-[10px] rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:outline-none"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAddFeedbackComment(prompt.id)}
+                                          className="px-3 bg-indigo-650 hover:bg-indigo-600 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                                        >
+                                          Enviar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
