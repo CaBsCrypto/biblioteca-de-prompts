@@ -1876,5 +1876,232 @@ Después entrega:
     suggestedVariables: [
       { name: "prompt_original", description: "Prompt que quieres auditar", defaultValue: "Actúa como experto en marketing y dame ideas para mi canal de IA" }
     ]
+  },
+  // ==================== REFACTORIZACIÓN DE CÓDIGO (10 Prompts) ====================
+  {
+    title: "Auditoría de Seguridad y Vulnerabilidades",
+    description: "Inspecciona el código en busca de agujeros de seguridad, inyecciones, fugas de tokens o credenciales, y fallos de la lista OWASP.",
+    category: "Refactorización",
+    promptText: `Actúa como un Especialista en Seguridad Informática y Auditor de Código (SecOps/DevSecOps). Analiza el siguiente fragmento de código escrito en {{lenguaje_programacion}} para detectar vulnerabilidades, fallas de diseño, fugas de secretos o credenciales, y debilidades frente a OWASP Top 10.
+
+Código a evaluar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona un reporte de auditoría estructurado en:
+1. **Análisis de Vulnerabilidades**: Lista todos los riesgos clasificados por severidad (Crítica, Alta, Media, Baja).
+2. **Explicación del Riesgo**: Describe de forma detallada cómo un atacante podría explotar cada fallo en el entorno actual.
+3. **Solución y Mitigación**: Ofrece las recomendaciones precisas y el código refactorizado libre de fallos de seguridad.`,
+    tags: ["Seguridad", "Auditoría", "OWASP", "Vulnerabilidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje o framework del código", defaultValue: "TypeScript/NodeJS" },
+      { name: "codigo_fuente", description: "Pega el fragmento de código a auditar", defaultValue: "const db = require('mysql');\nfunction login(user, pass) {\n  let query = 'SELECT * FROM users WHERE username = \\'' + user + '\\' AND password = \\'' + pass + '\\'';\n  return db.query(query);\n}" }
+    ]
+  },
+  {
+    title: "Refactorización de Complejidad Ciclomática",
+    description: "Simplifica funciones complejas y anidadas reduciendo bloques condicionales (if/else) a estructuras legibles y mantenibles.",
+    category: "Refactorización",
+    promptText: `Actúa como un Arquitecto de Software experto en Clean Code. Tu misión es analizar el siguiente código con alta complejidad ciclomática y anidación excesiva de condicionales en {{lenguaje_programacion}}.
+
+Código a simplificar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Realiza las siguientes tareas:
+1. **Análisis de Complejidad**: Explica brevemente qué partes del código aumentan la complejidad ciclomática y dificultan la lectura.
+2. **Aplicación de Reglas de Refactorización**: Aplica cláusulas de guarda (guard clauses), retornos tempranos (early returns), tablas de búsqueda (lookup tables) o polimorfismo si aplica.
+3. **Código Refactorizado**: Proporciona el código limpio, legible y modularizado que mantenga exactamente el mismo comportamiento funcional original.`,
+    tags: ["Clean Code", "Complejidad", "Modularidad", "Legibilidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript/React" },
+      { name: "codigo_fuente", description: "Código fuente con condicionales anidados", defaultValue: "function handlePayment(status, user) {\n  if (user) {\n    if (user.active) {\n      if (status === 'success') {\n        sendInvoice();\n        return true;\n      } else {\n        if (status === 'pending') {\n          showWarning();\n          return false;\n        } else {\n          throwError();\n          return false;\n        }\n      }\n    } else {\n      return false;\n    }\n  } else {\n    return false;\n  }\n}" }
+    ]
+  },
+  {
+    title: "Optimización de Rendimiento y Fugas de Memoria",
+    description: "Detecta cuellos de botella, bucles ineficientes y fugas de memoria en código complejo y propone mejoras de rendimiento.",
+    category: "Refactorización",
+    promptText: `Actúa como un Ingeniero de Performance de Software (Senior Staff Engineer). Analiza el código escrito en {{lenguaje_programacion}} e identifica ineficiencias críticas de procesamiento, cuellos de botella en bucles, fugas de memoria, renderizados innecesarios o consumo desproporcionado de CPU y memoria.
+
+Código a optimizar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Diagnóstico Técnico**: Describe el cuello de botella detectado y su impacto en rendimiento o escalabilidad.
+2. **Propuesta de Optimización**: Explica la técnica aplicada (ej. memorización, algoritmos de menor complejidad temporal, des-suscripción de eventos, etc.).
+3. **Código Optimizado**: Código refactorizado con su estimación de mejora de rendimiento.`,
+    tags: ["Rendimiento", "Optimización", "Memoria", "Escalabilidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript/React" },
+      { name: "codigo_fuente", description: "Código con problemas de rendimiento", defaultValue: "function processItems(items) {\n  let result = [];\n  for (let i = 0; i < items.length; i++) {\n    if (items.indexOf(items[i]) === i) {\n      result.push(items[i]);\n    }\n  }\n  return result;\n}" }
+    ]
+  },
+  {
+    title: "Conversión a TypeScript Estricto",
+    description: "Convierte código JavaScript o TypeScript con tipado débil ('any') a tipos fuertemente declarados e interfaces estrictas.",
+    category: "Refactorización",
+    promptText: `Actúa como un Desarrollador Principal de TypeScript. Transforma el siguiente bloque de código escrito en JavaScript o TypeScript débil (con variables implícitas de tipo 'any' o sin tipado) en código TypeScript estrictamente tipado.
+
+Código original:
+\`\`\`javascript
+{{codigo_fuente}}
+\`\`\`
+
+Requisitos de la conversión:
+1. Evita por completo el uso del tipo 'any'. Utiliza tipos específicos, uniones, genéricos o 'unknown' según sea más adecuado.
+2. Crea interfaces y tipos personalizados descriptivos utilizando la convención estándar.
+3. Asegura el tipado correcto de parámetros de funciones, valores de retorno y variables locales.
+4. Genera el código TypeScript limpio listo para producción.`,
+    tags: ["TypeScript", "Tipado Estricto", "Seguridad de Tipos", "Refactorización"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "codigo_fuente", description: "Código JavaScript o TypeScript débil", defaultValue: "function updateUser(id, data, options) {\n  const user = fetchUser(id);\n  const merged = Object.assign({}, user, data);\n  if (options && options.save) {\n    saveUser(merged);\n  }\n  return merged;\n}" }
+    ]
+  },
+  {
+    title: "Generador de Pruebas Unitarias Robustas",
+    description: "Escribe una suite completa de pruebas unitarias cubriendo caminos felices, casos límite, mocks y flujos de error.",
+    category: "Refactorización",
+    promptText: `Actúa como un Ingeniero de Software Especializado en Testing y QA. Tu tarea es generar una suite de pruebas unitarias completa y robusta para la siguiente función o clase en {{lenguaje_programacion}} utilizando el framework de pruebas {{framework_pruebas}}.
+
+Código a probar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+La suite de pruebas generada debe cubrir:
+1. **Camino Feliz (Happy Path)**: Casos de uso correctos estándar.
+2. **Casos Límite (Edge Cases)**: Valores vacíos, nulos, indefinidos, límites numéricos extremos, etc.
+3. **Manejo de Errores (Error Handling)**: Comprobación de que la función lanza las excepciones y errores correspondientes de forma esperada.
+4. **Mocks e Inyección**: Mockeo de llamadas de red, bases de datos o librerías externas si es necesario.`,
+    tags: ["Testing", "QA", "Unit Tests", "Calidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje del código", defaultValue: "TypeScript/NodeJS" },
+      { name: "framework_pruebas", description: "Framework de testing (ej. Vitest, Jest, Mocha)", defaultValue: "Vitest" },
+      { name: "codigo_fuente", description: "Código que requiere cobertura de pruebas", defaultValue: "async function getUserDiscount(userId, itemsTotal) {\n  const user = await db.fetchUser(userId);\n  if (!user) throw new Error('User not found');\n  if (user.loyaltyYears > 5) return itemsTotal * 0.15;\n  if (itemsTotal > 100) return itemsTotal * 0.05;\n  return 0;\n}" }
+    ]
+  },
+  {
+    title: "Migración y Modernización de Componentes",
+    description: "Actualiza componentes o lógica de frameworks antiguos a sus versiones modernas recomendadas y APIs estables.",
+    category: "Refactorización",
+    promptText: `Actúa como un Experto en Modernización de Codebases. Ayúdame a migrar el siguiente código escrito con paradigmas heredados o versiones anteriores de {{tecnologia_y_version}} hacia la última versión estándar recomendada: {{nueva_version}}.
+
+Código legacy a migrar:
+\`\`\`{{tecnologia_y_version}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Listado de Cambios**: Enumera las diferencias de diseño y APIs discontinuadas de la versión anterior a la actual.
+2. **Código Modernizado**: Código refactorizado y listo para producción utilizando los estándares modernos sugeridos.
+3. **Mejores Prácticas**: Consejos específicos de escalabilidad o rendimiento derivados de esta migración.`,
+    tags: ["Migración", "Modernización", "Refactorización", "Legacy"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tecnologia_y_version", description: "Tecnología antigua y su versión", defaultValue: "React Class Components (React v15)" },
+      { name: "nueva_version", description: "Tecnología de destino y su versión", defaultValue: "React Functional Components con Hooks (React v19)" },
+      { name: "codigo_fuente", description: "Código legacy a refactorizar", defaultValue: "class UserStatus extends React.Component {\n  componentDidMount() {\n    this.subscribeToStatus();\n  }\n  render() {\n    return <div>Status: {this.state.status}</div>;\n  }\n}" }
+    ]
+  },
+  {
+    title: "Autodocumentación y JSDoc/TSDoc",
+    description: "Genera comentarios técnicos estandarizados, explicaciones de flujos de código y diagramas Mermaid si el flujo es complejo.",
+    category: "Refactorización",
+    promptText: `Actúa como un Redactor Técnico y Desarrollador de Software Senior. Tu tarea es analizar y documentar exhaustivamente el siguiente código en {{lenguaje_programacion}}.
+
+Código a documentar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega lo siguiente:
+1. **JSDoc/TSDoc en Bloque**: Escribe los comentarios estándar sobre cada clase, método o función, describiendo detalladamente los parámetros, tipos, retornos y excepciones arrojadas.
+2. **Explicación del Algoritmo**: Describe brevemente cómo funciona el algoritmo de fondo en términos sencillos.
+3. **Diagrama de Flujo (Mermaid)**: Si la lógica incluye flujos complejos o bifurcaciones, genera el diagrama correspondiente en formato de código Markdown Mermaid.`,
+    tags: ["Documentación", "JSDoc", "TSDoc", "Mermaid"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código fuente sin comentarios", defaultValue: "function resolveTree(node, cb) {\n  cb(node);\n  if (node.children) {\n    node.children.forEach(c => resolveTree(c, cb));\n  }\n}" }
+    ]
+  },
+  {
+    title: "Detector de Bugs Silenciosos y Condiciones de Carrera",
+    description: "Audita la manipulación asíncrona, promesas no resueltas y ciclos concurrentes buscando fugas de ejecución o fallos de estado.",
+    category: "Refactorización",
+    promptText: `Actúa como un Ingeniero Principal de Concurrencia y Sistemas Distribuidos. Audita el siguiente fragmento de código escrito en {{lenguaje_programacion}} para detectar condiciones de carrera (race conditions), promesas mal manejadas, bloqueos mutuos (deadlocks), y fugas en hilos de ejecución asíncronos.
+
+Código asíncrono a auditar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Por favor proporciona:
+1. **Detección de Bugs Silenciosos**: Describe paso a paso las condiciones bajo las cuales el código actual puede fallar de forma silenciosa o retornar datos inconsistentes.
+2. **Mitigación Asíncrona**: Refactoriza el código aplicando mecanismos adecuados (ej. Promise.all, locks, control de concurrencia, try/catch jerárquicos).
+3. **Código Asíncrono Corregido**: Código fuente seguro frente a ejecuciones paralelas.`,
+    tags: ["Concurrencia", "Asíncrono", "Bugs", "Promises"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript/ES6" },
+      { name: "codigo_fuente", description: "Código asíncrono propenso a fallas", defaultValue: "let balance = 100;\nasync function withdraw(amount) {\n  if (balance >= amount) {\n    await new Promise(r => setTimeout(r, 50)); // Simula latencia de BD\n    balance -= amount;\n    return balance;\n  }\n  throw new Error('Insuficiente');\n}" }
+    ]
+  },
+  {
+    title: "Limpieza de Código Muerto y SOLID",
+    description: "Escanea archivos buscando código no utilizado y analiza el cumplimiento de los 5 principios SOLID.",
+    category: "Refactorización",
+    promptText: `Actúa como un Consultor de Arquitectura de Software Limpia. Escanea el siguiente código escrito en {{lenguaje_programacion}} para:
+1. Identificar e indicar qué importaciones, variables locales, funciones o parámetros de funciones corresponden a "código muerto" (no utilizado).
+2. Analizar el cumplimiento de los principios SOLID y proponer mejoras arquitectónicas específicas.
+
+Código a evaluar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega tu reporte en 3 secciones claras:
+- **Reporte de Código Muerto**: Lista de líneas y variables innecesarias a remover.
+- **Análisis SOLID**: Puntuación de cumplimiento y puntos débiles arquitectónicos.
+- **Código SOLID Refactorizado**: Código limpio aplicando los principios de responsabilidad única o segregación de interfaces.`,
+    tags: ["SOLID", "Clean Code", "Arquitectura", "Refactorización"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código con múltiples responsabilidades", defaultValue: "import { sendMail } from './mailer';\nclass OrderProcessor {\n  constructor(public id: string) {}\n  process(item: string) {\n    console.log('Processing item ' + item);\n    const log = 'Processed ' + this.id;\n    sendMail('admin@test.com', 'Order ' + this.id);\n  }\n}" }
+    ]
+  },
+  {
+    title: "Alineación a Guías de Estilo (Clean Code & Linters)",
+    description: "Reescribe y formatea el código para cumplir con las mejores prácticas y guías de estilo internacionales estándar.",
+    category: "Refactorización",
+    promptText: `Actúa como un Linter Inteligente y Evaluador de Calidad de Código. Refactoriza el siguiente código escrito en {{lenguaje_programacion}} para que cumpla con las guías de estilo internacionales más reconocidas (como la guía de estilo de Airbnb, directivas de Clean Code y reglas estrictas de ESLint/Prettier).
+
+Código original:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Mejora los siguientes aspectos sin alterar el comportamiento lógico:
+1. Convenciones de nombres para variables, constantes y funciones (camelCase, PascalCase, UPPER_CASE).
+2. Estructura y legibilidad (eliminación de sangrías confusas, espaciados innecesarios y formateo consistente).
+3. Reducción de atajos de código difíciles de leer en favor de una intención clara.
+4. Entrega el código completamente alineado a las guías de estilo.`,
+    tags: ["Formateo", "Legibilidad", "Estilo", "Linter"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript/React" },
+      { name: "codigo_fuente", description: "Código desordenado y con mal formato", defaultValue: "const ITEM_VAL = 10;\nvar my_fn = function(a,b,c){\nif(a){return a*ITEM_VAL;}else{\nreturn b+c;\n}\n}" }
+    ]
   }
 ];

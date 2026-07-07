@@ -498,6 +498,7 @@ export default function PromptFormModal({
                 <option value="YouTube" className="bg-[#1e293b]">YouTube</option>
                 <option value="Marketing" className="bg-[#1e293b]">Marketing</option>
                 <option value="Programación" className="bg-[#1e293b]">Programación</option>
+                <option value="Refactorización" className="bg-[#1e293b]">Refactorización</option>
                 <option value="Redacción" className="bg-[#1e293b]">Redacción</option>
                 <option value="IA Agentes" className="bg-[#1e293b]">IA Agentes</option>
                 <option value="IA Imágenes" className="bg-[#1e293b]">IA Imágenes</option>

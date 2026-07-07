@@ -87,6 +87,8 @@ export default function PromptCard({
         return "bg-amber-500/10 text-amber-400 border-amber-500/25";
       case "Programación":
         return "bg-blue-500/10 text-blue-400 border-blue-500/25";
+      case "Refactorización":
+        return "bg-indigo-500/10 text-indigo-400 border-indigo-500/25";
       case "Redacción":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/25";
       case "IA Agentes":

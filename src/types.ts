@@ -10,7 +10,7 @@ export interface Prompt {
   title: string;
   description: string;
   promptText: string;
-  category: "YouTube" | "Marketing" | "Programación" | "Redacción" | "IA Agentes" | "IA Imágenes" | "IA Videos" | "Acompañante Personal" | "Asistente de Prompts" | "General";
+  category: "YouTube" | "Marketing" | "Programación" | "Redacción" | "IA Agentes" | "IA Imágenes" | "IA Videos" | "Acompañante Personal" | "Asistente de Prompts" | "Refactorización" | "General";
   tags: string[];
   isFavorite: boolean;
   notas?: string;
@@ -170,4 +170,4 @@ export interface UserEvent {
   createdAt: any; // Firestore Timestamp
 }
 
-export type CategoryFilter = "Todas" | "YouTube" | "Marketing" | "Programación" | "Redacción" | "IA Agentes" | "IA Imágenes" | "IA Videos" | "Acompañante Personal" | "Asistente de Prompts" | "General" | "Favoritos";
+export type CategoryFilter = "Todas" | "YouTube" | "Marketing" | "Programación" | "Redacción" | "IA Agentes" | "IA Imágenes" | "IA Videos" | "Acompañante Personal" | "Asistente de Prompts" | "Refactorización" | "General" | "Favoritos";

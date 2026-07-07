@@ -10,7 +10,7 @@ dotenv.config();
 
 const port = Number(process.env.PORT || 3000);
 const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
-const promptCategories = ["YouTube", "Marketing", "Programación", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General"] as const;
+const promptCategories = ["YouTube", "Marketing", "Programación", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "Refactorización", "General"] as const;
 const categoryOptions = promptCategories.join(", ");
 const aiWindowMs = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
 const aiMaxRequests = Number(process.env.AI_RATE_LIMIT_MAX || 20);
@@ -248,7 +248,9 @@ function normalizeGeneratedPrompt(rawText: string): GeneratedPromptPayload {
     Programming: "Programación",
     Writing: "Redacción",
     Images: "IA Imágenes",
-    Videos: "IA Videos"
+    Videos: "IA Videos",
+    Refactoring: "Refactorización",
+    Refactor: "Refactorización"
   };
   const requestedCategory = parsed.category || "General";
   const category = promptCategories.includes(requestedCategory as GeneratedPromptPayload["category"])

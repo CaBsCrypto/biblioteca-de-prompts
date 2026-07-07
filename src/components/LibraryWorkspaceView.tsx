@@ -198,8 +198,8 @@ export function LibraryWorkspaceView({
   };
 
   const categoriesToRender = currentTab === "mi-biblioteca"
-    ? ["Todas", "YouTube", "Marketing", "Programación", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General", "Favoritos"]
-    : ["Todas", "YouTube", "Marketing", "IA Agentes", "Asistente de Prompts", "IA Videos", "General", "Favoritos"];
+    ? ["Todas", "YouTube", "Marketing", "Programación", "Refactorización", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General", "Favoritos"]
+    : ["Todas", "YouTube", "Marketing", "Refactorización", "IA Agentes", "Asistente de Prompts", "IA Videos", "General", "Favoritos"];
 
   const libraryViewFilters: Array<{ id: LibraryViewFilter; label: string }> = [
     { id: "todos", label: "Todos" },
