@@ -585,11 +585,24 @@ export function LibraryWorkspaceView({
               className={`px-4 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer select-none ${
                 selectedCategory === category
                   ? "bg-[#4f46e5] text-white border-[#4f46e5] shadow-md shadow-indigo-650/15 font-extrabold"
+                  : category === "Refactorización"
+                  ? "bg-indigo-950/40 text-indigo-300 border-indigo-500/45 hover:text-white hover:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)] animate-pulse"
                   : "bg-[#1e293b] text-slate-400 border-[#334155]/85 hover:text-slate-250 hover:border-slate-650"
               }`}
             >
               {category === "Favoritos" && <Star size={12} fill={selectedCategory === "Favoritos" ? "white" : "none"} className="text-pink-450" />}
+              {category === "Refactorización" && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                </span>
+              )}
               <span>{category === "Todas" ? "Ver Todo" : category}</span>
+              {category === "Refactorización" && (
+                <span className="text-[8px] font-extrabold text-pink-400 bg-pink-500/10 border border-pink-500/25 px-1 py-0.2 rounded font-mono uppercase tracking-wider scale-90">
+                  ¡Nuevo!
+                </span>
+              )}
             </button>
           ))}
         </div>
