@@ -2103,5 +2103,116 @@ Mejora los siguientes aspectos sin alterar el comportamiento lógico:
       { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript/React" },
       { name: "codigo_fuente", description: "Código desordenado y con mal formato", defaultValue: "const ITEM_VAL = 10;\nvar my_fn = function(a,b,c){\nif(a){return a*ITEM_VAL;}else{\nreturn b+c;\n}\n}" }
     ]
+  },
+  // ==================== SEGURIDAD DE CÓDIGO (5 Prompts) ====================
+  {
+    title: "Auditoría Específica de Inyecciones",
+    description: "Detecta y corrige fallos de inyección de código (SQL Injection, NoSQL Injection, OS Command Injection) en el backend.",
+    category: "Refactorización",
+    promptText: `Actúa como un Ingeniero de Ciberseguridad (Application Security Engineer). Tu objetivo es auditar el siguiente fragmento de código escrito en {{lenguaje_programacion}} buscando vulnerabilidades de inyección de parámetros, inyecciones de bases de datos relacionales o no relacionales, o comandos del sistema operativo.
+
+Código vulnerable a evaluar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Punto de Inyección y Explicación**: Muestra exactamente qué entrada no está sanitizada y cómo un atacante podría enviar payloads maliciosos.
+2. **Mitigación y Corrección**: Refactoriza el código implementando consultas parametrizadas, ORM seguro, sanitización estricta de inputs, o librerías de escape de caracteres.
+3. **Código Corregido**: Código seguro y limpio.`,
+    tags: ["Seguridad", "SQLi", "NoSQL", "Inyección"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "NodeJS/Express" },
+      { name: "codigo_fuente", description: "Código propenso a inyecciones", defaultValue: "app.get('/user', (req, res) => {\n  const query = { name: req.query.name }; // NoSQL Injection target if object passed\n  db.collection('users').find({ $where: `this.name === '${req.query.name}'` }).toArray((err, data) => {\n    res.json(data);\n  });\n});" }
+    ]
+  },
+  {
+    title: "Detector de Fuga de Secretos y API Keys",
+    description: "Escanea archivos buscando credenciales hardcodeadas, tokens de OAuth y pautas para moverlas a variables de entorno.",
+    category: "Refactorización",
+    promptText: `Actúa como un Especialista en Seguridad Cloud y DevSecOps. Analiza el código fuente en busca de secretos expuestos en texto plano, claves de API privadas, tokens de JWT firmados localmente, contraseñas de bases de datos hardcodeadas o certificados privados expuestos en repositorios.
+
+Código a analizar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Identificación de Secretos**: Detalla qué líneas contienen valores estáticos sensibles.
+2. **Estrategia de Seguridad**: Diseña el flujo seguro para externalizar estas variables a servicios de gestión de secretos (ej. AWS Secrets Manager, Google Secret Manager o variables de entorno \`.env\`).
+3. **Código Corregido**: Código sin secretos, con placeholders y la estructura sugerida para el archivo de configuración \`.env.example\`.`,
+    tags: ["Secretos", "DevSecOps", "Fuga de Datos", "Hardcoded"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript" },
+      { name: "codigo_fuente", description: "Código con credenciales expuestas", defaultValue: "const apiKey = 'AIzaSyA1234567890-XYZ-SampleToken';\nconst firebaseConfig = {\n  apiKey: apiKey,\n  authDomain: 'test-app.firebaseapp.com',\n  databaseURL: 'https://test-app.firebaseio.com'\n};" }
+    ]
+  },
+  {
+    title: "Auditoría de Cabeceras y Middlewares de Red",
+    description: "Configura políticas CORS seguras, políticas CSP estrictas y middlewares de cabecera como Helmet contra clickjacking y XSS.",
+    category: "Refactorización",
+    promptText: `Actúa como un Especialista en Seguridad Web y Redes. Audita el siguiente código de configuración de servidor en {{tecnologia_servidor}} enfocado en políticas CORS, CSP (Content Security Policy), y cabeceras de seguridad HTTP básicas.
+
+Código de red/middleware:
+\`\`\`{{tecnologia_servidor}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega lo siguiente:
+1. **Fallas detectadas**: Explica si existen orígenes CORS desprotegidos (*), falta de cabeceras X-Frame-Options contra Clickjacking, falta de cabeceras X-Content-Type-Options o políticas CSP demasiado permisivas.
+2. **Middlewares de Mitigación**: Implementa paquetes recomendados (ej. Helmet en Express, cabeceras seguras en Next.js, etc.).
+3. **Código Configurado**: Configuración completa, segura y lista para producción.`,
+    tags: ["CORS", "CSP", "Helmet", "Seguridad Web"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "tecnologia_servidor", description: "Tecnología o Servidor (ej. Express, NextJS, Nginx)", defaultValue: "Express/NodeJS" },
+      { name: "codigo_fuente", description: "Código de configuración de red", defaultValue: "const express = require('express');\nconst app = express();\nconst cors = require('cors');\napp.use(cors({ origin: '*' })); // Permitir todo\napp.listen(3000);" }
+    ]
+  },
+  {
+    title: "Análisis de Control de Acceso y Escalada de Privilegios",
+    description: "Verifica middleware de rutas, autenticación JWT, e integridad de sesión para prevenir vulnerabilidades IDOR y acceso no autorizado.",
+    category: "Refactorización",
+    promptText: `Actúa como un Experto en Arquitectura de Identidad y Autorización. Analiza el código de middleware de rutas e interceptores en {{lenguaje_programacion}} buscando brechas en el control de acceso, escalada de privilegios (horizontal/vertical) o fallos de autenticación débil (por ejemplo, validación incorrecta de firma JWT o parámetros IDOR).
+
+Código de control de acceso:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega:
+1. **Brechas de Acceso**: Explica cómo un usuario podría saltarse los límites de permisos o consultar datos de otro usuario sin autorización.
+2. **Refactorización del Middleware**: Implementa control de acceso basado en roles (RBAC) o basado en atributos (ABAC), verificando firmas y alcances (scopes) de tokens de manera estricta.
+3. **Código Mantenible y Seguro**: El código corregido y robusto.`,
+    tags: ["RBAC", "JWT", "IDOR", "Autorización"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje o Framework", defaultValue: "NodeJS/Express" },
+      { name: "codigo_fuente", description: "Middleware de rutas o controladores", defaultValue: "app.get('/api/orders/:orderId', async (req, res) => {\n  const order = await db.getOrder(req.params.orderId);\n  res.json(order); // Falta validar si la orden le pertenece al req.user.uid\n});" }
+    ]
+  },
+  {
+    title: "Criptografía Fuerte y Almacenamiento Seguro",
+    description: "Migra algoritmos criptográficos obsoletos (MD5, SHA1) a esquemas robustos y seguros como Bcrypt, Argon2 o AES-255-GCM.",
+    category: "Refactorización",
+    promptText: `Actúa como un Criptógrafo y Desarrollador Senior. Evalúa el siguiente fragmento de código escrito en {{lenguaje_programacion}} que gestiona almacenamiento de contraseñas de usuarios, tokens de autenticación o cifrado de datos en reposo y tránsito.
+
+Código criptográfico a auditar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Identifica y corrige:
+1. **Uso de Funciones de Hash Débiles**: Detecta si se usa MD5, SHA1 o algoritmos obsoletos y sin salting (salt).
+2. **Propuesta de Modernización**: Explica por qué Argon2 o Bcrypt son mejores opciones para almacenamiento de hashes, y AES-256-GCM para cifrado simétrico de datos sensibles.
+3. **Código Refactorizado**: Implementa la librería criptográfica adecuada e incluye los métodos de cifrado y verificación seguros.`,
+    tags: ["Criptografía", "Bcrypt", "AES", "Hasheo"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript/NodeJS" },
+      { name: "codigo_fuente", description: "Código criptográfico débil", defaultValue: "const crypto = require('crypto');\nfunction saveUser(username, password) {\n  const hash = crypto.createHash('md5').update(password).digest('hex');\n  db.save(username, hash);\n}" }
+    ]
   }
 ];
