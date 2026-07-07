@@ -5,6 +5,7 @@ import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNot
 import { Prompt, Folder as FolderType } from "../types";
 import { User } from "firebase/auth";
 import CommentsSection from "./CommentsSection";
+import { escapeHtml } from "../utils/sanitize";
 
 interface PromptCardProps {
   key?: React.Key;
@@ -264,14 +265,7 @@ ${notesStr}
 
     document.head.appendChild(printStyle);
 
-    // Build internal printable elements
-    const escapeHtml = (value: string) =>
-      value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    // Build internal printable elements using centralized escapeHtml
     const tagsStr = prompt.tags && prompt.tags.length > 0 ? prompt.tags.map(t => `#${escapeHtml(t)}`).join(" ") : "";
     const notesHtml = prompt.notas ? `
       <div class="print-section-title">Notas de Ejecución / Instrucciones</div>

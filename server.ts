@@ -230,6 +230,46 @@ function rateLimitAI(req: AuthenticatedRequest, res: express.Response, next: exp
   next();
 }
 
+const newsWindowMs = Number(process.env.NEWS_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+const newsMaxRequests = Number(process.env.NEWS_RATE_LIMIT_MAX || 30);
+const newsBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimitNews(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const now = Date.now();
+  const key = req.ip || "anonymous";
+  const bucket = newsBuckets.get(key);
+
+  if (!bucket || bucket.resetAt <= now) {
+    newsBuckets.set(key, { count: 1, resetAt: now + newsWindowMs });
+    return next();
+  }
+
+  if (bucket.count >= newsMaxRequests) {
+    return res.status(429).json({ error: "Demasiadas solicitudes de noticias. Inténtalo más tarde." });
+  }
+
+  bucket.count += 1;
+  next();
+}
+
+function getClientIp(req: express.Request): string {
+  const forwarded = req.header("x-forwarded-for");
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIp = req.header("x-real-ip");
+  return typeof realIp === "string" && realIp.length > 0 ? realIp : (req.ip || "unknown");
+}
+
+function auditLog(event: string, details: Record<string, unknown>) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    event,
+    ...details,
+  };
+  console.log(JSON.stringify(entry));
+}
+
 function requireTextField(value: unknown, name: string, maxLength: number) {
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`${name} es requerido.`);
@@ -527,7 +567,7 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
     }
   });
 
-  app.get("/api/news", async (req, res) => {
+  app.get("/api/news", rateLimitNews, async (req, res) => {
     try {
       const category = getNewsCategory(req.query.category);
       const language = req.query.language === "en" || req.query.language === "es"
@@ -550,12 +590,20 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   // API Route: Create a new prompt based on descriptions
   app.use("/api/ai", requireFirebaseAuth, rateLimitAI);
 
-  app.post("/api/ai/crear", async (req, res) => {
+  app.post("/api/ai/crear", async (req: AuthenticatedRequest, res) => {
     try {
       const { description, targetRole, channelContext } = req.body;
       const safeDescription = requireTextField(description, "La descripción", 1000);
       const safeTargetRole = typeof targetRole === "string" ? targetRole.trim().slice(0, 120) : "";
       const safeChannelContext = typeof channelContext === "string" ? channelContext.trim().slice(0, 250) : "";
+
+      auditLog("ai:crear:request", {
+        uid: req.user?.uid,
+        ip: getClientIp(req),
+        descriptionLength: safeDescription.length,
+        hasTargetRole: Boolean(safeTargetRole),
+        hasChannelContext: Boolean(safeChannelContext),
+      });
 
       const promptInstructions = `
         Eres un experto Diseñador de Prompts (Prompt Engineer) de clase mundial.
@@ -625,11 +673,18 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   });
 
   // API Route: Optimize an existing prompt
-  app.post("/api/ai/optimizar", async (req, res) => {
+  app.post("/api/ai/optimizar", async (req: AuthenticatedRequest, res) => {
     try {
       const { originalPromptText, comments } = req.body;
       const safeOriginalPromptText = requireTextField(originalPromptText, "El texto del prompt original", 10000);
       const safeComments = typeof comments === "string" ? comments.trim().slice(0, 500) : "";
+
+      auditLog("ai:optimizar:request", {
+        uid: req.user?.uid,
+        ip: getClientIp(req),
+        promptLength: safeOriginalPromptText.length,
+        hasComments: Boolean(safeComments),
+      });
 
       const promptInstructions = `
         Eres un experto Diseñador de Prompts (Prompt Engineer) de nivel senior.
@@ -700,13 +755,20 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
     }
   });
 
-  app.post("/api/ai/recomendar", async (req, res) => {
+  app.post("/api/ai/recomendar", async (req: AuthenticatedRequest, res) => {
     try {
       const safeGoal = requireTextField(req.body.goal, "El objetivo", 500);
       const candidates = normalizeRecommendationCandidates(req.body.candidates);
       if (candidates.length === 0) {
         throw new Error("Se requiere al menos un candidato local para mejorar la recomendacion.");
       }
+
+      auditLog("ai:recomendar:request", {
+        uid: req.user?.uid,
+        ip: getClientIp(req),
+        goalLength: safeGoal.length,
+        candidateCount: candidates.length,
+      });
 
       const rawFilters = req.body.filters && typeof req.body.filters === "object"
         ? req.body.filters as Record<string, unknown>
