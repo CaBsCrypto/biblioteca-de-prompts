@@ -2108,7 +2108,7 @@ Mejora los siguientes aspectos sin alterar el comportamiento lógico:
   {
     title: "Auditoría Específica de Inyecciones",
     description: "Detecta y corrige fallos de inyección de código (SQL Injection, NoSQL Injection, OS Command Injection) en el backend.",
-    category: "Refactorización",
+    category: "Seguridad",
     promptText: `Actúa como un Ingeniero de Ciberseguridad (Application Security Engineer). Tu objetivo es auditar el siguiente fragmento de código escrito en {{lenguaje_programacion}} buscando vulnerabilidades de inyección de parámetros, inyecciones de bases de datos relacionales o no relacionales, o comandos del sistema operativo.
 
 Código vulnerable a evaluar:
@@ -2130,7 +2130,7 @@ Proporciona:
   {
     title: "Detector de Fuga de Secretos y API Keys",
     description: "Escanea archivos buscando credenciales hardcodeadas, tokens de OAuth y pautas para moverlas a variables de entorno.",
-    category: "Refactorización",
+    category: "Seguridad",
     promptText: `Actúa como un Especialista en Seguridad Cloud y DevSecOps. Analiza el código fuente en busca de secretos expuestos en texto plano, claves de API privadas, tokens de JWT firmados localmente, contraseñas de bases de datos hardcodeadas o certificados privados expuestos en repositorios.
 
 Código a analizar:
@@ -2152,7 +2152,7 @@ Proporciona:
   {
     title: "Auditoría de Cabeceras y Middlewares de Red",
     description: "Configura políticas CORS seguras, políticas CSP estrictas y middlewares de cabecera como Helmet contra clickjacking y XSS.",
-    category: "Refactorización",
+    category: "Seguridad",
     promptText: `Actúa como un Especialista en Seguridad Web y Redes. Audita el siguiente código de configuración de servidor en {{tecnologia_servidor}} enfocado en políticas CORS, CSP (Content Security Policy), y cabeceras de seguridad HTTP básicas.
 
 Código de red/middleware:
@@ -2174,7 +2174,7 @@ Entrega lo siguiente:
   {
     title: "Análisis de Control de Acceso y Escalada de Privilegios",
     description: "Verifica middleware de rutas, autenticación JWT, e integridad de sesión para prevenir vulnerabilidades IDOR y acceso no autorizado.",
-    category: "Refactorización",
+    category: "Seguridad",
     promptText: `Actúa como un Experto en Arquitectura de Identidad y Autorización. Analiza el código de middleware de rutas e interceptores en {{lenguaje_programacion}} buscando brechas en el control de acceso, escalada de privilegios (horizontal/vertical) o fallos de autenticación débil (por ejemplo, validación incorrecta de firma JWT o parámetros IDOR).
 
 Código de control de acceso:
@@ -2196,7 +2196,7 @@ Entrega:
   {
     title: "Criptografía Fuerte y Almacenamiento Seguro",
     description: "Migra algoritmos criptográficos obsoletos (MD5, SHA1) a esquemas robustos y seguros como Bcrypt, Argon2 o AES-255-GCM.",
-    category: "Refactorización",
+    category: "Seguridad",
     promptText: `Actúa como un Criptógrafo y Desarrollador Senior. Evalúa el siguiente fragmento de código escrito en {{lenguaje_programacion}} que gestiona almacenamiento de contraseñas de usuarios, tokens de autenticación o cifrado de datos en reposo y tránsito.
 
 Código criptográfico a auditar:
@@ -2213,6 +2213,225 @@ Identifica y corrige:
     suggestedVariables: [
       { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript/NodeJS" },
       { name: "codigo_fuente", description: "Código criptográfico débil", defaultValue: "const crypto = require('crypto');\nfunction saveUser(username, password) {\n  const hash = crypto.createHash('md5').update(password).digest('hex');\n  db.save(username, hash);\n}" }
+    ]
+  },
+  // ==================== BUENAS PRÁCTICAS (10 Prompts) ====================
+  {
+    title: "Principio DRY (Don't Repeat Yourself)",
+    description: "Analiza el código buscando lógicas repetitivas y refactoriza a utilidades modulares reutilizables.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Ingeniero de Software Principal. Analiza el siguiente fragmento de código escrito en {{lenguaje_programacion}} buscando violaciones del principio DRY (duplicación de código, lógicas similares estructuradas de forma repetitiva o helpers redundantes).
+
+Código a auditar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega lo siguiente:
+1. **Análisis de Duplicidad**: Señala exactamente qué partes del código violan DRY y qué problemas de mantenibilidad representan.
+2. **Estrategia de Extracción**: Describe cómo unificar el comportamiento en una función pura, helper paramétrico o componente genérico.
+3. **Código Refactorizado**: El código limpio, optimizado y reutilizable.`,
+    tags: ["Clean Code", "DRY", "Mantenibilidad", "Modularización"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código con duplicados", defaultValue: "function formatUserAddress(user) {\n  return `${user.street || ''}, ${user.city || ''}, ${user.zip || ''}`.trim();\n}\n\nfunction formatPartnerAddress(partner) {\n  return `${partner.street || ''}, ${partner.city || ''}, ${partner.zip || ''}`.trim();\n}" }
+    ]
+  },
+  {
+    title: "Simplificación KISS (Keep It Simple)",
+    description: "Reduce la complejidad innecesaria, bucles sobrediseñados y abstracciones redundantes.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Desarrollador Senior enfocado en pragmatismo. Analiza el código escrito en {{lenguaje_programacion}} para simplificar su lógica aplicando el principio KISS. Evita la sobreingeniería (over-engineering).
+
+Código a evaluar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Identificación de Complejidad**: Detalla abstracciones excesivas, patrones sobrediseñados o condicionales que dificultan la lectura.
+2. **Propuesta Simple**: Explica cómo resolver el mismo problema con menos líneas de código y estructuras de control nativas sencillas.
+3. **Código KISS**: Código claro y directo.`,
+    tags: ["KISS", "Pragmatismo", "Overengineering", "Legibilidad"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript" },
+      { name: "codigo_fuente", description: "Código complejo", defaultValue: "class AgeValidatorFactory {\n  createValidator() {\n    return { validate: (age) => age >= 18 };\n  }\n}\nconst validator = new AgeValidatorFactory().createValidator();\nconst isAllowed = validator.validate(userAge);" }
+    ]
+  },
+  {
+    title: "Optimización de Nombres y Estilo",
+    description: "Renombra variables, métodos y clases ambiguas para que el código sea autodocumentado y descriptivo.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Revisor de Código Experto. Evalúa el siguiente fragmento de código escrito en {{lenguaje_programacion}} que tiene nombres de variables o estructuras de control crípticas, abreviadas o inconsistentes.
+
+Código a revisar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Crítica de Nomenclatura**: Explica qué nombres son propensos a malentendidos y por qué.
+2. **Propuesta Semántica**: Sugiere nombres autodocumentados basados en el dominio del negocio e industria.
+3. **Código Auto-explicativo**: Código modificado aplicando nombres altamente expresivos.`,
+    tags: ["Nomenclatura", "Semántica", "Estilo", "Legibilidad"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código con malos nombres", defaultValue: "function p(a, b) {\n  let x = 0;\n  for(let i=0; i<a.length; i++) {\n    if (a[i].s === 'active' && a[i].age > b) {\n      x++;\n    }\n  }\n  return x;\n}" }
+    ]
+  },
+  {
+    title: "Manejo de Errores y Resiliencia",
+    description: "Integra bloques Try-Catch, control de excepciones robusto, fallbacks seguros y Logging descriptivo.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Ingeniero de Confiabilidad de Software (SRE/Senior Dev). Rediseña el manejo de errores del siguiente código en {{lenguaje_programacion}} para que sea tolerante a fallos y no provoque caídas inesperadas en el hilo principal del servicio.
+
+Código sin manejo adecuado:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Puntos de Fallo Críticos**: Explica qué excepciones pueden dispararse y cómo romperían el flujo.
+2. **Estrategia de Resiliencia**: Diseña el manejo de excepciones mediante try-catch, validación defensiva de nulos, valores de retorno alternativos (fallbacks) y logging estructurado de errores.
+3. **Código Resiliente**: Código seguro con control total de excepciones.`,
+    tags: ["Excepciones", "Resiliencia", "Try-Catch", "Logging"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "NodeJS" },
+      { name: "codigo_fuente", description: "Código frágil", defaultValue: "async function fetchUserData(userId) {\n  const response = await fetch(`https://api.test.com/users/${userId}`);\n  const data = await response.json();\n  return data.profile.avatar.url;\n}" }
+    ]
+  },
+  {
+    title: "Inyección de Dependencias y Desacoplamiento",
+    description: "Desacopla dependencias duras instanciando servicios mediante inyección para mejorar la testabilidad.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Arquitecto de Software. Tu tarea es analizar el siguiente código escrito en {{lenguaje_programacion}} que tiene dependencias acopladas de manera directa (por ejemplo, instanciando clases cliente HTTP o de base de datos de forma interna mediante 'new').
+
+Código a desacoplar:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Problema del Acoplamiento**: Detalla por qué es difícil inyectar mocks o unit tests en este módulo.
+2. **Diseño de Inyección**: Rediseña el flujo inyectando la dependencia en el constructor, interfaz o argumentos del inicializador.
+3. **Código Desacoplado**: Código flexible y testeable con mocks.`,
+    tags: ["Arquitectura", "SOLID", "Inyección de Dependencias", "Testing"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código acoplado", defaultValue: "class OrderService {\n  constructor() {\n    this.database = new MySQLConnector(); // Dependencia dura\n  }\n  async save(order) {\n    await this.database.insert(order);\n  }\n}" }
+    ]
+  },
+  {
+    title: "Refactorización a Patrón Factory/Builder",
+    description: "Simplifica la creación de objetos complejos o configuraciones anidadas mediante patrones creacionales.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Especialista en Patrones de Diseño. Convierte el siguiente constructor complejo o lógica de inicialización en {{lenguaje_programacion}} al patrón Builder o Factory para hacer más legible y ordenada la creación del objeto.
+
+Código con inicialización compleja:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega lo siguiente:
+1. **Problemas del enfoque actual**: Explica la dificultad de leer constructores con demasiados parámetros opcionales o configuraciones condicionales.
+2. **Propuesta del Patrón**: Explica si el patrón Builder o Factory es el más idóneo.
+3. **Código Patrón**: El código implementando el patrón y un ejemplo de su invocación limpia.`,
+    tags: ["Patrones de Diseño", "Builder", "Factory", "Creacionales"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código con constructor pesado", defaultValue: "class CustomUIComponent {\n  constructor(width, height, color, label, visible, disabled, onClick) {\n    this.width = width;\n    this.height = height;\n    this.color = color;\n    this.label = label;\n    this.visible = visible;\n    this.disabled = disabled;\n    this.onClick = onClick;\n  }\n}" }
+    ]
+  },
+  {
+    title: "Reemplazo de Condicionales por Estrategias",
+    description: "Elimina condicionales if/else y switch anidados y repetitivos aplicando el patrón Strategy o State.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Arquitecto de Software Senior. Convierte las sentencias switch o de múltiples bloques condicionales anidados del siguiente código escrito en {{lenguaje_programacion}} en el patrón Strategy (Estrategia) o polimorfismo dinámico.
+
+Código condicional denso:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Entrega:
+1. **Análisis de OCP (Open-Closed Principle)**: Explica por qué agregar un nuevo caso obligaría a modificar el archivo existente violando OCP.
+2. **Estructura Strategy**: Define las clases o mapas de funciones estrategia independientes.
+3. **Código Mantenible**: Código limpio donde el despachador delega la lógica de manera polimórfica.`,
+    tags: ["SOLID", "Strategy", "OCP", "Polimorfismo"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "TypeScript" },
+      { name: "codigo_fuente", description: "Código con switches pesados", defaultValue: "function getDiscount(userType, total) {\n  switch(userType) {\n    case 'PREMIUM': return total * 0.2;\n    case 'VIP': return total * 0.3;\n    case 'REGULAR': return total * 0.05;\n    default: return 0;\n  }\n}" }
+    ]
+  },
+  {
+    title: "Auto-Documentación Estándar (JSDoc/Types)",
+    description: "Añade bloques JSDoc, tipados explícitos de TypeScript o Docstrings estructurados según buenas prácticas.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Lead Developer enfocado en estándares de documentación. Toma el siguiente bloque de código en {{lenguaje_programacion}} y agrega la documentación estructurada de forma nativa (JSDoc para JS/TS, Docstrings de tipo Google/Sphinx para Python, etc.) para que se integre correctamente con el autocompletado e información contextual del IDE.
+
+Código indocumentado:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Genera:
+1. **Código Documentado**: Código intacto pero enriquecido con tipos, descripciones detalladas de parámetros, retornos, ejemplos de uso y posibles excepciones.`,
+    tags: ["JSDoc", "Docstrings", "Documentación", "Tipado"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript" },
+      { name: "codigo_fuente", description: "Código sin documentar", defaultValue: "function calculateTax(subtotal, taxRate, discount = 0) {\n  return (subtotal - discount) * taxRate;\n}" }
+    ]
+  },
+  {
+    title: "Sanitización de Payloads de Respuesta API",
+    description: "Implementa capas DTO para evitar la filtración accidental de contraseñas, hashes, u otros metadatos internos del backend.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Ingeniero de Software centrado en Seguridad de Datos. Analiza cómo este endpoint del backend en {{lenguaje_programacion}} retorna respuestas directas de la base de datos y refactorízalo para usar un DTO (Data Transfer Object) o sanitización activa antes de serializar a JSON.
+
+Código vulnerable a filtraciones de datos:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Campos Sensibles Detectados**: Detalla qué campos (ej. contraseña, tokens, timestamps de control interno, llaves foráneas crudas) nunca deberían viajar al cliente.
+2. **Implementación de DTO**: Crea la clase o helper de mapeo que extraiga únicamente los datos permitidos del payload.
+3. **Código Sanitizado**: La lógica del controlador con el filtrado y modelado de datos final.`,
+    tags: ["DTO", "Sanitización", "API", "Privacidad"],
+    isFavorite: false,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript" },
+      { name: "codigo_fuente", description: "Código de retorno API sin sanitizar", defaultValue: "app.get('/profile', async (req, res) => {\n  const user = await db.findUser(req.user.id);\n  res.json(user); // Retorna todo el record incluyendo password_hash y login_attempts\n});" }
+    ]
+  },
+  {
+    title: "Lógica Asíncrona Paralela (Promise.all)",
+    description: "Identifica esperas asíncronas secuenciales innecesarias y optimízalas para que corran de forma simultánea en paralelo.",
+    category: "Buenas Prácticas",
+    promptText: `Actúa como un Especialista en Rendimiento Web y Backend. Analiza el código asíncrono en {{lenguaje_programacion}} que contiene llamadas secuenciales con "await" bloqueantes para optimizarlas en paralelo mediante esquemas como Promise.all o similares.
+
+Código asíncrono secuencial:
+\`\`\`{{lenguaje_programacion}}
+{{codigo_fuente}}
+\`\`\`
+
+Proporciona:
+1. **Análisis de Bloqueo**: Detalla qué llamadas son independientes y podrían resolverse de forma concurrente, estimando el ahorro aproximado de tiempo de respuesta (latencia).
+2. **Refactorización a Paralelismo**: Reescribe la lógica uniendo las promesas independientes.
+3. **Código Optimizado**: El código corregido y de alta velocidad.`,
+    tags: ["Promise.all", "Rendimiento", "Concurrencia", "Asíncrono"],
+    isFavorite: true,
+    suggestedVariables: [
+      { name: "lenguaje_programacion", description: "Lenguaje de programación", defaultValue: "JavaScript/NodeJS" },
+      { name: "codigo_fuente", description: "Llamadas await consecutivas", defaultValue: "async function getUserDashboardData(userId) {\n  const profile = await db.getProfile(userId);\n  const orders = await db.getOrders(userId); // Independiente del perfil\n  const stats = await db.getStats(userId); // Independiente también\n  return { profile, orders, stats };\n}" }
     ]
   }
 ];

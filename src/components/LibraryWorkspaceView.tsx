@@ -1,11 +1,12 @@
-import React, { useRef } from "react";
-import { Sparkles, Plus, Search, Star, Tag, X, FolderOpen, Share2, BookOpen, GitFork } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Sparkles, Plus, Search, Star, Tag, X, FolderOpen, Share2, BookOpen, GitFork, Shield, Wrench, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { User } from "firebase/auth";
 import type { Prompt, Folder, CategoryFilter } from "../types";
 import type { LibraryViewFilter, CommunitySort, SelectedAuthor, CommunityScope } from "../utils/promptFilters";
 import PromptCard from "./PromptCard";
 import FolderTreeView from "./FolderTreeView";
+import CategoryPromptsModal from "./CategoryPromptsModal";
 
 interface LibraryWorkspaceViewProps {
   user: User | null;
@@ -177,6 +178,7 @@ export function LibraryWorkspaceView({
   showcasePostsCount
 }: LibraryWorkspaceViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCategoryPopup, setSelectedCategoryPopup] = useState<string | null>(null);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -198,8 +200,8 @@ export function LibraryWorkspaceView({
   };
 
   const categoriesToRender = currentTab === "mi-biblioteca"
-    ? ["Todas", "YouTube", "Marketing", "Programación", "Refactorización", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General", "Favoritos"]
-    : ["Todas", "YouTube", "Marketing", "Refactorización", "IA Agentes", "Asistente de Prompts", "IA Videos", "General", "Favoritos"];
+    ? ["Todas", "YouTube", "Marketing", "Programación", "Refactorización", "Seguridad", "Buenas Prácticas", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General", "Favoritos"]
+    : ["Todas", "YouTube", "Marketing", "Refactorización", "Seguridad", "Buenas Prácticas", "IA Agentes", "Asistente de Prompts", "IA Videos", "General", "Favoritos"];
 
   const libraryViewFilters: Array<{ id: LibraryViewFilter; label: string }> = [
     { id: "todos", label: "Todos" },
@@ -581,26 +583,41 @@ export function LibraryWorkspaceView({
             <button
               key={category}
               id={`filter-pill-${category}`}
-              onClick={() => setSelectedCategory(category as CategoryFilter)}
+              onClick={() => {
+                if (category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") {
+                  setSelectedCategoryPopup(category);
+                }
+                setSelectedCategory(category as CategoryFilter);
+              }}
               className={`px-4 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer select-none ${
                 selectedCategory === category
                   ? "bg-[#4f46e5] text-white border-[#4f46e5] shadow-md shadow-indigo-650/15 font-extrabold"
                   : category === "Refactorización"
                   ? "bg-indigo-950/40 text-indigo-300 border-indigo-500/45 hover:text-white hover:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)] animate-pulse"
+                  : category === "Seguridad"
+                  ? "bg-rose-950/40 text-rose-300 border-rose-500/45 hover:text-white hover:border-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.2)]"
+                  : category === "Buenas Prácticas"
+                  ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/45 hover:text-white hover:border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
                   : "bg-[#1e293b] text-slate-400 border-[#334155]/85 hover:text-slate-250 hover:border-slate-650"
               }`}
             >
               {category === "Favoritos" && <Star size={12} fill={selectedCategory === "Favoritos" ? "white" : "none"} className="text-pink-450" />}
-              {category === "Refactorización" && (
+              {(category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") && (
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    category === "Refactorización" ? "bg-indigo-400" : category === "Seguridad" ? "bg-rose-400" : "bg-emerald-400"
+                  }`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    category === "Refactorización" ? "bg-indigo-500" : category === "Seguridad" ? "bg-rose-500" : "bg-emerald-500"
+                  }`}></span>
                 </span>
               )}
               <span>{category === "Todas" ? "Ver Todo" : category}</span>
-              {category === "Refactorización" && (
-                <span className="text-[8px] font-extrabold text-pink-400 bg-pink-500/10 border border-pink-500/25 px-1 py-0.2 rounded font-mono uppercase tracking-wider scale-90">
-                  ¡Nuevo!
+              {(category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") && (
+                <span className={`text-[8px] font-extrabold bg-white/10 border px-1 py-0.2 rounded font-mono uppercase tracking-wider scale-90 ${
+                  category === "Refactorización" ? "text-indigo-400 border-indigo-500/25" : category === "Seguridad" ? "text-rose-400 border-rose-500/25" : "text-emerald-400 border-emerald-500/25"
+                }`}>
+                  ¡Ver Suite!
                 </span>
               )}
             </button>
@@ -830,6 +847,18 @@ export function LibraryWorkspaceView({
             ))}
           </AnimatePresence>
         </div>
+      )}
+      {/* Category Prompts Popup Overlay */}
+      {selectedCategoryPopup && (
+        <CategoryPromptsModal
+          isOpen={true}
+          onClose={() => setSelectedCategoryPopup(null)}
+          category={selectedCategoryPopup}
+          prompts={prompts}
+          onCopyFilledPrompt={handleCopyFilledPrompt}
+          onUsePrompt={handleUsePrompt}
+          user={user}
+        />
       )}
     </div>
   );
