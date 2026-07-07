@@ -1,27 +1,39 @@
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { DEFAULT_PROMPTS } from "../data";
 import type { Prompt } from "../types";
 import { mapPromptDoc, sortOwnPrompts } from "../utils/firestoreMappers";
-
-type SeedPrompt = Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">;
+import {
+  archivePromptVersion,
+  createPrompt,
+  deletePrompt,
+  importPromptsFromJSON,
+  seedPromptsForUser,
+  togglePromptFavorite,
+  updatePrompt,
+  type PromptAuthorIdentity,
+  type PromptSeed,
+} from "../services/firestore/promptsService";
 
 interface UsePromptLibraryOptions {
   user: User | null;
   editingPrompt: Prompt | null;
   setEditingPrompt: (prompt: Prompt | null) => void;
   setShowFormModal: (value: boolean) => void;
-  getAuthorIdentity: () => {
-    authorName: string;
-    authorAvatar: string;
-    authorHandle: string;
-  };
+  getAuthorIdentity: () => PromptAuthorIdentity;
   onNotification: (message: string, type?: "success" | "info") => void;
 }
 
 const normalizeSeedTitle = (title: string) => title.trim().toLocaleLowerCase("es");
+const PROMPTS_COLLECTION = "prompts";
+
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+}
 
 export function usePromptLibrary({
   user,
@@ -41,9 +53,8 @@ export function usePromptLibrary({
     }
 
     setLoadingPrompts(true);
-    const promptsCollectionPath = "prompts";
     const userPromptsQuery = query(
-      collection(db, promptsCollectionPath),
+      collection(db, PROMPTS_COLLECTION),
       where("userId", "==", user.uid)
     );
 
@@ -55,42 +66,34 @@ export function usePromptLibrary({
       },
       (error) => {
         setLoadingPrompts(false);
-        handleFirestoreError(error, OperationType.LIST, promptsCollectionPath);
+        handleFirestoreError(error, OperationType.LIST, PROMPTS_COLLECTION);
       }
     );
 
     return unsubscribe;
   }, [user]);
 
-  const handleSeedDefaults = async (selectedPrompts: SeedPrompt[] = DEFAULT_PROMPTS) => {
+  const handleSeedDefaults = async (selectedPrompts: PromptSeed[] = DEFAULT_PROMPTS) => {
     if (!user) return;
     setLoadingPrompts(true);
-
     try {
-      const promptsCollectionPath = "prompts";
-      const existingTitles = new Set(prompts.map((prompt) => normalizeSeedTitle(prompt.title)));
-      const promptsToSeed = selectedPrompts.filter((prompt) => !existingTitles.has(normalizeSeedTitle(prompt.title)));
+      const existingTitles = new Set<string>(prompts.map((prompt) => normalizeSeedTitle(prompt.title)));
+      const identity = getAuthorIdentity();
+      const seededCount = await seedPromptsForUser(
+        db,
+        user.uid,
+        selectedPrompts,
+        identity,
+        existingTitles
+      );
 
-      if (promptsToSeed.length === 0) {
+      if (seededCount === 0) {
         onNotification("Tu biblioteca ya tiene los prompts de este pack.", "info");
-        return;
+      } else {
+        onNotification(`Se añadieron ${seededCount} prompts de este pack a tu biblioteca.`, "success");
       }
-
-      await Promise.all(promptsToSeed.map((p) => {
-        const newDocRef = doc(collection(db, promptsCollectionPath));
-        return setDoc(newDocRef, {
-          ...p,
-          userId: user.uid,
-          likedBy: [],
-          likesCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }));
-
-      onNotification(`Se añadieron ${promptsToSeed.length} prompts de este pack a tu biblioteca.`, "success");
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "prompts");
+      handleFirestoreError(error, OperationType.WRITE, PROMPTS_COLLECTION);
     } finally {
       setLoadingPrompts(false);
     }
@@ -100,49 +103,26 @@ export function usePromptLibrary({
     promptData: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">
   ) => {
     if (!user) return;
-    const promptsCollectionPath = "prompts";
-    const definedPromptData = Object.fromEntries(
-      Object.entries(promptData).filter(([, value]) => value !== undefined)
-    );
-    const forkMetadata = Object.fromEntries(
-      [
-        ["forkedFrom", promptData.forkedFrom],
-        ["forkedFromPromptId", promptData.forkedFromPromptId],
-        ["forkedFromUserId", promptData.forkedFromUserId],
-        ["forkedFromAuthorName", promptData.forkedFromAuthorName],
-        ["forkedFromAuthorHandle", promptData.forkedFromAuthorHandle],
-        ["forkedFromTitle", promptData.forkedFromTitle],
-        ["sourceClassId", promptData.sourceClassId],
-        ["sourceClassTitle", promptData.sourceClassTitle]
-      ].filter(([, value]) => value !== undefined)
-    );
+    const identity = getAuthorIdentity();
 
     try {
       if (editingPrompt) {
-        const docRef = doc(db, promptsCollectionPath, editingPrompt.id);
-
         if (editingPrompt.promptText !== promptData.promptText) {
-          try {
-            const versionsColRef = collection(db, promptsCollectionPath, editingPrompt.id, "versions");
-            await addDoc(versionsColRef, {
-              promptText: editingPrompt.promptText,
-              createdAt: serverTimestamp()
-            });
-
-            const q = query(versionsColRef, orderBy("createdAt", "desc"));
-            const snapshot = await getDocs(q);
-            if (snapshot.size > 3) {
-              const docsToDelete = snapshot.docs.slice(3);
-              for (const d of docsToDelete) {
-                await deleteDoc(d.ref);
-              }
-            }
-          } catch (verErr) {
-            console.error("Error updating version subcollection in Firestore:", verErr);
-          }
+          await archivePromptVersion(db, editingPrompt.id, editingPrompt.promptText);
         }
 
-        await updateDoc(docRef, {
+        const forkMetadata = stripUndefined({
+          forkedFrom: promptData.forkedFrom,
+          forkedFromPromptId: promptData.forkedFromPromptId,
+          forkedFromUserId: promptData.forkedFromUserId,
+          forkedFromAuthorName: promptData.forkedFromAuthorName,
+          forkedFromAuthorHandle: promptData.forkedFromAuthorHandle,
+          forkedFromTitle: promptData.forkedFromTitle,
+          sourceClassId: promptData.sourceClassId,
+          sourceClassTitle: promptData.sourceClassTitle,
+        });
+
+        await updatePrompt(db, editingPrompt.id, {
           title: promptData.title,
           description: promptData.description,
           promptText: promptData.promptText,
@@ -153,28 +133,38 @@ export function usePromptLibrary({
           notas: promptData.notas || "",
           suggestedVariables: promptData.suggestedVariables || [],
           ...forkMetadata,
-          ...getAuthorIdentity(),
-          updatedAt: serverTimestamp(),
-          folderId: promptData.folderId || null
+          ...identity,
+          folderId: promptData.folderId || null,
         });
         onNotification("Prompt actualizado correctamente.");
       } else {
-        const docRef = doc(collection(db, promptsCollectionPath));
-        await setDoc(docRef, {
-          ...definedPromptData,
-          userId: user.uid,
-          isShared: promptData.isShared || false,
-          ...getAuthorIdentity(),
-          likedBy: [],
-          likesCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          folderId: promptData.folderId || null
-        });
+        const data: PromptSeed = {
+          ...stripUndefined({
+            title: promptData.title,
+            description: promptData.description,
+            promptText: promptData.promptText,
+            category: promptData.category,
+            tags: promptData.tags,
+            isFavorite: promptData.isFavorite,
+            notas: promptData.notas,
+            isShared: promptData.isShared || false,
+            suggestedVariables: promptData.suggestedVariables,
+            forkedFrom: promptData.forkedFrom,
+            forkedFromPromptId: promptData.forkedFromPromptId,
+            forkedFromUserId: promptData.forkedFromUserId,
+            forkedFromAuthorName: promptData.forkedFromAuthorName,
+            forkedFromAuthorHandle: promptData.forkedFromAuthorHandle,
+            forkedFromTitle: promptData.forkedFromTitle,
+            sourceClassId: promptData.sourceClassId,
+            sourceClassTitle: promptData.sourceClassTitle,
+            folderId: promptData.folderId || null,
+          }),
+        } as PromptSeed;
+        await createPrompt(db, user.uid, data, identity);
         onNotification("Nuevo prompt añadido a la biblioteca.");
       }
     } catch (error) {
-      handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, promptsCollectionPath);
+      handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, PROMPTS_COLLECTION);
     } finally {
       setShowFormModal(false);
       setEditingPrompt(null);
@@ -183,18 +173,14 @@ export function usePromptLibrary({
 
   const handleFavoriteToggle = async (target: Prompt) => {
     if (!user) return;
-    const promptsCollectionPath = "prompts";
     try {
-      await updateDoc(doc(db, promptsCollectionPath, target.id), {
-        isFavorite: !target.isFavorite,
-        updatedAt: serverTimestamp()
-      });
+      await togglePromptFavorite(db, target.id, !target.isFavorite);
       onNotification(
         target.isFavorite ? "Eliminado de favoritos." : "Guardado en tus favoritos.",
         "success"
       );
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, promptsCollectionPath);
+      handleFirestoreError(error, OperationType.UPDATE, PROMPTS_COLLECTION);
     }
   };
 
@@ -202,12 +188,11 @@ export function usePromptLibrary({
     if (!user) return;
     if (!window.confirm(`¿Estás seguro de que quieres eliminar "${target.title}"?`)) return;
 
-    const promptsCollectionPath = "prompts";
     try {
-      await deleteDoc(doc(db, promptsCollectionPath, target.id));
+      await deletePrompt(db, target.id);
       onNotification("Prompt eliminado correctamente.", "info");
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, promptsCollectionPath);
+      handleFirestoreError(error, OperationType.DELETE, PROMPTS_COLLECTION);
     }
   };
 
@@ -223,21 +208,20 @@ export function usePromptLibrary({
       onNotification("Inicia sesión antes de guardar prompts creados con IA.", "info");
       return;
     }
-    const promptsCollectionPath = "prompts";
     try {
-      const docRef = doc(collection(db, promptsCollectionPath));
-      await setDoc(docRef, {
-        ...aiData,
-        userId: user.uid,
-        isFavorite: false,
-        likedBy: [],
-        likesCount: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      const identity = getAuthorIdentity();
+      await createPrompt(
+        db,
+        user.uid,
+        {
+          ...aiData,
+          isFavorite: false,
+        } as PromptSeed,
+        identity
+      );
       onNotification("¡Importado con éxito desde el Asistente IA!");
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, promptsCollectionPath);
+      handleFirestoreError(error, OperationType.CREATE, PROMPTS_COLLECTION);
     }
   };
 
@@ -283,62 +267,11 @@ export function usePromptLibrary({
 
     try {
       const parsed = JSON.parse(fileContent);
-      if (!Array.isArray(parsed)) {
-        throw new Error("El archivo JSON debe contener una lista de prompts (array).");
-      }
-
       setLoadingPrompts(true);
-      const promptsCollectionPath = "prompts";
-
-      const validPrompts = parsed.filter((item: any) => {
-        return (
-          item &&
-          typeof item === "object" &&
-          typeof item.title === "string" &&
-          item.title.trim().length > 0 &&
-          typeof item.promptText === "string" &&
-          item.promptText.trim().length > 0
-        );
-      });
-
-      if (validPrompts.length === 0) {
-        throw new Error("No se encontraron prompts válidos en el archivo JSON (se requiere título y texto del prompt).");
-      }
-
-      await Promise.all(
-        validPrompts.map((p: any) => {
-          const docRef = doc(collection(db, promptsCollectionPath));
-          const docData = {
-            title: p.title.slice(0, 150),
-            description: typeof p.description === "string" ? p.description.slice(0, 1000) : "",
-            promptText: p.promptText.slice(0, 10000),
-            category: typeof p.category === "string" ? p.category.slice(0, 50) : "General",
-            tags: Array.isArray(p.tags) ? p.tags.slice(0, 10).map((t: any) => String(t).slice(0, 50)) : [],
-            isFavorite: Boolean(p.isFavorite),
-            isShared: Boolean(p.isShared),
-            notas: typeof p.notas === "string" ? p.notas.slice(0, 6000) : "",
-            suggestedVariables: Array.isArray(p.suggestedVariables)
-              ? p.suggestedVariables.map((v: any) => ({
-                  name: typeof v.name === "string" ? v.name.slice(0, 100) : "",
-                  description: typeof v.description === "string" ? v.description.slice(0, 500) : "",
-                  defaultValue: typeof v.defaultValue === "string" ? v.defaultValue.slice(0, 500) : ""
-                }))
-              : [],
-            userId: user.uid,
-            folderId: typeof p.folderId === "string" ? p.folderId.slice(0, 128) : null,
-            ...getAuthorIdentity(),
-            likedBy: [],
-            likesCount: 0,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          };
-
-          return setDoc(docRef, docData);
-        })
-      );
-
-      onNotification(`Se importaron ${validPrompts.length} prompts correctamente.`);
-      return { successCount: validPrompts.length };
+      const identity = getAuthorIdentity();
+      const successCount = await importPromptsFromJSON(db, user.uid, parsed, identity);
+      onNotification(`Se importaron ${successCount} prompts correctamente.`);
+      return { successCount };
     } catch (err) {
       console.error("Error importing JSON:", err);
       const msg = err instanceof Error ? err.message : "Error al procesar el archivo JSON";
