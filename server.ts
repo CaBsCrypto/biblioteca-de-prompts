@@ -17,6 +17,17 @@ const aiMaxRequests = Number(process.env.AI_RATE_LIMIT_MAX || 20);
 const aiBuckets = new Map<string, { count: number; resetAt: number }>();
 const newsCache = new Map<string, { items: NewsItemPayload[]; expiresAt: number }>();
 let certCache: { certs: Record<string, string>; expiresAt: number } | null = null;
+const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS || 30_000);
+
+function pruneExpiredBuckets() {
+  const now = Date.now();
+  for (const [key, bucket] of aiBuckets) {
+    if (bucket.resetAt <= now) aiBuckets.delete(key);
+  }
+  for (const [key, bucket] of newsBuckets) {
+    if (bucket.resetAt <= now) newsBuckets.delete(key);
+  }
+}
 
 interface AuthenticatedRequest extends express.Request {
   user?: {
@@ -233,6 +244,14 @@ function rateLimitAI(req: AuthenticatedRequest, res: express.Response, next: exp
 const newsWindowMs = Number(process.env.NEWS_RATE_LIMIT_WINDOW_MS || 60 * 1000);
 const newsMaxRequests = Number(process.env.NEWS_RATE_LIMIT_MAX || 30);
 const newsBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function requireJson(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ct = req.headers["content-type"] || "";
+  if (!ct.includes("application/json")) {
+    return res.status(415).json({ error: "El cuerpo de la solicitud debe ser JSON (Content-Type: application/json)." });
+  }
+  next();
+}
 
 function rateLimitNews(req: express.Request, res: express.Response, next: express.NextFunction) {
   const now = Date.now();
@@ -588,7 +607,7 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   });
 
   // API Route: Create a new prompt based on descriptions
-  app.use("/api/ai", requireFirebaseAuth, rateLimitAI);
+  app.use("/api/ai", requireJson, requireFirebaseAuth, rateLimitAI);
 
   app.post("/api/ai/crear", async (req: AuthenticatedRequest, res) => {
     try {
@@ -623,41 +642,49 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
         Toda la respuesta de descripción, título, y variables debe estar en español español neutro y claro.
       `;
 
-      const response = await ai.models.generateContent({
-        model: geminiModel,
-        contents: promptInstructions,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING, description: "A catchy, descriptive title for the AI prompt in Spanish." },
-              description: { type: Type.STRING, description: "A brief, clear summary of what the prompt accomplishes in Spanish." },
-              promptText: { type: Type.STRING, description: "The full, high-quality markdown prompt text with placeholder variables enclosed in double curly brackets like {{variable_name}}." },
-              category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
-              tags: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "A list of 3-5 tags relevant to the prompt, e.g., ['video', 'seo', 'creative']."
-              },
-              suggestedVariables: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING, description: "Name of the variable as declared inside double curly brackets in promptText, e.g., 'tema' (no spaces, all lowercase)." },
-                    description: { type: Type.STRING, description: "Explanation in Spanish of what values should be placed here." },
-                    defaultValue: { type: Type.STRING, description: "A smart or typical default fallback value in Spanish." }
-                  },
-                  required: ["name", "description"]
+      const abortCrear = new AbortController();
+      const timeoutCrear = setTimeout(() => abortCrear.abort(), geminiTimeoutMs);
+      let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+      try {
+        response = await ai.models.generateContent({
+          model: geminiModel,
+          contents: promptInstructions,
+          config: {
+            abortSignal: abortCrear.signal,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: "A catchy, descriptive title for the AI prompt in Spanish." },
+                description: { type: Type.STRING, description: "A brief, clear summary of what the prompt accomplishes in Spanish." },
+                promptText: { type: Type.STRING, description: "The full, high-quality markdown prompt text with placeholder variables enclosed in double curly brackets like {{variable_name}}." },
+                category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
+                tags: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "A list of 3-5 tags relevant to the prompt, e.g., ['video', 'seo', 'creative']."
                 },
-                description: "List of variables defined in promptText using double curly brackets {{variable_name}}."
-              }
-            },
-            required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
+                suggestedVariables: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING, description: "Name of the variable as declared inside double curly brackets in promptText, e.g., 'tema' (no spaces, all lowercase)." },
+                      description: { type: Type.STRING, description: "Explanation in Spanish of what values should be placed here." },
+                      defaultValue: { type: Type.STRING, description: "A smart or typical default fallback value in Spanish." }
+                    },
+                    required: ["name", "description"]
+                  },
+                  description: "List of variables defined in promptText using double curly brackets {{variable_name}}."
+                }
+              },
+              required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
+            }
           }
-        }
-      });
+        });
+      } finally {
+        clearTimeout(timeoutCrear);
+      }
 
       const responseText = response.text;
       if (!responseText) {
@@ -668,7 +695,10 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
     } catch (error) {
       console.error("Error creating prompt:", error);
       const message = error instanceof Error ? error.message : String(error);
-      res.status(message.includes("requerido") || message.includes("largo permitido") ? 400 : 500).json({ error: message });
+      const isValidationError = message.includes("requerido") || message.includes("largo permitido");
+      res.status(isValidationError ? 400 : 500).json({
+        error: isValidationError ? message : "Ocurrió un error inesperado en el asistente de IA. Por favor, inténtalo de nuevo más tarde."
+      });
     }
   });
 
@@ -706,41 +736,49 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
         Toda la respuesta de descripción, título, y variables debe estar en español español neutro y claro.
       `;
 
-      const response = await ai.models.generateContent({
-        model: geminiModel,
-        contents: promptInstructions,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING, description: "An updated catchy title for this optimized prompt in Spanish." },
-              description: { type: Type.STRING, description: "A brief description of what this optimized prompt does." },
-              promptText: { type: Type.STRING, description: "The complete optimized markdown prompt, including double curly braced placeholders {{placeholder}}." },
-              category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
-              tags: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "A list of 3-5 tags relevant to the prompt."
-              },
-              suggestedVariables: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING, description: "Name of the variable as found in double curly brackets in promptText, e.g., 'tema'." },
-                    description: { type: Type.STRING, description: "Explanation in Spanish of what values should represent." },
-                    defaultValue: { type: Type.STRING, description: "A realistic default starting value for the variable." }
-                  },
-                  required: ["name", "description"]
+      const abortOptimizar = new AbortController();
+      const timeoutOptimizar = setTimeout(() => abortOptimizar.abort(), geminiTimeoutMs);
+      let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+      try {
+        response = await ai.models.generateContent({
+          model: geminiModel,
+          contents: promptInstructions,
+          config: {
+            abortSignal: abortOptimizar.signal,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: "An updated catchy title for this optimized prompt in Spanish." },
+                description: { type: Type.STRING, description: "A brief description of what this optimized prompt does." },
+                promptText: { type: Type.STRING, description: "The complete optimized markdown prompt, including double curly braced placeholders {{placeholder}}." },
+                category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
+                tags: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "A list of 3-5 tags relevant to the prompt."
                 },
-                description: "Variables found inside the newly optimized prompt text."
-              }
-            },
-            required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
+                suggestedVariables: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING, description: "Name of the variable as found in double curly brackets in promptText, e.g., 'tema'." },
+                      description: { type: Type.STRING, description: "Explanation in Spanish of what values should represent." },
+                      defaultValue: { type: Type.STRING, description: "A realistic default starting value for the variable." }
+                    },
+                    required: ["name", "description"]
+                  },
+                  description: "Variables found inside the newly optimized prompt text."
+                }
+              },
+              required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
+            }
           }
-        }
-      });
+        });
+      } finally {
+        clearTimeout(timeoutOptimizar);
+      }
 
       const responseText = response.text;
       if (!responseText) {
@@ -751,7 +789,10 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
     } catch (error) {
       console.error("Error optimizing prompt:", error);
       const message = error instanceof Error ? error.message : String(error);
-      res.status(message.includes("requerido") || message.includes("largo permitido") ? 400 : 500).json({ error: message });
+      const isValidationError = message.includes("requerido") || message.includes("largo permitido");
+      res.status(isValidationError ? 400 : 500).json({
+        error: isValidationError ? message : "Ocurrió un error inesperado en el asistente de IA. Por favor, inténtalo de nuevo más tarde."
+      });
     }
   });
 
@@ -802,61 +843,69 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
         - Responde en espanol neutro.
       `;
 
-      const response = await ai.models.generateContent({
-        model: geminiModel,
-        contents: promptInstructions,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              recommendations: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id: { type: Type.STRING, description: "ID exacto de un candidato recibido." },
-                    reason: { type: Type.STRING, description: "Razon breve y accionable en espanol." },
-                    confidence: { type: Type.NUMBER, description: "Confianza de 0 a 100." }
-                  },
-                  required: ["id", "reason", "confidence"]
-                }
-              },
-              gapAnalysis: {
-                type: Type.STRING,
-                description: "Resumen del hueco principal de la biblioteca para este objetivo."
-              },
-              suggestedNewPrompt: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  promptText: { type: Type.STRING },
-                  category: { type: Type.STRING, description: `Una categoria de: ${categoryOptions}.` },
-                  tags: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                  },
-                  suggestedVariables: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        defaultValue: { type: Type.STRING }
-                      },
-                      required: ["name", "description"]
-                    }
+      const abortRecomendar = new AbortController();
+      const timeoutRecomendar = setTimeout(() => abortRecomendar.abort(), geminiTimeoutMs);
+      let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+      try {
+        response = await ai.models.generateContent({
+          model: geminiModel,
+          contents: promptInstructions,
+          config: {
+            abortSignal: abortRecomendar.signal,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                recommendations: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING, description: "ID exacto de un candidato recibido." },
+                      reason: { type: Type.STRING, description: "Razon breve y accionable en espanol." },
+                      confidence: { type: Type.NUMBER, description: "Confianza de 0 a 100." }
+                    },
+                    required: ["id", "reason", "confidence"]
                   }
                 },
-                required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
-              }
-            },
-            required: ["recommendations", "gapAnalysis"]
+                gapAnalysis: {
+                  type: Type.STRING,
+                  description: "Resumen del hueco principal de la biblioteca para este objetivo."
+                },
+                suggestedNewPrompt: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    promptText: { type: Type.STRING },
+                    category: { type: Type.STRING, description: `Una categoria de: ${categoryOptions}.` },
+                    tags: {
+                      type: Type.ARRAY,
+                      items: { type: Type.STRING }
+                    },
+                    suggestedVariables: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          name: { type: Type.STRING },
+                          description: { type: Type.STRING },
+                          defaultValue: { type: Type.STRING }
+                        },
+                        required: ["name", "description"]
+                      }
+                    }
+                  },
+                  required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
+                }
+              },
+              required: ["recommendations", "gapAnalysis"]
+            }
           }
-        }
-      });
+        });
+      } finally {
+        clearTimeout(timeoutRecomendar);
+      }
 
       const responseText = response.text;
       if (!responseText) {
@@ -867,7 +916,10 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
     } catch (error) {
       console.error("Error recommending prompts:", error);
       const message = error instanceof Error ? error.message : String(error);
-      res.status(message.includes("requiere") || message.includes("requerido") || message.includes("largo permitido") ? 400 : 500).json({ error: message });
+      const isValidationError = message.includes("requiere") || message.includes("requerido") || message.includes("largo permitido");
+      res.status(isValidationError ? 400 : 500).json({
+        error: isValidationError ? message : "Ocurrió un error inesperado en el asistente de IA. Por favor, inténtalo de nuevo más tarde."
+      });
     }
   });
 
@@ -893,6 +945,9 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
 
 async function startServer() {
   const app = await createApp();
+
+  // Periodically prune expired rate-limit entries to prevent memory leaks
+  setInterval(pruneExpiredBuckets, 15 * 60 * 1000).unref();
 
   app.listen(port, "0.0.0.0", () => {
     console.log(`[Server] Full-stack application running on http://localhost:${port}`);

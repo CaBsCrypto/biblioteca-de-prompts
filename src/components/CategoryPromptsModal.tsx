@@ -1,5 +1,23 @@
 import React, { useState } from "react";
-import { X, Copy, Play, Search, Shield, Wrench, CheckCircle2, Youtube, Target, Pencil, Cpu, Image, Film, User as UserIcon, HelpCircle, FileText } from "lucide-react";
+import {
+  X,
+  Copy,
+  Play,
+  Search,
+  Shield,
+  Wrench,
+  CheckCircle2,
+  Youtube,
+  Target,
+  Cpu,
+  HelpCircle,
+  Bot,
+  Wand2,
+  FileText,
+  ChevronRight,
+  Lightbulb,
+  BookOpen,
+} from "lucide-react";
 import type { Prompt } from "../types";
 import type { User } from "firebase/auth";
 
@@ -13,6 +31,168 @@ interface CategoryPromptsModalProps {
   user: User | null;
 }
 
+type CategoryMeta = {
+  icon: React.ReactNode;
+  accentColor: string;
+  bgGlow: string;
+  borderColor: string;
+  gradientHeader: string;
+  description: string;
+  tips: string[];
+  isPrimary?: boolean;
+};
+
+const getCategoryMeta = (cat: string): CategoryMeta => {
+  switch (cat) {
+    case "Refactorización":
+      return {
+        icon: <Wrench size={20} />,
+        accentColor: "#a5b4fc",
+        bgGlow: "rgba(99,102,241,0.15)",
+        borderColor: "rgba(99,102,241,0.4)",
+        gradientHeader:
+          "linear-gradient(135deg, #312e81 0%, #1e1b4b 50%, #080d18 100%)",
+        description:
+          "Optimización continua del código para mejorar la legibilidad, mantenibilidad y rendimiento sin alterar el comportamiento externo del software.",
+        tips: [
+          "Ejecuta auditorías semanales de complejidad en controladores y middlewares.",
+          "Reduce la complejidad ciclomática segmentando funciones largas en helpers puros.",
+          "Re-arquitectura código legacy a estándares modernos con prompts especializados.",
+        ],
+        isPrimary: true,
+      };
+    case "Seguridad":
+      return {
+        icon: <Shield size={20} />,
+        accentColor: "#fda4af",
+        bgGlow: "rgba(244,63,94,0.15)",
+        borderColor: "rgba(244,63,94,0.4)",
+        gradientHeader:
+          "linear-gradient(135deg, #4c0519 0%, #881337 50%, #080d18 100%)",
+        description:
+          "Auditorías de código estricto y escaneo de vulnerabilidades para proteger tus desarrollos contra ataques y fugas de información.",
+        tips: [
+          "Verifica que todos los inputs estén sanitizados para evitar inyecciones SQL/NoSQL/OS.",
+          "Escanea archivos de configuración buscando API keys y credenciales hardcodeadas.",
+          "Valida el control de acceso (IDOR) y las cabeceras HTTP mediante middlewares como Helmet.",
+        ],
+        isPrimary: true,
+      };
+    case "Buenas Prácticas":
+      return {
+        icon: <CheckCircle2 size={20} />,
+        accentColor: "#6ee7b7",
+        bgGlow: "rgba(16,185,129,0.15)",
+        borderColor: "rgba(16,185,129,0.4)",
+        gradientHeader:
+          "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #080d18 100%)",
+        description:
+          "Principios de diseño limpio, arquitectura acoplada flexible y estándares recomendados por la industria (Clean Code, SOLID, DRY, KISS).",
+        tips: [
+          "Mantén tus métodos apegados a los principios SOLID y DRY (Don't Repeat Yourself).",
+          "Aplica KISS para evitar la sobreingeniería en lógicas de negocio cotidianas.",
+          "Enriquece tu codebase con auto-documentación nativa (JSDoc o Docstrings).",
+        ],
+        isPrimary: true,
+      };
+    case "YouTube":
+      return {
+        icon: <Youtube size={20} />,
+        accentColor: "#f87171",
+        bgGlow: "rgba(248,113,113,0.12)",
+        borderColor: "rgba(248,113,113,0.3)",
+        gradientHeader:
+          "linear-gradient(135deg, #450a0a 0%, #991b1b 50%, #080d18 100%)",
+        description:
+          "Estrategias de guionización, títulos de alto gancho, descripciones SEO y llamadas a la acción para creadores de contenido de tecnología e IA.",
+        tips: [
+          "Usa ganchos emocionales en los primeros 15 segundos de tus guiones.",
+          "Genera múltiples variantes de títulos para pruebas A/B de CTR.",
+          "Adapta el tono al arquetipo de tu audiencia meta en YouTube.",
+        ],
+      };
+    case "Marketing":
+      return {
+        icon: <Target size={20} />,
+        accentColor: "#fbbf24",
+        bgGlow: "rgba(251,191,36,0.12)",
+        borderColor: "rgba(251,191,36,0.3)",
+        gradientHeader:
+          "linear-gradient(135deg, #451a03 0%, #92400e 50%, #080d18 100%)",
+        description:
+          "Copys publicitarios persuasivos, embudos de conversión, estrategias de crecimiento y optimización de campañas.",
+        tips: [
+          "Aplica la fórmula AIDA (Atención, Interés, Deseo, Acción) en tus copys.",
+          "Segmenta el copy según el nivel de conciencia del cliente potencial.",
+          "Valida que la propuesta de valor sea clara y libre de tecnicismos.",
+        ],
+      };
+    case "Programación":
+      return {
+        icon: <Cpu size={20} />,
+        accentColor: "#60a5fa",
+        bgGlow: "rgba(96,165,250,0.12)",
+        borderColor: "rgba(96,165,250,0.3)",
+        gradientHeader:
+          "linear-gradient(135deg, #172554 0%, #1e3a8a 50%, #080d18 100%)",
+        description:
+          "Generación de código estructurado, scripting ágil, resolución de algoritmos complejos y configuración de entornos.",
+        tips: [
+          "Define claramente las tecnologías y versiones antes de generar código.",
+          "Solicita pruebas unitarias para garantizar la cobertura del código generado.",
+          "Divide tareas complejas en pasos lógicos guiados por el prompt.",
+        ],
+      };
+    case "IA Agentes":
+      return {
+        icon: <Bot size={20} />,
+        accentColor: "#c084fc",
+        bgGlow: "rgba(192,132,252,0.12)",
+        borderColor: "rgba(192,132,252,0.3)",
+        gradientHeader:
+          "linear-gradient(135deg, #2e1065 0%, #4c1d95 50%, #080d18 100%)",
+        description:
+          "Definición de prompts sistémicos, flujos multi-agente y sistemas autónomos para automatización inteligente.",
+        tips: [
+          "Define claramente el rol y las restricciones de cada agente en el sistema.",
+          "Usa prompts de orquestación para coordinar flujos entre agentes.",
+          "Valida los outputs intermedios entre cada paso del flujo agéntico.",
+        ],
+      };
+    case "Asistente de Prompts":
+      return {
+        icon: <Wand2 size={20} />,
+        accentColor: "#2dd4bf",
+        bgGlow: "rgba(45,212,191,0.12)",
+        borderColor: "rgba(45,212,191,0.3)",
+        gradientHeader:
+          "linear-gradient(135deg, #042f2e 0%, #0f766e 50%, #080d18 100%)",
+        description:
+          "Estructuración de instrucciones semánticas efectivas para maximizar la calidad de las respuestas del modelo.",
+        tips: [
+          "Especifica siempre el formato de salida esperado (JSON, Markdown, lista, etc.).",
+          "Incluye ejemplos (few-shot) para guiar el comportamiento del modelo.",
+          "Itera y refina el prompt hasta lograr el output ideal.",
+        ],
+      };
+    default:
+      return {
+        icon: <HelpCircle size={20} />,
+        accentColor: "#94a3b8",
+        bgGlow: "rgba(148,163,184,0.1)",
+        borderColor: "rgba(148,163,184,0.25)",
+        gradientHeader:
+          "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #080d18 100%)",
+        description:
+          "Prompts generales y herramientas auxiliares multipropósito para tu flujo de trabajo diario.",
+        tips: [
+          "Filtra por etiquetas (tags) para refinar tu búsqueda dentro de esta categoría.",
+          "Crea remixes privados de tus prompts favoritos para adaptarlos a tu negocio.",
+        ],
+      };
+  }
+};
+
 export default function CategoryPromptsModal({
   isOpen,
   onClose,
@@ -20,11 +200,14 @@ export default function CategoryPromptsModal({
   prompts,
   onCopyFilledPrompt,
   onUsePrompt,
-  user
+  user,
 }: CategoryPromptsModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const meta = getCategoryMeta(category);
 
   const categoryPrompts = prompts.filter(
     (p) => p.category.toLowerCase() === category.toLowerCase()
@@ -36,234 +219,322 @@ export default function CategoryPromptsModal({
       p.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Custom metadata and styling for each category
-  const getCategoryMeta = (cat: string) => {
-    switch (cat) {
-      case "Refactorización":
-        return {
-          icon: <Wrench className="text-indigo-400" size={24} />,
-          gradient: "from-indigo-600 to-indigo-900",
-          textColor: "text-indigo-400",
-          description: "Optimización continua del código para mejorar la legibilidad, mantenibilidad y rendimiento sin alterar el comportamiento externo del software.",
-          tips: [
-            "Ejecuta auditorías semanales de complejidad en controladores y middlewares.",
-            "Reduce la complejidad ciclomática segmentando funciones largas en helpers puros.",
-            "Utiliza los prompts de refactorización para re-arquitecturar código legacy a estándares modernos."
-          ]
-        };
-      case "Seguridad":
-        return {
-          icon: <Shield className="text-rose-400" size={24} />,
-          gradient: "from-rose-600 to-rose-900",
-          textColor: "text-rose-400",
-          description: "Auditorías de código estricto y escaneo de vulnerabilidades para proteger tus desarrollos contra ataques y fugas de información.",
-          tips: [
-            "Verifica que los inputs de tus endpoints estén sanitizados para evitar inyecciones SQL/NoSQL/OS.",
-            "Escanea archivos de configuración buscando API keys y credenciales hardcodeadas.",
-            "Valida la robustez del control de acceso (IDOR) y las cabeceras HTTP de red mediante middlewares como Helmet."
-          ]
-        };
-      case "Buenas Prácticas":
-        return {
-          icon: <CheckCircle2 className="text-emerald-400" size={24} />,
-          gradient: "from-emerald-600 to-emerald-900",
-          textColor: "text-emerald-400",
-          description: "Principios de diseño limpio, arquitectura acoplada flexible y estándares recomendados por la industria (Clean Code).",
-          tips: [
-            "Mantén tus métodos y clases apegados a los principios SOLID y DRY (Don't Repeat Yourself).",
-            "Aplica el principio KISS para evitar la sobreingeniería en lógicas de negocio cotidianas.",
-            "Enriquece tu codebase con auto-documentación nativa (JSDoc o Docstrings) para asistir a tu equipo en el IDE."
-          ]
-        };
-      case "YouTube":
-        return {
-          icon: <Youtube className="text-red-400" size={24} />,
-          gradient: "from-red-650 to-red-900",
-          textColor: "text-red-400",
-          description: "Estrategias de guionización, títulos de alto gancho, descripciones SEO y llamadas a la acción para creadores de contenido de tecnología e IA.",
-          tips: [
-            "Usa ganchos (hooks) emocionales en los primeros 15 segundos de tus guiones.",
-            "Genera múltiples variantes de títulos para realizar pruebas A/B de CTR.",
-            "Adapta el tono al arquetipo de tu audiencia meta en YouTube."
-          ]
-        };
-      case "Marketing":
-        return {
-          icon: <Target className="text-amber-400" size={24} />,
-          gradient: "from-amber-600 to-amber-900",
-          textColor: "text-amber-450",
-          description: "Copys publicitarios persuasivos, embudos de conversión, estrategias de crecimiento y optimización de campañas.",
-          tips: [
-            "Aplica fórmulas clásicas de copywriting como AIDA (Atención, Interés, Deseo, Acción).",
-            "Segmenta el copy según el nivel de conciencia del cliente potencial.",
-            "Valida que la propuesta de valor de tu producto sea clara y libre de tecnicismos."
-          ]
-        };
-      case "Programación":
-        return {
-          icon: <Cpu className="text-blue-400" size={24} />,
-          gradient: "from-blue-600 to-blue-900",
-          textColor: "text-blue-400",
-          description: "Generación de código estructurado, scripting ágil, resolución de algoritmos complejos y configuración de entornos.",
-          tips: [
-            "Define claramente las tecnologías y versiones que deseas utilizar antes de generar código.",
-            "Solicita pruebas unitarias complementarias para garantizar la cobertura del código generado.",
-            "Divide tareas complejas en pasos lógicos guiados por el prompt de programación."
-          ]
-        };
-      default:
-        return {
-          icon: <HelpCircle className="text-slate-400" size={24} />,
-          gradient: "from-slate-600 to-slate-900",
-          textColor: "text-slate-300",
-          description: "Prompts generales y herramientas auxiliares multipropósito para tu flujo de trabajo diario.",
-          tips: [
-            "Filtra por etiquetas (tags) para refinar tu búsqueda dentro de esta categoría.",
-            "Crea remixes privados de tus prompts favoritos para adaptarlos a tu negocio."
-          ]
-        };
-    }
-  };
-
-  const meta = getCategoryMeta(category);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in font-sans">
-      <div className="relative w-full max-w-4xl max-h-[85vh] bg-[#0f172a] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col">
-        
-        {/* Banner de Categoría */}
-        <div className={`p-6 bg-gradient-to-r ${meta.gradient} text-white flex items-start justify-between relative`}>
-          <div className="space-y-2 z-10 max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/35 border border-white/10 text-xs font-bold uppercase tracking-wider">
-              {meta.icon}
-              <span>{category}</span>
-            </span>
-            <h3 className="text-xl md:text-2xl font-black">{category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas" ? `Suite de ${category}` : `Categoría: ${category}`}</h3>
-            <p className="text-xs text-white/80 leading-relaxed font-normal">{meta.description}</p>
-          </div>
-          
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-xl bg-black/25 hover:bg-black/45 text-white/80 hover:text-white transition-all cursor-pointer border border-white/5 active:scale-95"
-            aria-label="Cerrar modal"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6"
+      style={{ background: "rgba(2,6,15,0.88)", backdropFilter: "blur(12px)" }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="relative flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border shadow-2xl"
+        style={{
+          background: "#0a0f1e",
+          borderColor: meta.borderColor,
+          maxHeight: "90vh",
+          boxShadow: `0 0 80px ${meta.bgGlow}`,
+        }}
+      >
+        {/* ── Header ── */}
+        <div
+          className="relative flex-shrink-0 overflow-hidden px-6 py-6"
+          style={{ background: meta.gradientHeader }}
+        >
+          {/* Decorative glow */}
+          <div
+            className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full blur-3xl opacity-30"
+            style={{ background: meta.accentColor }}
+          />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 flex-1 overflow-hidden">
-          
-          {/* Panel Lateral de Recomendaciones e Info */}
-          <div className="p-6 bg-[#182235]/65 border-r border-slate-800/80 overflow-y-auto space-y-5 hidden md:block">
-            <div>
-              <h4 className="text-[11px] font-black uppercase text-slate-450 tracking-wider">Pautas de Validación</h4>
-              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                Utiliza estas recomendaciones al ejecutar las plantillas en tus proyectos:
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              {/* Icon + category pill */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border"
+                  style={{
+                    background: "rgba(0,0,0,0.35)",
+                    borderColor: "rgba(255,255,255,0.12)",
+                    color: meta.accentColor,
+                  }}
+                >
+                  {meta.icon}
+                </div>
+                <span
+                  className="rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest"
+                  style={{
+                    background: "rgba(0,0,0,0.35)",
+                    borderColor: "rgba(255,255,255,0.12)",
+                    color: meta.accentColor,
+                  }}
+                >
+                  {meta.isPrimary ? `Suite · ${category}` : category}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-xl font-black text-white md:text-2xl">
+                {category === "Refactorización" && "Suite de Refactorización"}
+                {category === "Seguridad" && "Suite de Seguridad"}
+                {category === "Buenas Prácticas" && "Clean Code & Patrones"}
+                {!["Refactorización", "Seguridad", "Buenas Prácticas"].includes(
+                  category
+                ) && `Categoría: ${category}`}
+              </h2>
+
+              {/* Description */}
+              <p className="max-w-xl text-xs leading-relaxed text-white/65">
+                {meta.description}
               </p>
             </div>
-            
-            <ul className="space-y-3.5">
-              {meta.tips.map((tip, idx) => (
-                <li key={idx} className="flex gap-2 text-xs leading-relaxed text-slate-300">
-                  <span className="text-indigo-400 font-extrabold select-none">•</span>
-                  <span>{tip}</span>
-                </li>
-              ))}
-            </ul>
 
-            <div className="pt-4 border-t border-slate-800/60 text-[10px] text-slate-500 font-medium">
-              💡 <span className="font-bold">Remix de un click:</span> Puedes copiar las plantillas directamente o hacer clic en "Usar" para cargar el rellenador de variables interactivo en vivo.
-            </div>
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 cursor-pointer rounded-xl border p-2 text-white/60 transition-all hover:text-white active:scale-95"
+              style={{
+                background: "rgba(0,0,0,0.3)",
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
+              aria-label="Cerrar"
+            >
+              <X size={17} />
+            </button>
           </div>
+        </div>
 
-          {/* Listado de Prompts */}
-          <div className="col-span-2 p-6 overflow-hidden flex flex-col gap-4">
-            
-            {/* Buscador interno */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400">
-                <Search size={14} />
+        {/* ── Body ── */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar (pautas) — hidden on mobile */}
+          <aside
+            className="hidden w-64 flex-shrink-0 flex-col gap-5 overflow-y-auto border-r p-5 md:flex"
+            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Lightbulb size={12} style={{ color: meta.accentColor }} />
+                <p
+                  className="text-[10px] font-black uppercase tracking-widest"
+                  style={{ color: meta.accentColor }}
+                >
+                  Pautas de Uso
+                </p>
               </div>
+              <ul className="space-y-3">
+                {meta.tips.map((tip, i) => (
+                  <li key={i} className="flex gap-2">
+                    <ChevronRight
+                      size={12}
+                      className="mt-0.5 flex-shrink-0"
+                      style={{ color: meta.accentColor }}
+                    />
+                    <span className="text-[11px] leading-relaxed text-slate-400">
+                      {tip}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div
+              className="rounded-2xl border p-4 text-[10px] leading-relaxed text-slate-500"
+              style={{
+                background: meta.bgGlow,
+                borderColor: meta.borderColor,
+              }}
+            >
+              <BookOpen
+                size={14}
+                className="mb-2"
+                style={{ color: meta.accentColor }}
+              />
+              <span className="font-bold text-slate-300">Tip:</span> Haz clic en{" "}
+              <strong className="text-white">Usar</strong> para cargar el
+              rellenador de variables interactivo con este prompt.
+            </div>
+          </aside>
+
+          {/* Prompt list */}
+          <div className="flex flex-1 flex-col overflow-hidden p-5">
+            {/* Search */}
+            <div className="relative mb-4 flex-shrink-0">
+              <Search
+                size={13}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
+              />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={`Buscar dentro de ${category}...`}
-                className="w-full text-xs rounded-xl border border-slate-700 bg-slate-900/60 pl-9 pr-4 py-2.5 focus:outline-none focus:border-indigo-455 transition-all text-white placeholder-slate-500 font-sans"
+                placeholder={`Buscar en ${category}...`}
+                className="w-full rounded-xl border py-2.5 pl-9 pr-4 text-xs text-white placeholder-slate-500 outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  borderColor: "rgba(255,255,255,0.08)",
+                }}
+                onFocus={(e) =>
+                  (e.currentTarget.style.borderColor = meta.borderColor)
+                }
+                onBlur={(e) =>
+                  (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")
+                }
               />
             </div>
 
-            {/* Listado scrollable */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 scroll-smooth custom-scrollbar">
-              {filteredPrompts.length === 0 ? (
-                <div className="py-12 text-center text-slate-500 space-y-2">
-                  <FileText className="mx-auto text-slate-600" size={32} />
-                  <p className="text-xs font-bold">No se encontraron prompts en esta sección.</p>
-                </div>
-              ) : (
-                filteredPrompts.map((prompt) => (
-                  <div 
-                    key={prompt.id}
-                    className="p-4 rounded-2xl border border-slate-800 bg-[#1e293b]/25 hover:bg-[#1e293b]/45 transition-all flex flex-col gap-3 group relative hover:border-slate-700/80"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h5 className="text-sm font-extrabold text-white group-hover:text-indigo-400 transition-colors leading-tight">
-                          {prompt.title}
-                        </h5>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                          {prompt.description}
-                        </p>
-                      </div>
-                      
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-1 items-center shrink-0">
-                        {prompt.tags.slice(0, 2).map(tag => (
-                          <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60 font-medium">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-800/85 flex items-center justify-between gap-3">
-                      <span className="text-[10px] text-slate-500">
-                        Por {prompt.authorName || "Biblioteca"}
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onCopyFilledPrompt(prompt)}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer active:scale-95"
-                          title="Copiar prompt al portapapeles"
-                        >
-                          <Copy size={12} />
-                          <span>Copiar</span>
-                        </button>
-                        
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onClose();
-                            onUsePrompt(prompt, "category_hub");
-                          }}
-                          className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-555 text-white text-xs font-extrabold rounded-lg flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-md shadow-indigo-650/15"
-                        >
-                          <Play size={10} fill="currentColor" />
-                          <span>Usar</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+            {/* Count badge */}
+            <div className="mb-3 flex-shrink-0">
+              <span
+                className="rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                style={{
+                  background: meta.bgGlow,
+                  borderColor: meta.borderColor,
+                  color: meta.accentColor,
+                }}
+              >
+                {filteredPrompts.length}{" "}
+                {filteredPrompts.length === 1 ? "prompt" : "prompts"}
+              </span>
             </div>
 
+            {/* Scrollable list */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {filteredPrompts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+                  <FileText size={32} className="text-slate-700" />
+                  <p className="text-xs font-bold text-slate-500">
+                    No hay prompts que coincidan con tu búsqueda.
+                  </p>
+                </div>
+              ) : (
+                filteredPrompts.map((prompt) => {
+                  const isExpanded = expandedId === prompt.id;
+                  return (
+                    <div
+                      key={prompt.id}
+                      className="group rounded-2xl border transition-all duration-200"
+                      style={{
+                        background: isExpanded
+                          ? meta.bgGlow
+                          : "rgba(255,255,255,0.02)",
+                        borderColor: isExpanded
+                          ? meta.borderColor
+                          : "rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      {/* Header row */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : prompt.id)
+                        }
+                        className="flex w-full cursor-pointer items-start justify-between gap-3 p-4 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h4
+                            className="truncate text-sm font-extrabold text-white leading-tight transition-colors"
+                            style={
+                              isExpanded ? { color: meta.accentColor } : {}
+                            }
+                          >
+                            {prompt.title}
+                          </h4>
+                          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-400">
+                            {prompt.description}
+                          </p>
+                        </div>
+                        <ChevronRight
+                          size={14}
+                          className={`flex-shrink-0 mt-0.5 text-slate-500 transition-transform duration-200 ${
+                            isExpanded ? "rotate-90" : ""
+                          }`}
+                          style={isExpanded ? { color: meta.accentColor } : {}}
+                        />
+                      </button>
+
+                      {/* Expanded view */}
+                      {isExpanded && (
+                        <div
+                          className="border-t px-4 pb-4 pt-3 space-y-3"
+                          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                        >
+                          {/* Tags */}
+                          {prompt.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {prompt.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="rounded-full border px-2 py-0.5 text-[9px] font-bold text-slate-400"
+                                  style={{
+                                    background: "rgba(255,255,255,0.04)",
+                                    borderColor: "rgba(255,255,255,0.1)",
+                                  }}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Preview del prompt text */}
+                          {prompt.promptText && (
+                            <div
+                              className="rounded-xl border p-3"
+                              style={{
+                                background: "rgba(0,0,0,0.35)",
+                                borderColor: "rgba(255,255,255,0.06)",
+                              }}
+                            >
+                              <p className="line-clamp-4 text-[11px] leading-relaxed text-slate-400 font-mono">
+                                {prompt.promptText.substring(0, 300)}
+                                {prompt.promptText.length > 300 ? "…" : ""}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => onCopyFilledPrompt(prompt)}
+                              className="flex cursor-pointer items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold text-slate-300 transition-all hover:text-white active:scale-95"
+                              style={{
+                                background: "rgba(255,255,255,0.04)",
+                                borderColor: "rgba(255,255,255,0.1)",
+                              }}
+                            >
+                              <Copy size={12} />
+                              Copiar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                onUsePrompt(prompt, "category_hub");
+                              }}
+                              className="flex cursor-pointer items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition-all hover:opacity-90 active:scale-95"
+                              style={{
+                                background: `linear-gradient(135deg, ${meta.accentColor}33, ${meta.accentColor}15)`,
+                                border: `1px solid ${meta.borderColor}`,
+                                color: meta.accentColor,
+                              }}
+                            >
+                              <Play size={10} fill="currentColor" />
+                              Usar prompt
+                            </button>
+                            <span className="ml-auto text-[10px] text-slate-600">
+                              {prompt.authorName || "Biblioteca"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-
         </div>
-
       </div>
     </div>
   );
