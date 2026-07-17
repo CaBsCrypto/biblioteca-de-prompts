@@ -2418,6 +2418,7 @@ export default function App() {
                   setSelectedPublicPrompt={setSelectedPublicPrompt}
                   resolvePublicSavePrompt={resolvePublicSavePrompt}
                   trackUserEvent={trackUserEvent}
+                  userEvents={userEvents}
                   triggerNotification={triggerNotification}
                   handleExportJSON={handleExportJSON}
                   handleImportJSON={handleImportJSON}

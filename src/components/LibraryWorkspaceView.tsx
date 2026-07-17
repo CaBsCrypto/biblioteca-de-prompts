@@ -29,7 +29,10 @@ import {
   Download,
   Upload,
   Zap,
+  Clock,
+  History,
 } from "lucide-react";
+
 import { motion, AnimatePresence } from "motion/react";
 import type { User } from "firebase/auth";
 import type { Prompt, Folder, CategoryFilter } from "../types";
@@ -62,6 +65,8 @@ interface LibraryWorkspaceViewProps {
   socialFavoritePromptIds: Set<string>;
   knownRemixCountsByPromptId: Map<string, number>;
   visibleCommunityCatalogPrompts: Prompt[];
+  userEvents?: any[];
+
 
   // Filter States
   selectedCategory: CategoryFilter;
@@ -278,6 +283,7 @@ export function LibraryWorkspaceView({
   setSelectedPublicPrompt,
   resolvePublicSavePrompt,
   trackUserEvent,
+  userEvents,
   triggerNotification,
   handleExportJSON,
   handleImportJSON,
@@ -291,6 +297,28 @@ export function LibraryWorkspaceView({
   showcasePostsCount,
 }: LibraryWorkspaceViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Calcular prompts recientemente usados a partir del historial de eventos
+  const recentPrompts = React.useMemo(() => {
+    if (!userEvents || userEvents.length === 0 || prompts.length === 0) return [];
+    
+    // Obtener eventos de uso y ordenarlos por tiempo desc
+    const actionEvents = [...userEvents]
+      .filter((e) => e.promptId && ["use", "copy", "recommendation_copy"].includes(e.type))
+      .sort((a, b) => {
+        const ta = a.createdAt?.toDate?.()?.getTime() ?? a.createdAt ?? 0;
+        const tb = b.createdAt?.toDate?.()?.getTime() ?? b.createdAt ?? 0;
+        return tb - ta;
+      });
+
+    const uniqueIds = Array.from(new Set(actionEvents.map((e) => e.promptId)));
+
+    return uniqueIds
+      .map((id) => prompts.find((p) => p.id === id))
+      .filter((p): p is Prompt => !!p)
+      .slice(0, 5);
+  }, [userEvents, prompts]);
+
   const [selectedCategoryPopup, setSelectedCategoryPopup] = useState<
     string | null
   >(null);
@@ -1123,9 +1151,67 @@ export function LibraryWorkspaceView({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              <AnimatePresence mode="popLayout">
-                {filteredPrompts.map((p) => (
+            <div className="space-y-6">
+              {/* Sección de Usados Recientemente (solo en Mi Biblioteca y cuando no hay búsqueda activa) */}
+              {currentTab === "mi-biblioteca" && recentPrompts.length > 0 && !searchQuery && selectedTags.length === 0 && selectedCategory === "Todas" && !selectedFolderId && (
+                <div className="space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <History size={14} className="text-indigo-400" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Usados Recientemente</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {recentPrompts.map((p) => (
+                      <div
+                        key={`recent-${p.id}`}
+                        className="bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 p-3.5 rounded-2xl flex flex-col justify-between h-[105px] transition-all group relative overflow-hidden"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-[9px] text-slate-500 font-bold truncate uppercase tracking-wider">{p.category}</p>
+                          <p className="text-[11px] font-extrabold text-slate-200 leading-tight truncate group-hover:text-white transition-colors">{p.title}</p>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 mt-2">
+                          <span className="flex items-center gap-1 text-[8px] text-slate-500 font-medium">
+                            <Clock size={8} />
+                            <span>Reciente</span>
+                          </span>
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyFilledPrompt(p);
+                              }}
+                              className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              title="Copiar rápido"
+                            >
+                              <Share2 size={10.5} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUsePrompt(p, currentTab);
+                              }}
+                              className="p-1.5 bg-indigo-600/10 hover:bg-indigo-650 text-indigo-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                              title="Rellenar variables"
+                            >
+                              <Zap size={10.5} />
+                            </button>
+                          </div>
+                        </div>
+                        {/* Decorative background flare */}
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/5 rounded-full blur-xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Grilla principal de Prompts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <AnimatePresence mode="popLayout">
+                  {filteredPrompts.map((p) => (
+
                   <motion.div
                     key={p.id}
                     layout
@@ -1171,7 +1257,8 @@ export function LibraryWorkspaceView({
                 ))}
               </AnimatePresence>
             </div>
-          )}
+          </div>
+        )}
         </div>
       </div>
 
