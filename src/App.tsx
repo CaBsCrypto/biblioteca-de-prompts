@@ -81,6 +81,9 @@ import type { PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
+import { useLibraryModals } from "./hooks/useLibraryModals";
+import { useAIRecommendation } from "./hooks/useAIRecommendation";
+
 import { useFolders } from "./hooks/useFolders";
 import { useCommunity } from "./hooks/useCommunity";
 import { useSocialFavorites } from "./hooks/useSocialFavorites";
@@ -170,22 +173,46 @@ export default function App() {
   }, []);
 
   // Modals / Panels togglers
-  const [showFormModal, setShowFormModal] = useState(false);
+  const mod = useLibraryModals();
+
+  // Bridges for backward compatibility with external hooks that expect setters
+  const showFormModal = mod.isFormOpen;
+  const setShowFormModal = (open: boolean) => {
+    if (open) mod.openForm(editingPrompt);
+    else mod.closeAll();
+  };
+
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [usingPrompt, setUsingPrompt] = useState<Prompt | null>(null);
   const [copyingFilledPrompt, setCopyingFilledPrompt] = useState<Prompt | null>(null);
   const [selectedPublicPrompt, setSelectedPublicPrompt] = useState<Prompt | null>(null);
-  const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const showQuickSwitcher = mod.isQuickSwitcherOpen;
+  const setShowQuickSwitcher = (open: boolean) => {
+    if (open) mod.openQuickSwitcher();
+    else mod.closeAll();
+  };
   const [showAIAssistant, setShowAIAssistant] = useState(false);
-  const [showRecommendationModal, setShowRecommendationModal] = useState(false);
-  const [showSeedPackModal, setShowSeedPackModal] = useState(false);
-  const [showJoinClassModal, setShowJoinClassModal] = useState(false);
-  const [recommendationGoal, setRecommendationGoal] = useState("");
-  const [geminiRecommendation, setGeminiRecommendation] = useState<GeminiRecommendationResult | null>(null);
-  const [geminiRecommendationLoading, setGeminiRecommendationLoading] = useState(false);
-  const [geminiRecommendationError, setGeminiRecommendationError] = useState("");
+
+  // Recommendation Hook instantiation (moved down after prompts is defined, we define variables here to satisfy JSX/rest of code)
+  const showRecommendationModal = mod.isRecommendationOpen;
+  const setShowRecommendationModal = (open: boolean) => {
+    if (open) mod.openRecommendation(recommendationGoal);
+    else mod.closeAll();
+  };
+  const showSeedPackModal = mod.isSeedPackOpen;
+  const setShowSeedPackModal = (open: boolean) => {
+    if (open) mod.openSeedPack();
+    else mod.closeAll();
+  };
+  const showJoinClassModal = mod.isJoinClassOpen;
+  const setShowJoinClassModal = (open: boolean) => {
+    if (open) mod.openJoinClass();
+    else mod.closeAll();
+  };
+
   const [presetAItext, setPresetAItext] = useState("");
   const [publicShowcaseCategory, setPublicShowcaseCategory] = useState<CategoryFilter>("Todas");
+
   const [publicShowcaseSearch, setPublicShowcaseSearch] = useState("");
   const [pendingPublicSavePrompt, setPendingPublicSavePrompt] = useState<Prompt | null>(null);
   const [isResolvingPendingPublicSave, setIsResolvingPendingPublicSave] = useState(false);
@@ -321,6 +348,20 @@ export default function App() {
     getAuthorIdentity,
     onNotification: triggerNotification
   });
+
+  const rec = useAIRecommendation({
+    prompts,
+    user,
+    onNotification: triggerNotification
+  });
+
+  const recommendationGoal = rec.goal;
+  const setRecommendationGoal = rec.setGoal;
+  const geminiRecommendation = rec.result;
+  const geminiRecommendationLoading = rec.loading;
+  const geminiRecommendationError = rec.error;
+  const handleImproveRecommendationsWithGemini = () => rec.fetchRecommendation(rec.goal);
+
 
   const {
     activeClassroom,
@@ -1104,9 +1145,14 @@ export default function App() {
       // Toggle Quick Switcher modal
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
-        setShowQuickSwitcher((prev) => !prev);
+        if (mod.isQuickSwitcherOpen) {
+          mod.closeAll();
+        } else {
+          mod.openQuickSwitcher();
+        }
       }
     };
+
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -1482,72 +1528,7 @@ export default function App() {
     });
   }, [prompts, recommendationGoal, selectedCategory, selectedTags, promptEventScores]);
 
-  const handleImproveRecommendationsWithGemini = async () => {
-    if (!user || !auth.currentUser) {
-      triggerNotification("Inicia sesion para usar Gemini en el recomendador.", "info");
-      return;
-    }
 
-    if (!recommendationGoal.trim()) {
-      setGeminiRecommendationError("Escribe primero el objetivo que quieres lograr.");
-      return;
-    }
-
-    const candidates = (recommendedPrompts.length > 0 ? recommendedPrompts : prompts.slice(0, 5).map((prompt) => ({
-      prompt,
-      score: prompt.isFavorite ? 4 : 1,
-      reasons: prompt.isFavorite ? ["Favorito de tu biblioteca."] : ["Candidato general de tu biblioteca."]
-    }))).slice(0, 8);
-
-    if (candidates.length === 0) {
-      setGeminiRecommendationError("Necesitas al menos un prompt en tu biblioteca para comparar candidatos.");
-      return;
-    }
-
-    setGeminiRecommendationLoading(true);
-    setGeminiRecommendationError("");
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const response = await fetch("/api/ai/recomendar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          goal: recommendationGoal.trim(),
-          filters: {
-            category: selectedCategory,
-            tags: selectedTags
-          },
-          candidates: candidates.map(({ prompt, score, reasons }) => ({
-            id: prompt.id,
-            title: prompt.title,
-            description: prompt.description || "",
-            category: prompt.category,
-            tags: prompt.tags || [],
-            isFavorite: prompt.isFavorite,
-            likesCount: prompt.likesCount || 0,
-            score,
-            reasons
-          }))
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "No se pudo mejorar la recomendacion con Gemini.");
-      }
-
-      setGeminiRecommendation(data);
-      triggerNotification("Gemini reviso tus candidatos locales.", "success");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Gemini no respondio correctamente.";
-      setGeminiRecommendationError(message);
-    } finally {
-      setGeminiRecommendationLoading(false);
-    }
-  };
 
   const allSearchablePrompts = useMemo(() => {
     return combineSearchablePrompts(prompts, visibleCommunityCatalogPrompts);
@@ -2421,8 +2402,8 @@ export default function App() {
                   setShowSeedPackModal={setShowSeedPackModal}
                   setShowJoinClassModal={setShowJoinClassModal}
                   setShowCreateFolder={setShowCreateFolder}
-                  setGeminiRecommendation={setGeminiRecommendation}
-                  setGeminiRecommendationError={setGeminiRecommendationError}
+                  setGeminiRecommendation={rec.setResult}
+                  setGeminiRecommendationError={rec.setError}
                   handleOpenAdd={handleOpenAdd}
                   handleOpenEdit={handleOpenEdit}
                   handleDeletePrompt={handleDeletePrompt}

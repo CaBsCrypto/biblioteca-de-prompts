@@ -122,8 +122,10 @@ export function useAIRecommendation({
     goal,
     setGoal,
     result,
+    setResult,
     loading,
     error,
+    setError,
     open,
     close,
     fetchRecommendation
