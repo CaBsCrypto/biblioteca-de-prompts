@@ -1,4 +1,5 @@
-import { BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
+import { BarChart3, BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
+
 import type { AppSection } from "../typesCommunity";
 
 interface AppTopNavProps {
@@ -22,13 +23,14 @@ const NAV_ITEMS: Array<{
   countKey?: "prompts" | "library" | "posts" | "hackathons" | "showcases" | "news";
   priority: "primary" | "secondary";
 }> = [
-  { id: "inicio", label: "Inicio", icon: Home, priority: "primary" },
-  { id: "prompts", label: "Prompts", icon: BookOpen, countKey: "prompts", priority: "primary" },
-  { id: "noticias", label: "Noticias", icon: Newspaper, countKey: "news", priority: "primary" },
-  { id: "mi-biblioteca", label: "Mi Biblioteca", icon: FolderOpen, countKey: "library", priority: "primary" },
-  { id: "foro", label: "Foro", icon: MessageSquare, countKey: "posts", priority: "secondary" },
-  { id: "hackathons", label: "Hackathons", icon: Trophy, countKey: "hackathons", priority: "secondary" },
-  { id: "galeria", label: "Galeria", icon: Image, countKey: "showcases", priority: "secondary" }
+  { id: "inicio",        label: "Inicio",      icon: Home,         priority: "primary" },
+  { id: "prompts",       label: "Prompts",     icon: BookOpen,     countKey: "prompts",    priority: "primary" },
+  { id: "noticias",      label: "Noticias",    icon: Newspaper,    countKey: "news",       priority: "primary" },
+  { id: "mi-biblioteca", label: "Biblioteca",  icon: FolderOpen,   countKey: "library",    priority: "primary" },
+  { id: "progreso",      label: "Mi Progreso", icon: BarChart3,     priority: "primary" },
+  { id: "foro",          label: "Foro",        icon: MessageSquare,countKey: "posts",      priority: "secondary" },
+  { id: "hackathons",    label: "Hackathons",  icon: Trophy,       countKey: "hackathons", priority: "secondary" },
+  { id: "galeria",       label: "Galeria",     icon: Image,        countKey: "showcases",  priority: "secondary" }
 ];
 
 export default function AppTopNav({

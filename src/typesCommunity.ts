@@ -148,4 +148,4 @@ export interface ClassroomMember {
   savedPromptsCount?: number;
 }
 
-export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca" | "admin";
+export type AppSection = "inicio" | "prompts" | "foro" | "hackathons" | "galeria" | "noticias" | "mi-biblioteca" | "progreso" | "admin";

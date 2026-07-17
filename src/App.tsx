@@ -64,6 +64,7 @@ import JoinClassModal from "./components/JoinClassModal";
 
 const AnalyticsDashboardView = lazy(() => import("./components/AnalyticsDashboardView"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const ProgressDashboard = lazy(() => import("./components/ProgressDashboard"));
 const ConnectionsPanel = lazy(() => import("./components/ConnectionsPanel"));
 const TrustModerationPanel = lazy(() => import("./components/TrustModerationPanel"));
 const ForumSection = lazy(() => import("./components/ForumSection"));
@@ -72,6 +73,7 @@ const ShowcaseSection = lazy(() => import("./components/ShowcaseSection"));
 const NewsSection = lazy(() => import("./components/NewsSection"));
 const ClassroomView = lazy(() => import("./components/ClassroomView"));
 const CommunityExplore = lazy(() => import("./components/CommunityExplore"));
+
 
 import { AIAssistantAside, AppModalLayer, PublicProfileSurface, DeferredInlineFallback } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
@@ -1808,7 +1810,14 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
-          {currentSection === "admin" && isFounder ? (
+          {currentSection === "progreso" ? (
+            <Suspense fallback={<DeferredInlineFallback label="Cargando Mi Progreso..." />}>
+              <ProgressDashboard
+                prompts={prompts}
+                userDisplayName={currentUserProfile?.displayName || user?.displayName || undefined}
+              />
+            </Suspense>
+          ) : currentSection === "admin" && isFounder ? (
             <Suspense fallback={<DeferredInlineFallback label="Cargando panel de administración..." />}>
               <AdminDashboard
                 loading={adminDashboard.loading}
