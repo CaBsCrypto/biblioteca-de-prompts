@@ -2529,6 +2529,7 @@ export default function App() {
         setPublishFolderPromptsInput={setPublishFolderPromptsInput}
         onSaveFolderShareSettings={handleSaveFolderShareSettings}
         onCloseShareFolder={() => setShowShareFolderModal(null)}
+        connectedConnections={connectedConnections}
         sharedPrompt={sharedPrompt}
         onCloseSharedPrompt={handleCloseShared}
         onCopySharedPrompt={() => {

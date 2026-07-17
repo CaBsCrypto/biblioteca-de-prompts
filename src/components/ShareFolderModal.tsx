@@ -13,6 +13,7 @@ interface ShareFolderModalProps {
   onSave: (event: FormEvent, collaborators?: any) => void;
   onClose: () => void;
   onNotification: (message: string, type?: "success" | "info") => void;
+  connectedConnections?: any[];
 }
 
 export default function ShareFolderModal({
@@ -25,8 +26,10 @@ export default function ShareFolderModal({
   setPublishFolderPromptsInput,
   onSave,
   onClose,
-  onNotification
+  onNotification,
+  connectedConnections = []
 }: ShareFolderModalProps) {
+
   const privatePromptsCount = prompts.filter((prompt) => prompt.folderId === folder.id && !prompt.isShared).length;
   const publicLink = `${window.location.origin}${window.location.pathname}?collection=${folder.id}`;
 
@@ -48,6 +51,18 @@ export default function ShareFolderModal({
     onNotification("Colaborador agregado a la lista. Recuerda guardar los cambios.", "info");
   };
 
+  const handleAddDirect = (uid: string, name: string) => {
+    setCollaborators((prev: any) => ({
+      ...prev,
+      [uid]: {
+        type: "user",
+        role: collabRole,
+        displayName: name
+      }
+    }));
+    onNotification(`¡${name} agregado! Recuerda guardar los cambios.`, "success");
+  };
+
   const handleRemoveCollaborator = (id: string) => {
     setCollaborators((prev: any) => {
       const copy = { ...prev };
@@ -56,6 +71,7 @@ export default function ShareFolderModal({
     });
     onNotification("Colaborador removido de la lista. Recuerda guardar los cambios.", "info");
   };
+
 
   return (
     <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-3 sm:p-4">
@@ -115,34 +131,86 @@ export default function ShareFolderModal({
               </button>
             </div>
 
+            {/* Invitaciones desde Conexiones/Amigos */}
+            {connectedConnections.length > 0 && (
+              <div className="space-y-1.5 mt-2.5">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Invitar a Conexiones directas</p>
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                  {connectedConnections
+                    .filter((conn) => !collaborators[conn.targetUid])
+                    .map((conn) => (
+                      <button
+                        key={conn.id}
+                        type="button"
+                        onClick={() => handleAddDirect(conn.targetUid, conn.targetName)}
+                        className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-700 bg-slate-900/60 hover:bg-indigo-950/40 hover:border-indigo-500/40 text-[10px] text-slate-350 hover:text-white font-bold transition-all cursor-pointer"
+                      >
+                        {conn.targetAvatar ? (
+                          <img
+                            src={conn.targetAvatar}
+                            alt={conn.targetName}
+                            className="w-3.5 h-3.5 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User size={10} className="text-slate-400" />
+                        )}
+                        <span>{conn.targetName}</span>
+                      </button>
+                    ))}
+                  {connectedConnections.filter((conn) => !collaborators[conn.targetUid]).length === 0 && (
+                    <p className="text-[9px] text-slate-600 italic">Todas tus conexiones activas ya colaboran en esta colección.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Listado de colaboradores actuales */}
-            <div className="bg-slate-950/40 rounded-2xl border border-slate-850 p-2 max-h-[140px] overflow-y-auto space-y-1.5">
+            <div className="bg-slate-950/40 rounded-2xl border border-slate-850 p-2.5 max-h-[140px] overflow-y-auto space-y-1.5">
               {Object.keys(collaborators).length === 0 ? (
                 <p className="text-[10px] text-slate-500 italic p-1">No hay colaboradores específicos añadidos aún.</p>
               ) : (
-                Object.entries(collaborators).map(([uid, details]: any) => (
-                  <div key={uid} className="flex items-center justify-between bg-slate-900/60 p-2 rounded-xl border border-slate-800/60">
-                    <div className="flex items-center gap-2 truncate">
-                      <User size={12} className="text-slate-400" />
-                      <span className="text-[10px] font-mono text-slate-300 truncate" title={uid}>{uid}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold font-mono uppercase ${
-                        details.role === "editor" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                      }`}>
-                        {details.role === "editor" ? "Editor" : "Lector"}
-                      </span>
+                Object.entries(collaborators).map(([uid, details]: any) => {
+                  // Buscar el nombre del colaborador si está en tus conexiones para mostrarlo amigable
+                  const connectionFriend = connectedConnections.find((c) => c.targetUid === uid);
+                  const nameToShow = connectionFriend?.targetName || details.displayName || "Usuario externo";
+                  const avatarToShow = connectionFriend?.targetAvatar;
+                  
+                  return (
+                    <div key={uid} className="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/60">
+                      <div className="flex items-center gap-2 truncate">
+                        {avatarToShow ? (
+                          <img
+                            src={avatarToShow}
+                            alt={nameToShow}
+                            className="w-4 h-4 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <User size={13} className="text-slate-400 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black text-slate-200 truncate">{nameToShow}</p>
+                          <p className="text-[8px] font-mono text-slate-550 truncate" title={uid}>{uid.slice(0, 12)}...</p>
+                        </div>
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold font-mono uppercase shrink-0 ${
+                          details.role === "editor" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        }`}>
+                          {details.role === "editor" ? "Editor" : "Lector"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCollaborator(uid)}
+                        className="p-1.5 hover:bg-red-500/15 text-slate-450 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCollaborator(uid)}
-                      className="p-1 hover:bg-red-500/15 text-slate-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
+
 
           <div className="ui-muted-panel flex items-center justify-between bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
             <div className="space-y-0.5 pointer-events-none">

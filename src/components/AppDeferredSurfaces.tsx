@@ -170,7 +170,9 @@ interface AppModalLayerProps {
   setPublishFolderPromptsInput: (value: boolean) => void;
   onSaveFolderShareSettings: (event: FormEvent, collaborators?: any) => void | Promise<void>;
   onCloseShareFolder: () => void;
+  connectedConnections?: any[];
   sharedPrompt: Prompt | null;
+
   onCloseSharedPrompt: () => void;
   onCopySharedPrompt: () => void;
   onUseSharedPrompt: () => void;
@@ -378,6 +380,7 @@ export function AppModalLayer(props: AppModalLayerProps) {
           onSave={onSaveFolderShareSettings}
           onClose={onCloseShareFolder}
           onNotification={onNotification}
+          connectedConnections={props.connectedConnections}
         />
       )}
 
