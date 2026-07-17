@@ -73,6 +73,46 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
       (snapshot) => {
         ownList = snapshot.docs.map(mapFolderDoc);
         updateCombinedFolders();
+
+        // Auto-seed folders "Remotion ideas" and "Flow ideas" if they do not exist
+        if (user && ownList.length >= 0) {
+          const hasRemotion = ownList.some(f => f.name.toLowerCase() === "remotion ideas");
+          const hasFlow = ownList.some(f => f.name.toLowerCase() === "flow ideas");
+
+          if (!hasRemotion || !hasFlow) {
+            const foldersCollectionPath = "folders";
+            const batchPromises = [];
+
+            if (!hasRemotion) {
+              batchPromises.push(
+                setDoc(doc(collection(db, foldersCollectionPath)), {
+                  userId: user.uid,
+                  name: "Remotion ideas",
+                  description: "Ideas y prompts para automatización de videos con Remotion.",
+                  parentId: null,
+                  collaborators: {},
+                  createdAt: serverTimestamp()
+                })
+              );
+            }
+            if (!hasFlow) {
+              batchPromises.push(
+                setDoc(doc(collection(db, foldersCollectionPath)), {
+                  userId: user.uid,
+                  name: "Flow ideas",
+                  description: "Flujos de trabajo, automatizaciones y diagramación de procesos.",
+                  parentId: null,
+                  collaborators: {},
+                  createdAt: serverTimestamp()
+                })
+              );
+            }
+
+            Promise.all(batchPromises).catch((err) => {
+              console.error("Error auto-seeding default folders:", err);
+            });
+          }
+        }
       },
       (error) => {
         console.error("Error loading own folders:", error);

@@ -531,11 +531,68 @@ async function fetchGNewsItems(category: NewsCategory, language: "en" | "es"): P
     .filter((item) => item.title && item.url);
 }
 
+async function fetchDevpostHackathons(): Promise<NewsItemPayload[]> {
+  try {
+    const response = await fetch("https://devpost.com/submission-periods.xml", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      }
+    });
+    if (!response.ok) throw new Error(`Devpost RSS respondio ${response.status}`);
+    const xml = await response.text();
+
+    const items: NewsItemPayload[] = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null && items.length < 24) {
+      const itemContent = match[1];
+      const title = (itemContent.match(/<title>([\s\S]*?)<\/title>/)?.[1] || "")
+        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1")
+        .trim();
+      const link = (itemContent.match(/<link>([\s\S]*?)<\/link>/)?.[1] || "").trim();
+      const description = (itemContent.match(/<description>([\s\S]*?)<\/description>/)?.[1] || "")
+        .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1")
+        .replace(/<[^>]*>/g, "")
+        .trim()
+        .slice(0, 320);
+      const pubDate = (itemContent.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "").trim();
+
+      if (title && link) {
+        items.push({
+          id: `devpost-${crypto.createHash("sha1").update(`${title}-${link}`).digest("hex")}`,
+          title,
+          summary: description || "Hackathon activo en la plataforma Devpost.",
+          summaryEs: description || "Hackathon de desarrollo activo en Devpost.",
+          url: link,
+          source: "Devpost",
+          imageUrl: "https://devpost-hackathon-images.s3.amazonaws.com/production/logos/original/devpost-logo.png",
+          publishedAt: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+          language: "en",
+          category: "hackathons",
+          tags: ["hackathon", "devpost", "oportunidades"]
+        });
+      }
+    }
+    return items;
+  } catch (error) {
+    console.warn("Devpost RSS fetch failed:", error);
+    return [];
+  }
+}
+
 async function getNewsItems(category: NewsCategory, language: "all" | "en" | "es") {
   const cacheKey = `${category}:${language}`;
   const cached = newsCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.items;
+  }
+
+  let devpostItems: NewsItemPayload[] = [];
+  if (category === "hackathons") {
+    devpostItems = await fetchDevpostHackathons().catch((err) => {
+      console.warn("Devpost fetch failed:", err);
+      return [];
+    });
   }
 
   const [hnItems, gnewsEnItems, gnewsEsItems] = await Promise.all([
@@ -548,7 +605,7 @@ async function getNewsItems(category: NewsCategory, language: "all" | "en" | "es
   ]);
 
   const seenUrls = new Set<string>();
-  const items = [...gnewsEsItems, ...gnewsEnItems, ...hnItems]
+  const items = [...devpostItems, ...gnewsEsItems, ...gnewsEnItems, ...hnItems]
     .filter((item) => {
       if (seenUrls.has(item.url)) return false;
       seenUrls.add(item.url);

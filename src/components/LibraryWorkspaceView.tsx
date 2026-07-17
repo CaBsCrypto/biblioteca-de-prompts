@@ -1,9 +1,44 @@
-import React, { useRef, useState } from "react";
-import { Sparkles, Plus, Search, Star, Tag, X, FolderOpen, Share2, BookOpen, GitFork, Shield, Wrench, CheckCircle2 } from "lucide-react";
+import React, { useRef, useState, useEffect } from "react";
+import {
+  Sparkles,
+  Plus,
+  Search,
+  Star,
+  Tag,
+  X,
+  FolderOpen,
+  Share2,
+  BookOpen,
+  GitFork,
+  Shield,
+  Wrench,
+  CheckCircle2,
+  Youtube,
+  Target,
+  Cpu,
+  HelpCircle,
+  Bot,
+  Wand2,
+  Film,
+  Image,
+  User as UserIcon,
+  Pencil,
+  ChevronRight,
+  SlidersHorizontal,
+  LayoutGrid,
+  Download,
+  Upload,
+  Zap,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { User } from "firebase/auth";
 import type { Prompt, Folder, CategoryFilter } from "../types";
-import type { LibraryViewFilter, CommunitySort, SelectedAuthor, CommunityScope } from "../utils/promptFilters";
+import type {
+  LibraryViewFilter,
+  CommunitySort,
+  SelectedAuthor,
+  CommunityScope,
+} from "../utils/promptFilters";
 import PromptCard from "./PromptCard";
 import FolderTreeView from "./FolderTreeView";
 import CategoryPromptsModal from "./CategoryPromptsModal";
@@ -27,7 +62,7 @@ interface LibraryWorkspaceViewProps {
   socialFavoritePromptIds: Set<string>;
   knownRemixCountsByPromptId: Map<string, number>;
   visibleCommunityCatalogPrompts: Prompt[];
-  
+
   // Filter States
   selectedCategory: CategoryFilter;
   setSelectedCategory: (cat: CategoryFilter) => void;
@@ -47,13 +82,13 @@ interface LibraryWorkspaceViewProps {
   setCommunitySort: (sort: CommunitySort) => void;
   communityScope: CommunityScope;
   setCommunityScope: (scope: CommunityScope) => void;
-  
+
   // Folder States
   selectedFolderId: string | null;
   setSelectedFolderId: (id: string | null) => void;
   dragOverFolderId: string | null;
   setDragOverFolderId: (id: string | null) => void;
-  
+
   // Modal / Assist triggers
   showAIAssistant: boolean;
   setShowAIAssistant: (show: boolean) => void;
@@ -65,7 +100,7 @@ interface LibraryWorkspaceViewProps {
   setShowCreateFolder: (show: boolean) => void;
   setGeminiRecommendation: (rec: any) => void;
   setGeminiRecommendationError: (err: string) => void;
-  
+
   // Handlers
   handleOpenAdd: () => void;
   handleOpenEdit: (prompt: Prompt) => void;
@@ -82,16 +117,16 @@ interface LibraryWorkspaceViewProps {
   resolvePublicSavePrompt: (prompt: Prompt) => void;
   trackUserEvent: (event: string, prompt?: Prompt, meta?: any) => void;
   triggerNotification: (msg: string, type?: "success" | "info") => void;
-  
+
   // JSON handlers
   handleExportJSON: () => void;
   handleImportJSON: (content: string) => Promise<any>;
-  
+
   // Folder handlers
   handleMovePromptToFolder: (promptId: string, folderId: string | null) => void;
   handleDeleteFolder: (folderId: string) => void;
   handleOpenShareFolderModal: (folder: Folder) => void;
-  
+
   // Global stats helpers
   missingDefaultPromptCount: number;
   existingDefaultPromptCount: number;
@@ -100,6 +135,84 @@ interface LibraryWorkspaceViewProps {
   showcasePostsCount: number;
 }
 
+// ──────────────────────────────────────────────────────────
+// Category config
+// ──────────────────────────────────────────────────────────
+type CatConfig = {
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  isPrimary?: boolean;
+};
+
+const CATEGORY_CONFIG: CatConfig[] = [
+  {
+    name: "Todas",
+    icon: <LayoutGrid size={14} />,
+    color: "#94a3b8",
+  },
+  {
+    name: "Refactorización",
+    icon: <Wrench size={14} />,
+    color: "#a5b4fc",
+    isPrimary: true,
+  },
+  {
+    name: "Seguridad",
+    icon: <Shield size={14} />,
+    color: "#fda4af",
+    isPrimary: true,
+  },
+  {
+    name: "Buenas Prácticas",
+    icon: <CheckCircle2 size={14} />,
+    color: "#6ee7b7",
+    isPrimary: true,
+  },
+  { name: "YouTube", icon: <Youtube size={14} />, color: "#f87171" },
+  { name: "Marketing", icon: <Target size={14} />, color: "#fbbf24" },
+  { name: "Programación", icon: <Cpu size={14} />, color: "#60a5fa" },
+  { name: "IA Agentes", icon: <Bot size={14} />, color: "#c084fc" },
+  {
+    name: "Asistente de Prompts",
+    icon: <Wand2 size={14} />,
+    color: "#2dd4bf",
+  },
+  { name: "Redacción", icon: <Pencil size={14} />, color: "#fb923c" },
+  { name: "IA Imágenes", icon: <Image size={14} />, color: "#e879f9" },
+  { name: "IA Videos", icon: <Film size={14} />, color: "#f472b6" },
+  {
+    name: "Acompañante Personal",
+    icon: <UserIcon size={14} />,
+    color: "#34d399",
+  },
+  { name: "General", icon: <HelpCircle size={14} />, color: "#64748b" },
+  {
+    name: "Favoritos",
+    icon: <Star size={14} />,
+    color: "#fbbf24",
+  },
+];
+
+const COMMUNITY_CATS: CatConfig[] = CATEGORY_CONFIG.filter((c) =>
+  [
+    "Todas",
+    "YouTube",
+    "Marketing",
+    "Refactorización",
+    "Seguridad",
+    "Buenas Prácticas",
+    "IA Agentes",
+    "Asistente de Prompts",
+    "IA Videos",
+    "General",
+    "Favoritos",
+  ].includes(c.name)
+);
+
+// ──────────────────────────────────────────────────────────
+// Component
+// ──────────────────────────────────────────────────────────
 export function LibraryWorkspaceView({
   user,
   currentTab,
@@ -175,88 +288,133 @@ export function LibraryWorkspaceView({
   existingDefaultPromptCount,
   STARTER_PROMPT_GOAL,
   forumPostsCount,
-  showcasePostsCount
+  showcasePostsCount,
 }: LibraryWorkspaceViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedCategoryPopup, setSelectedCategoryPopup] = useState<string | null>(null);
+  const [selectedCategoryPopup, setSelectedCategoryPopup] = useState<
+    string | null
+  >(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
+  useEffect(() => {
+    const handleDragStart = () => setIsDragging(true);
+    const handleDragEnd = () => setIsDragging(false);
+    window.addEventListener("dragstart", handleDragStart);
+    window.addEventListener("dragend", handleDragEnd);
+    return () => {
+      window.removeEventListener("dragstart", handleDragStart);
+      window.removeEventListener("dragend", handleDragEnd);
+    };
+  }, []);
+
+  const handleImportClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const text = evt.target?.result;
-      if (typeof text === "string") {
-        await handleImportJSON(text);
-      }
+      if (typeof text === "string") await handleImportJSON(text);
     };
     reader.readAsText(file);
     e.target.value = "";
   };
 
-  const categoriesToRender = currentTab === "mi-biblioteca"
-    ? ["Todas", "YouTube", "Marketing", "Programación", "Refactorización", "Seguridad", "Buenas Prácticas", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "General", "Favoritos"]
-    : ["Todas", "YouTube", "Marketing", "Refactorización", "Seguridad", "Buenas Prácticas", "IA Agentes", "Asistente de Prompts", "IA Videos", "General", "Favoritos"];
+  const cats =
+    currentTab === "mi-biblioteca" ? CATEGORY_CONFIG : COMMUNITY_CATS;
 
-  const libraryViewFilters: Array<{ id: LibraryViewFilter; label: string }> = [
-    { id: "todos", label: "Todos" },
-    { id: "privados", label: "Privados" },
-    { id: "publicados", label: "Publicados" },
-    { id: "remixes", label: "Remixes" },
-    { id: "favoritos", label: "Favoritos propios" }
+  const getPromptCount = (catName: string) => {
+    const pool =
+      currentTab === "mi-biblioteca" ? prompts : visibleCommunityCatalogPrompts;
+    if (catName === "Todas") return pool.length;
+    if (catName === "Favoritos") return pool.filter((p) => p.isFavorite).length;
+    return pool.filter((p) => p.category === catName).length;
+  };
+
+  const viewFilters: Array<{ id: LibraryViewFilter; label: string; count: number }> = [
+    { id: "todos", label: "Todos", count: prompts.length },
+    {
+      id: "privados",
+      label: "Privados",
+      count: prompts.filter((p) => !p.isShared).length,
+    },
+    {
+      id: "publicados",
+      label: "Publicados",
+      count: prompts.filter((p) => p.isShared).length,
+    },
+    {
+      id: "remixes",
+      label: "Remixes",
+      count: prompts.filter((p) => p.forkedFromPromptId || p.forkedFrom).length,
+    },
+    {
+      id: "favoritos",
+      label: "Mis Favoritos",
+      count: prompts.filter((p) => p.isFavorite).length,
+    },
   ];
 
+  const isLoading =
+    currentTab === "mi-biblioteca" ? loadingPrompts : loadingCommunityPrompts;
+
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-6">
-      {/* Stats & Controls Row */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#1e293b]/90 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-700/85 shadow-xl animate-in fade-in duration-200">
-        <div className="min-w-0">
-          <h2 className="text-lg font-extrabold text-white leading-tight flex items-center gap-2">
-            {currentTab === "mi-biblioteca" ? "Mi Panel de Control" : selectedAuthor ? `Catálogo de ${selectedAuthor.name}` : "Comunidad de Prompts"}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-lg leading-relaxed font-sans">
-            {currentTab === "mi-biblioteca" ? (
-              <>
-                Colección personal. Tienes <strong className="text-pink-400">{prompts.length}</strong> prompts guardados en total.
-                {missingDefaultPromptCount > 0 && (
-                  <span className="ml-1 text-slate-400">
-                    Starter: <strong className="text-indigo-300">{Math.min(existingDefaultPromptCount, STARTER_PROMPT_GOAL)}/{STARTER_PROMPT_GOAL}</strong> guardados. Pack completo opcional.
-                  </span>
-                )}
-              </>
-            ) : selectedAuthor ? (
-              <>Explorando el catálogo público de <strong className="text-indigo-300">{selectedAuthor.name}</strong>. Mostrando sus <strong className="text-pink-400">{filteredPrompts.length}</strong> prompts compartidos.</>
-            ) : communityScope === "siguiendo" ? (
-              <>Feed de creadores seguidos. Mostrando <strong className="text-emerald-400">{filteredPrompts.length}</strong> prompts de <strong className="text-indigo-300">{followedCreatorUids.length}</strong> creadores.</>
-            ) : communityScope === "favoritos" ? (
-              <>Favoritos sociales. Tienes <strong className="text-amber-300">{socialFavorites.length}</strong> prompts guardados como referencia privada.</>
-            ) : communityScope === "remixeados" ? (
-              <>Remixes creados desde la comunidad. Mostrando <strong className="text-pink-400">{filteredPrompts.length}</strong> origenes que ya adaptaste.</>
-            ) : (
-              <>Descubre innovadoras plantillas de la comunidad. ¡Agrégalas a tu biblioteca, vótala, o discútela!</>
-            )}
-          </p>
+    <div
+      className="w-full max-w-7xl mx-auto"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+    >
+      {/* ── TOP HEADER BAR ─────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-3 mb-4 px-1"
+      >
+        {/* Left: title */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="p-2 rounded-xl border transition-all cursor-pointer flex-shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.08)",
+              color: "#94a3b8",
+            }}
+            title="Toggle sidebar"
+          >
+            <SlidersHorizontal size={15} />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-base font-black text-white leading-tight truncate">
+              {currentTab === "mi-biblioteca"
+                ? "Mi Biblioteca"
+                : selectedAuthor
+                ? `Catálogo · ${selectedAuthor.name}`
+                : "Comunidad"}
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {currentTab === "mi-biblioteca"
+                ? `${prompts.length} prompts guardados`
+                : `${filteredPrompts.length} prompts públicos`}
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:flex lg:flex-wrap items-stretch lg:items-center gap-2 w-full md:w-auto">
+        {/* Right: actions */}
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
           {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
             <button
               id="btn-seed-defaults"
               onClick={() => setShowSeedPackModal(true)}
               disabled={loadingPrompts}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-1.5 cursor-pointer animate-pulse min-w-0"
+              className="hidden sm:flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer animate-pulse transition-all"
+              style={{
+                background: "rgba(99,102,241,0.1)",
+                borderColor: "rgba(99,102,241,0.25)",
+                color: "#a5b4fc",
+              }}
             >
-              <BookOpen size={14} />
-              <span>
-                {prompts.length === 0
-                  ? "Elegir pack inicial"
-                  : "Sumar prompts del pack"}
-              </span>
+              <BookOpen size={13} />
+              {prompts.length === 0 ? "Pack inicial" : "Sumar pack"}
             </button>
           )}
 
@@ -267,17 +425,21 @@ export function LibraryWorkspaceView({
                 trackUserEvent("recommendation_open", undefined, {
                   promptsCount: prompts.length,
                   selectedCategory,
-                  selectedTags
+                  selectedTags,
                 });
                 setGeminiRecommendation(null);
                 setGeminiRecommendationError("");
                 setShowRecommendationModal(true);
               }}
-              className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-              title="Recomendar un prompt existente sin usar IA externa"
+              className="hidden md:flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
+              style={{
+                background: "rgba(16,185,129,0.08)",
+                borderColor: "rgba(16,185,129,0.2)",
+                color: "#6ee7b7",
+              }}
             >
-              <Sparkles size={14} />
-              <span>Recomendar Prompt</span>
+              <Sparkles size={13} />
+              Recomendar
             </button>
           )}
 
@@ -287,568 +449,733 @@ export function LibraryWorkspaceView({
               setPresetAItext("");
               setShowAIAssistant(!showAIAssistant);
             }}
-            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md border cursor-pointer ${
+            className="flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
+            style={
               showAIAssistant
-                ? "bg-pink-500/10 text-pink-400 border-pink-500/30 hover:bg-pink-500/20"
-                : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
-            }`}
-            title="Atajo de teclado: Ctrl+K"
+                ? {
+                    background: "rgba(244,63,94,0.1)",
+                    borderColor: "rgba(244,63,94,0.3)",
+                    color: "#fda4af",
+                  }
+                : {
+                    background: "rgba(255,255,255,0.04)",
+                    borderColor: "rgba(255,255,255,0.1)",
+                    color: "#94a3b8",
+                  }
+            }
+            title="Ctrl+K"
           >
-            <Sparkles size={14} />
-            <span>Asistente de Prompts IA</span>
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-950/80 border border-slate-700/80 text-pink-400 font-bold ml-1 uppercase">
-              Ctrl+K
+            <Zap size={13} />
+            <span className="hidden sm:inline">IA</span>
+            <kbd className="hidden lg:inline text-[9px] font-mono opacity-60">
+              ⌘K
             </kbd>
           </button>
 
           <button
             id="btn-open-switcher"
             onClick={() => setShowQuickSwitcher(true)}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-            title="Atajo de teclado: Ctrl+J o Cmd+J"
+            className="flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderColor: "rgba(255,255,255,0.1)",
+              color: "#94a3b8",
+            }}
+            title="Ctrl+J"
           >
-            <Search size={14} className="text-indigo-400" />
-            <span>Buscador Rápido</span>
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-950/80 border border-slate-700/80 text-indigo-400 font-bold ml-1 uppercase">
-              Ctrl+J
+            <Search size={13} />
+            <kbd className="hidden lg:inline text-[9px] font-mono opacity-60">
+              ⌘J
             </kbd>
           </button>
 
           <button
             id="btn-new-prompt"
             onClick={handleOpenAdd}
-            className="px-4 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#9333ea] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15 active:scale-[0.98] cursor-pointer"
+            className="flex px-4 py-2 text-xs font-extrabold rounded-xl items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97]"
+            style={{
+              background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+              color: "white",
+              boxShadow: "0 0 16px rgba(99,102,241,0.3)",
+            }}
           >
             <Plus size={14} />
-            <span>Nuevo Prompt</span>
+            Nuevo Prompt
           </button>
         </div>
       </div>
 
-      {user && currentTab === "mi-biblioteca" && (
-        <div className="bg-[#1e293b]/50 p-3.5 rounded-2xl border border-slate-800/85 space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1 border-b border-slate-800/40">
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">Vista de mi biblioteca</h3>
-              <p className="text-[11px] text-slate-500 font-sans mt-0.5">
-                Separa privados, publicaciones, remixes, favoritos propios y referencias sociales guardadas.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".json"
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={handleImportClick}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer"
-                title="Importar prompts desde archivo JSON"
-              >
-                <Plus size={12} />
-                <span>Importar JSON</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExportJSON}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-700 transition-all flex items-center gap-1 active:scale-[0.98] cursor-pointer"
-                title="Exportar biblioteca como archivo JSON"
-              >
-                <Share2 size={12} />
-                <span>Exportar JSON</span>
-              </button>
-            </div>
-          </div>
+      {/* ── MAIN LAYOUT: SIDEBAR + CONTENT ─────────────────────── */}
+      <div className="flex gap-4 items-start">
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-              {libraryViewFilters.map((filter) => {
-                const count = filter.id === "todos"
-                  ? prompts.length
-                  : filter.id === "privados"
-                  ? prompts.filter((prompt) => !prompt.isShared).length
-                  : filter.id === "publicados"
-                  ? prompts.filter((prompt) => prompt.isShared).length
-                  : filter.id === "remixes"
-                  ? prompts.filter((prompt) => prompt.forkedFromPromptId || prompt.forkedFrom).length
-                  : prompts.filter((prompt) => prompt.isFavorite).length;
-
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    onClick={() => setLibraryViewFilter(filter.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                      libraryViewFilter === filter.id
-                        ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700"
-                    }`}
-                  >
-                    <span>{filter.label}</span>
-                    <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{count}</span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => {
-                  setCommunityScope("favoritos");
-                  setSelectedAuthor(null);
-                  setSelectedCategory("Todas");
-                }}
-                className="px-3 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer bg-amber-500/10 text-amber-300 border-amber-500/25 hover:bg-amber-500/20"
-                title="Ver favoritos sociales guardados como referencias privadas"
-              >
-                <Star size={12} fill={socialFavorites.length > 0 ? "currentColor" : "none"} />
-                <span>Favoritos sociales</span>
-                <span className="text-[10px] bg-slate-950/50 px-1.5 py-0.5 rounded-md font-mono">{socialFavorites.length}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-3">
-              <p className="text-lg font-black text-slate-100 font-mono">{prompts.filter((prompt) => !prompt.isShared).length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold">privados</p>
-            </div>
-            <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-              <p className="text-lg font-black text-emerald-300 font-mono">{prompts.filter((prompt) => prompt.isShared).length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold">publicados</p>
-            </div>
-            <div className="rounded-xl border border-pink-500/15 bg-pink-500/5 p-3">
-              <p className="text-lg font-black text-pink-300 font-mono">{prompts.filter((prompt) => prompt.forkedFromPromptId || prompt.forkedFrom).length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold">remixes</p>
-            </div>
-            <div className="rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3">
-              <p className="text-lg font-black text-indigo-300 font-mono">{prompts.filter((prompt) => prompt.isFavorite).length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold">favoritos propios</p>
-            </div>
-            <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 p-3">
-              <p className="text-lg font-black text-amber-300 font-mono">{socialFavorites.length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold">favoritos sociales</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {user && currentTab === "mi-biblioteca" && socialFavorites.length > 0 && (
-        <div className="bg-amber-500/5 p-4 rounded-2xl border border-amber-500/20 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <Star size={13} fill="currentColor" />
-                Favoritos sociales
-              </h3>
-              <p className="text-[11px] text-slate-400 font-sans mt-0.5">
-                Referencias guardadas de otros creadores. No son copias editables hasta que las guardes como remix.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCommunityScope("favoritos");
-                setSelectedAuthor(null);
+        {/* ── LEFT SIDEBAR ─────────────────────────────────────── */}
+        {sidebarOpen && (
+          <aside
+            className="hidden md:flex flex-col gap-2 flex-shrink-0 w-52"
+            style={{ minWidth: "13rem" }}
+          >
+            {/* Category navigation */}
+            <div
+              className="rounded-2xl border overflow-hidden"
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                borderColor: "rgba(255,255,255,0.07)",
               }}
-              className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Star size={12} />
-              <span>Ver todos</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            {socialFavoritePrompts.slice(0, 3).map(({ favorite, prompt }) => (
-              <div key={favorite.id} className="rounded-xl border border-amber-500/15 bg-slate-950/35 p-3 min-w-0">
-                <p className="text-xs font-extrabold text-white line-clamp-1">{favorite.promptTitle}</p>
-                <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">
-                  {favorite.promptCategory} · {favorite.promptAuthorName}
+              <div
+                className="px-3 py-2.5 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Categorías
                 </p>
-                <div className="flex items-center gap-2 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => prompt ? setSelectedPublicPrompt(prompt) : triggerNotification("Este favorito aun no esta disponible en el feed local.", "info")}
-                    className="text-[10px] font-bold text-indigo-300 hover:text-indigo-200 cursor-pointer"
-                  >
-                    Ver prompt
-                  </button>
-                  {prompt && (
+              </div>
+              <div className="p-1.5 space-y-0.5">
+                {cats.map((cat) => {
+                  const count = getPromptCount(cat.name);
+                  const isActive = selectedCategory === cat.name;
+                  const isPrimary = cat.isPrimary;
+                  return (
                     <button
-                      type="button"
-                      onClick={() => void resolvePublicSavePrompt(prompt)}
-                      className="text-[10px] font-bold text-emerald-300 hover:text-emerald-200 cursor-pointer"
+                      key={cat.name}
+                      onClick={() => {
+                        if (isPrimary) setSelectedCategoryPopup(cat.name);
+                        setSelectedCategory(cat.name as CategoryFilter);
+                      }}
+                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group"
+                      style={{
+                        background: isActive
+                          ? `${cat.color}18`
+                          : "transparent",
+                        borderLeft: isActive
+                          ? `2px solid ${cat.color}`
+                          : "2px solid transparent",
+                      }}
                     >
-                      Remix
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          style={{
+                            color: isActive ? cat.color : "#64748b",
+                          }}
+                          className="flex-shrink-0 transition-colors group-hover:text-white"
+                        >
+                          {cat.icon}
+                        </span>
+                        <span
+                          className="text-xs font-semibold truncate transition-colors"
+                          style={{
+                            color: isActive ? cat.color : "#94a3b8",
+                          }}
+                        >
+                          {cat.name}
+                        </span>
+                        {isPrimary && (
+                          <span
+                            className="flex-shrink-0 h-1.5 w-1.5 rounded-full animate-pulse"
+                            style={{ background: cat.color }}
+                          />
+                        )}
+                      </div>
+                      <span
+                        className="text-[10px] font-mono flex-shrink-0"
+                        style={{ color: isActive ? cat.color : "#475569" }}
+                      >
+                        {count}
+                      </span>
                     </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Folders — only for mi-biblioteca */}
+            {user && currentTab === "mi-biblioteca" && (
+              <div
+                className={`rounded-2xl border overflow-hidden transition-all duration-300 ${
+                  isDragging
+                    ? "border-dashed border-indigo-500 bg-indigo-500/10 shadow-[0_0_20px_rgba(99,102,241,0.2)] scale-[1.01]"
+                    : "rgba(255,255,255,0.025)"
+                }`}
+                style={{
+                  background: isDragging ? "rgba(99,102,241,0.05)" : "rgba(255,255,255,0.025)",
+                  borderColor: isDragging ? "#6366f1" : "rgba(255,255,255,0.07)",
+                }}
+              >
+                <div
+                  className="px-3 py-2.5 border-b flex items-center justify-between"
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest transition-all duration-200" style={{ color: isDragging ? "#a5b4fc" : "#64748b" }}>
+                    {isDragging ? "Soltar para mover" : "Carpetas"}
+                  </p>
+                  <button
+                    onClick={() => setShowCreateFolder(true)}
+                    className="p-1 rounded-lg cursor-pointer transition-all hover:text-white"
+                    style={{ color: "#6366f1" }}
+                    title="Nueva carpeta"
+                  >
+                    <Plus size={12} className="stroke-[2.5]" />
+                  </button>
+                </div>
+                <div className="p-2 space-y-1">
+                  {/* All / Uncategorized quick filters */}
+                  <button
+                    onClick={() => setSelectedFolderId(null)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold transition-all cursor-pointer"
+                    style={{
+                      background:
+                        selectedFolderId === null
+                          ? "rgba(99,102,241,0.15)"
+                          : "transparent",
+                      color: selectedFolderId === null ? "#a5b4fc" : "#64748b",
+                    }}
+                  >
+                    <FolderOpen size={13} />
+                    Todo ({prompts.length})
+                  </button>
+                  <button
+                    onClick={() => setSelectedFolderId("uncategorized")}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverFolderId("uncategorized");
+                    }}
+                    onDragLeave={() => setDragOverFolderId(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverFolderId(null);
+                      const promptId = e.dataTransfer.getData("text/plain");
+                      if (promptId) handleMovePromptToFolder(promptId, null);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left text-xs font-semibold transition-all cursor-pointer"
+                    style={{
+                      background:
+                        selectedFolderId === "uncategorized"
+                          ? "rgba(99,102,241,0.15)"
+                          : dragOverFolderId === "uncategorized"
+                          ? "rgba(251,191,36,0.15)"
+                          : "transparent",
+                      color:
+                        selectedFolderId === "uncategorized"
+                          ? "#a5b4fc"
+                          : "#64748b",
+                    }}
+                  >
+                    <FolderOpen size={13} />
+                    Sin carpeta ({prompts.filter((p) => !p.folderId).length})
+                  </button>
+
+                  {loadingFolders ? (
+                    <p className="text-[10px] text-slate-500 italic px-2.5 py-1">
+                      Cargando...
+                    </p>
+                  ) : folders.length === 0 ? (
+                    <p className="text-[10px] text-slate-600 italic px-2.5 py-1">
+                      Sin carpetas aún
+                    </p>
+                  ) : (
+                    <FolderTreeView
+                      folders={folders}
+                      prompts={prompts}
+                      selectedFolderId={selectedFolderId}
+                      setSelectedFolderId={setSelectedFolderId}
+                      dragOverFolderId={dragOverFolderId}
+                      setDragOverFolderId={setDragOverFolderId}
+                      handleMovePromptToFolder={handleMovePromptToFolder}
+                      handleDeleteFolder={handleDeleteFolder}
+                      handleOpenShareFolderModal={handleOpenShareFolderModal}
+                      setShowCreateFolder={setShowCreateFolder}
+                      setNewFolderParentId={setNewFolderParentId}
+                      user={user}
+                    />
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Custom Folders Section (Only for authenticated user and Mi Biblioteca) */}
-      {user && currentTab === "mi-biblioteca" && (
-        <div id="folders-segment" className="bg-[#1e293b]/50 p-4.5 rounded-2xl border border-slate-800/85 mb-2 mt-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FolderOpen size={15} className="text-indigo-400" />
-              <span className="text-xs font-black uppercase tracking-wider text-slate-300">Mis Carpetas / Colecciones</span>
-            </div>
-            <button
-              onClick={() => setShowCreateFolder(true)}
-              className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/25 hover:border-indigo-400/50 rounded-xl text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-[0.98]"
-            >
-              <Plus size={11} className="stroke-[3]" />
-              <span>Agregar Carpeta</span>
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setSelectedFolderId(null)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                selectedFolderId === null
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md font-extrabold"
-                  : "bg-slate-900/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700"
-              }`}
-            >
-              <span>Ver Todo ({prompts.length})</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedFolderId("uncategorized")}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (dragOverFolderId !== "uncategorized") {
-                  setDragOverFolderId("uncategorized");
-                }
-              }}
-              onDragLeave={() => {
-                setDragOverFolderId(null);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOverFolderId(null);
-                const promptId = e.dataTransfer.getData("text/plain");
-                if (promptId) {
-                  handleMovePromptToFolder(promptId, null);
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                selectedFolderId === "uncategorized"
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md font-extrabold"
-                  : dragOverFolderId === "uncategorized"
-                  ? "bg-amber-500/20 text-amber-300 border-dashed border-amber-500 scale-105 ring-2 ring-amber-500/30"
-                  : "bg-slate-900/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700"
-              }`}
-            >
-              <span>Sin carpeta ({prompts.filter(p => !p.folderId).length})</span>
-            </button>
-
-            <div className="w-full mt-2 space-y-1">
-              <FolderTreeView
-                folders={folders}
-                prompts={prompts}
-                selectedFolderId={selectedFolderId}
-                setSelectedFolderId={setSelectedFolderId}
-                dragOverFolderId={dragOverFolderId}
-                setDragOverFolderId={setDragOverFolderId}
-                handleMovePromptToFolder={handleMovePromptToFolder}
-                handleDeleteFolder={handleDeleteFolder}
-                handleOpenShareFolderModal={handleOpenShareFolderModal}
-                setShowCreateFolder={setShowCreateFolder}
-                setNewFolderParentId={setNewFolderParentId}
-                user={user}
-              />
-            </div>
-
-            {loadingFolders && (
-              <span className="text-[10px] text-slate-400 italic">Sincronizando carpetas...</span>
             )}
-            {!loadingFolders && folders.length === 0 && (
-              <span className="text-[11px] text-slate-400 italic ml-1">No tienes carpetas organizacionales creadas aún.</span>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Main categories navigation list */}
-      <div className="flex flex-col gap-4 border-b border-[#334155]/60 pb-5">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-          {categoriesToRender.map((category) => (
-            <button
-              key={category}
-              id={`filter-pill-${category}`}
-              onClick={() => {
-                if (category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") {
-                  setSelectedCategoryPopup(category);
-                }
-                setSelectedCategory(category as CategoryFilter);
-              }}
-              className={`px-4 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer select-none ${
-                selectedCategory === category
-                  ? "bg-[#4f46e5] text-white border-[#4f46e5] shadow-md shadow-indigo-650/15 font-extrabold"
-                  : category === "Refactorización"
-                  ? "bg-indigo-950/40 text-indigo-300 border-indigo-500/45 hover:text-white hover:border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)] animate-pulse"
-                  : category === "Seguridad"
-                  ? "bg-rose-950/40 text-rose-300 border-rose-500/45 hover:text-white hover:border-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.2)]"
-                  : category === "Buenas Prácticas"
-                  ? "bg-emerald-950/40 text-emerald-300 border-emerald-500/45 hover:text-white hover:border-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
-                  : "bg-[#1e293b] text-slate-400 border-[#334155]/85 hover:text-slate-250 hover:border-slate-650"
-              }`}
-            >
-              {category === "Favoritos" && <Star size={12} fill={selectedCategory === "Favoritos" ? "white" : "none"} className="text-pink-450" />}
-              {(category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") && (
-                <span className="relative flex h-2 w-2">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    category === "Refactorización" ? "bg-indigo-400" : category === "Seguridad" ? "bg-rose-400" : "bg-emerald-400"
-                  }`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                    category === "Refactorización" ? "bg-indigo-500" : category === "Seguridad" ? "bg-rose-500" : "bg-emerald-500"
-                  }`}></span>
-                </span>
-              )}
-              <span>{category === "Todas" ? "Ver Todo" : category}</span>
-              {(category === "Refactorización" || category === "Seguridad" || category === "Buenas Prácticas") && (
-                <span className={`text-[8px] font-extrabold bg-white/10 border px-1 py-0.2 rounded font-mono uppercase tracking-wider scale-90 ${
-                  category === "Refactorización" ? "text-indigo-400 border-indigo-500/25" : category === "Seguridad" ? "text-rose-400 border-rose-500/25" : "text-emerald-400 border-emerald-500/25"
-                }`}>
-                  ¡Ver Suite!
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Double Search Inputs: Text & Tags Autocomplete */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 w-full md:max-w-xl shrink-0">
-          {/* Search Bar Input */}
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
-              <Search size={14} />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por título, tag o texto..."
-              className="w-full text-xs rounded-full border border-slate-700 bg-[#1e293b] pl-9.5 pr-4 py-2.5 focus:outline-none focus:border-indigo-455 transition-all font-sans text-white placeholder-slate-450"
-            />
-            {/* Visual search shortcuts suggestions helper */}
-            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap pl-1.5">
-              <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Atajos:</span>
-              {[
-                { label: "tag:ia", value: "tag:ia" },
-                { label: "category:YouTube", value: "category:YouTube" },
-                { label: "is:favorite", value: "is:favorite" },
-                { label: "is:remix", value: "is:remix" }
-              ].map((chip) => (
-                <button
-                  key={chip.value}
-                  type="button"
-                  onClick={() => {
-                    const current = searchQuery.trim();
-                    if (current.includes(chip.value)) return;
-                    setSearchQuery(current ? `${current} ${chip.value}` : chip.value);
-                  }}
-                  className="px-1.5 py-0.5 rounded text-[9px] bg-slate-800/60 text-slate-400 border border-slate-700/50 hover:bg-slate-700 hover:text-white hover:border-slate-650 transition-all cursor-pointer font-mono active:scale-95"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Autocomplete Tag Search Input */}
-          <div className="relative flex-1 animate-fade-in" id="tag-autocomplete-container">
-            <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
-              <Tag size={13} className="text-pink-400" />
-            </div>
-            <input
-              type="text"
-              value={tagSearchInput}
-              onChange={(e) => {
-                setTagSearchInput(e.target.value);
-                setIsTagDropdownOpen(true);
-              }}
-              onFocus={() => setIsTagDropdownOpen(true)}
-              placeholder="Filtrar por etiqueta..."
-              className="w-full text-xs rounded-full border border-slate-700 bg-[#1e293b] pl-9.5 pr-20 py-2.5 focus:outline-none focus:border-pink-500 transition-all font-sans text-white placeholder-slate-450"
-            />
-            {selectedTags.length > 0 && (
-              <button
-                onClick={() => setSelectedTags([])}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-pink-400 hover:text-pink-300 font-extrabold cursor-pointer hover:underline"
-                title="Limpiar todas las etiquetas"
+            {/* Import / Export */}
+            {user && currentTab === "mi-biblioteca" && (
+              <div
+                className="rounded-2xl border p-2 flex flex-col gap-1"
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  borderColor: "rgba(255,255,255,0.06)",
+                }}
               >
-                Limpiar ({selectedTags.length})
-              </button>
-            )}
-
-            {isTagDropdownOpen && (
-              <div className="absolute left-0 right-0 mt-2 bg-[#1b2537] border border-slate-700 rounded-2xl shadow-2xl max-h-48 overflow-y-auto z-45 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest px-3 py-1.5 border-b border-slate-800 flex items-center justify-between">
-                  <span>Sugerencias de Etiquetas</span>
-                  <span className="text-[8px] bg-slate-900 px-1.5 py-0.5 rounded text-indigo-400">{tagSuggestions.length} disponibles</span>
-                </div>
-                {tagSuggestions.length === 0 ? (
-                  <div className="text-[11px] text-slate-500 p-3 italic text-center font-sans">
-                    {allAvailableTags.length === 0 
-                      ? "Carga ejemplos para ver etiquetas" 
-                      : "No hay más sugerencias"}
-                  </div>
-                ) : (
-                  tagSuggestions.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => {
-                        if (!selectedTags.includes(tag)) {
-                          setSelectedTags([...selectedTags, tag]);
-                        }
-                        setTagSearchInput("");
-                        setIsTagDropdownOpen(false);
-                      }}
-                      className="w-full text-left font-sans text-xs px-3.5 py-2 rounded-xl text-slate-200 hover:bg-slate-800 hover:text-white transition-all cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="font-bold text-pink-400">#{tag}</span>
-                      <span className="text-[9px] font-mono text-slate-400 bg-slate-900 border border-slate-800/80 px-1.5 py-0.5 rounded-md">
-                        {(currentTab === "mi-biblioteca" ? prompts : visibleCommunityCatalogPrompts).filter(p => p.tags?.some(t => t.toLowerCase() === tag.toLowerCase())).length}
-                      </span>
-                    </button>
-                  ))
-                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".json"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={handleImportClick}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-300 transition-all cursor-pointer"
+                >
+                  <Upload size={12} />
+                  Importar JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportJSON}
+                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-300 transition-all cursor-pointer"
+                >
+                  <Download size={12} />
+                  Exportar JSON
+                </button>
               </div>
             )}
+          </aside>
+        )}
+
+        {/* ── MAIN CONTENT AREA ──────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-4">
+
+          {/* ── SEARCH + FILTER STRIP ──────────────────────────── */}
+          <div
+            className="rounded-2xl border p-3 space-y-3"
+            style={{
+              background: "rgba(255,255,255,0.025)",
+              borderColor: "rgba(255,255,255,0.07)",
+            }}
+          >
+            {/* Search row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 w-full shrink-0">
+              {/* Unified Search Omnibar */}
+              <div className="relative flex-1" id="tag-autocomplete-container">
+                <Search
+                  size={14}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    const words = val.split(" ");
+                    const lastWord = words[words.length - 1];
+                    if (lastWord.startsWith("#")) {
+                      setTagSearchInput(lastWord.substring(1));
+                      setIsTagDropdownOpen(true);
+                    } else {
+                      setIsTagDropdownOpen(false);
+                    }
+                  }}
+                  onFocus={(e) => {
+                    setIsTagDropdownOpen(true);
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                  }}
+                  placeholder="Buscar por título, texto o etiqueta (ej: #ia)..."
+                  className="w-full text-xs rounded-xl border py-2.5 pl-9.5 pr-20 outline-none transition-all text-white placeholder-slate-650"
+                  style={{
+                    background: "rgba(0,0,0,0.3)",
+                    borderColor: "rgba(255,255,255,0.08)",
+                  }}
+                />
+                
+                {/* Visual indicator for tag search dropdown list triggers */}
+                <button
+                  type="button"
+                  onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-pink-400 hover:text-pink-300 font-extrabold border border-pink-500/20 bg-pink-500/5 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  <Tag size={10} />
+                  <span>Tags</span>
+                </button>
+
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsTagDropdownOpen(false);
+                    }}
+                    className="absolute right-20 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer mr-2"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+
+                {isTagDropdownOpen && tagSuggestions.length > 0 && (
+                  <div
+                    className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border shadow-2xl z-50 overflow-hidden"
+                    style={{
+                      background: "#0f172a",
+                      borderColor: "rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <div className="max-h-40 overflow-y-auto p-1.5 space-y-0.5">
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest px-2.5 py-1 border-b border-slate-800 flex items-center justify-between">
+                        <span>Filtro de etiquetas</span>
+                        <span className="text-[8px] bg-slate-900 px-1.5 py-0.5 rounded text-indigo-400 font-mono">
+                          {tagSuggestions.length}
+                        </span>
+                      </div>
+                      {tagSuggestions.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            if (!selectedTags.includes(tag))
+                              setSelectedTags([...selectedTags, tag]);
+                            
+                            // Remove partial #tag query from search input
+                            const words = searchQuery.split(" ");
+                            if (words[words.length - 1].startsWith("#")) {
+                              words.pop();
+                              setSearchQuery(words.join(" "));
+                            }
+                            setTagSearchInput("");
+                            setIsTagDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-800 flex items-center justify-between cursor-pointer transition-all"
+                        >
+                          <span className="font-bold text-pink-400">
+                            #{tag}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {(currentTab === "mi-biblioteca"
+                              ? prompts
+                              : visibleCommunityCatalogPrompts
+                            ).filter((p) =>
+                              p.tags?.some(
+                                (t) => t.toLowerCase() === tag.toLowerCase()
+                              )
+                            ).length}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Active tag badges */}
+            {selectedTags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  Tags:
+                </span>
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                    style={{
+                      background: "rgba(236,72,153,0.1)",
+                      borderColor: "rgba(236,72,153,0.25)",
+                      color: "#f472b6",
+                    }}
+                  >
+                    #{tag}
+                    <button
+                      onClick={() =>
+                        setSelectedTags(selectedTags.filter((t) => t !== tag))
+                      }
+                      className="cursor-pointer hover:text-white ml-0.5"
+                    >
+                      <X size={9} className="stroke-[3]" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={() => setSelectedTags([])}
+                  className="text-[10px] text-pink-500 hover:text-pink-300 font-bold cursor-pointer underline"
+                >
+                  Limpiar
+                </button>
+              </div>
+            )}
+
+            {/* Mobile categories scroll (hidden on md+) */}
+            <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {cats.map((cat) => {
+                const isActive = selectedCategory === cat.name;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => {
+                      if (cat.isPrimary) setSelectedCategoryPopup(cat.name);
+                      setSelectedCategory(cat.name as CategoryFilter);
+                    }}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border whitespace-nowrap flex items-center gap-1 cursor-pointer transition-all"
+                    style={{
+                      background: isActive ? `${cat.color}22` : "rgba(255,255,255,0.04)",
+                      borderColor: isActive ? cat.color : "rgba(255,255,255,0.08)",
+                      color: isActive ? cat.color : "#64748b",
+                    }}
+                  >
+                    {cat.icon}
+                    {cat.name}
+                    {cat.isPrimary && (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full animate-pulse"
+                        style={{ background: cat.color }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* ── VIEW FILTER TABS (mi-biblioteca only) ──────────── */}
+          {user && currentTab === "mi-biblioteca" && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {viewFilters.map((f) => {
+                const isActive = libraryViewFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setLibraryViewFilter(f.id)}
+                    className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all"
+                    style={{
+                      background: isActive
+                        ? "rgba(99,102,241,0.15)"
+                        : "rgba(255,255,255,0.03)",
+                      borderColor: isActive
+                        ? "rgba(99,102,241,0.4)"
+                        : "rgba(255,255,255,0.07)",
+                      color: isActive ? "#a5b4fc" : "#64748b",
+                    }}
+                  >
+                    <span>{f.label}</span>
+                    <span
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded-lg"
+                      style={{
+                        background: "rgba(0,0,0,0.3)",
+                        color: isActive ? "#a5b4fc" : "#475569",
+                      }}
+                    >
+                      {f.count}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {/* Social favorites shortcut */}
+              {socialFavorites.length > 0 && (
+                <button
+                  onClick={() => {
+                    setCommunityScope("favoritos");
+                    setSelectedAuthor(null);
+                    setSelectedCategory("Todas");
+                  }}
+                  className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all"
+                  style={{
+                    background: "rgba(251,191,36,0.08)",
+                    borderColor: "rgba(251,191,36,0.2)",
+                    color: "#fbbf24",
+                  }}
+                >
+                  <Star size={12} fill="currentColor" />
+                  Favoritos sociales
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-lg bg-black/30">
+                    {socialFavorites.length}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── STATS STRIP ────────────────────────────────────── */}
+          {user && currentTab === "mi-biblioteca" && (
+            <div
+              className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+            >
+              {[
+                {
+                  label: "Privados",
+                  value: prompts.filter((p) => !p.isShared).length,
+                  color: "#94a3b8",
+                },
+                {
+                  label: "Publicados",
+                  value: prompts.filter((p) => p.isShared).length,
+                  color: "#6ee7b7",
+                },
+                {
+                  label: "Remixes",
+                  value: prompts.filter(
+                    (p) => p.forkedFromPromptId || p.forkedFrom
+                  ).length,
+                  color: "#f472b6",
+                },
+                {
+                  label: "Favoritos propios",
+                  value: prompts.filter((p) => p.isFavorite).length,
+                  color: "#fbbf24",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex items-center gap-3 rounded-2xl border px-3.5 py-3"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    borderColor: "rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <p
+                    className="text-xl font-black"
+                    style={{ color: stat.color }}
+                  >
+                    {stat.value}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Results count */}
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[11px] text-slate-500">
+              {isLoading ? (
+                "Cargando..."
+              ) : (
+                <>
+                  <span className="font-bold text-slate-300">
+                    {filteredPrompts.length}
+                  </span>{" "}
+                  {filteredPrompts.length === 1 ? "resultado" : "resultados"}
+                  {selectedCategory !== "Todas" && (
+                    <span className="ml-1 text-slate-600">
+                      · {selectedCategory}
+                    </span>
+                  )}
+                </>
+              )}
+            </p>
+            {(searchQuery || selectedTags.length > 0 || selectedCategory !== "Todas") && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedTags([]);
+                  setSelectedCategory("Todas");
+                }}
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer flex items-center gap-1"
+              >
+                <X size={10} />
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+
+          {/* ── PROMPTS GRID ──────────────────────────────────── */}
+          {isLoading ? (
+            <div className="py-24 flex flex-col items-center gap-4">
+              <div
+                className="w-10 h-10 rounded-full border-4 border-t-indigo-500 animate-spin"
+                style={{ borderColor: "rgba(255,255,255,0.1)", borderTopColor: "#6366f1" }}
+              />
+              <p className="text-xs text-slate-500">
+                {currentTab === "mi-biblioteca"
+                  ? "Sincronizando biblioteca..."
+                  : "Cargando comunidad..."}
+              </p>
+            </div>
+          ) : filteredPrompts.length === 0 ? (
+            <div
+              className="rounded-3xl border border-dashed p-12 text-center space-y-4"
+              style={{
+                background: "rgba(255,255,255,0.015)",
+                borderColor: "rgba(255,255,255,0.08)",
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto border animate-pulse"
+                style={{
+                  background: "rgba(99,102,241,0.1)",
+                  borderColor: "rgba(99,102,241,0.2)",
+                  color: "#a5b4fc",
+                }}
+              >
+                <FolderOpen size={20} />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-white text-sm">
+                  Sin resultados
+                </h3>
+                <p className="text-slate-500 text-xs mt-1.5 max-w-xs mx-auto leading-relaxed">
+                  {currentTab === "mi-biblioteca"
+                    ? prompts.length === 0
+                      ? "Tu biblioteca está lista. Elige un pack para empezar o crea tu primer prompt."
+                      : "No hay prompts que coincidan con los filtros actuales."
+                    : "No hay prompts en la comunidad que coincidan con los filtros."}
+                </p>
+              </div>
+              {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
+                <button
+                  onClick={() => setShowSeedPackModal(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white cursor-pointer transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #ec4899)",
+                  }}
+                >
+                  <BookOpen size={13} />
+                  {prompts.length === 0 ? "Elegir pack inicial" : "Sumar prompts del pack"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <AnimatePresence mode="popLayout">
+                {filteredPrompts.map((p) => (
+                  <motion.div
+                    key={p.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 26,
+                      mass: 0.8,
+                      opacity: { duration: 0.18 },
+                    }}
+                  >
+                    <PromptCard
+                      prompt={p}
+                      folders={folders}
+                      onFavoriteToggle={handleFavoriteToggle}
+                      onEdit={handleOpenEdit}
+                      onDelete={handleDeletePrompt}
+                      onUse={(p) => handleUsePrompt(p, currentTab)}
+                      onCopyFilled={(p) => handleCopyFilledPrompt(p)}
+                      onNotification={triggerNotification}
+                      isCommunityView={currentTab === "comunidad"}
+                      currentUser={user}
+                      onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
+                      onLikeToggle={handleLikeToggle}
+                      onAuthorClick={openPublicProfile}
+                      onViewDetails={setSelectedPublicPrompt}
+                      onSocialFavoriteToggle={handleToggleSocialFavorite}
+                      onHidePrompt={(prompt) =>
+                        void handleHideCommunityPrompt(prompt)
+                      }
+                      onReportPrompt={(prompt) =>
+                        void handleReportCommunityPrompt(prompt)
+                      }
+                      isSocialFavorite={socialFavoritePromptIds.has(p.id)}
+                      knownRemixCount={
+                        knownRemixCountsByPromptId.get(p.id) || 0
+                      }
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Active Filtered Tag Badges Row */}
-      {selectedTags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 animate-in fade-in duration-200">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1 font-mono">
-            <Tag size={10} className="text-indigo-400" /> Filtrando por:
-          </span>
-          {selectedTags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1 animate-scale-in animate-in zoom-in-75 duration-150"
-            >
-              <span>#{tag}</span>
-              <button
-                onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
-                className="hover:bg-pink-500/20 rounded-full p-0.5 transition-all text-pink-400 hover:text-white cursor-pointer ml-0.5"
-              >
-                <X size={10} className="stroke-[3]" />
-              </button>
-            </span>
-          ))}
-          <button
-            onClick={() => setSelectedTags([])}
-            className="text-[10px] font-extrabold text-[#ec4899] hover:text-[#f472b6] underline ml-2 cursor-pointer transition-colors"
-          >
-            Borrar filtros de etiquetas
-          </button>
-        </div>
-      )}
-
-      {/* Prompts list main core grid layout */}
-      {(currentTab === "mi-biblioteca" ? loadingPrompts : loadingCommunityPrompts) ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 font-sans">
-          <div className="w-10 h-10 border-4 border-slate-800 border-t-indigo-500 rounded-full animate-spin"></div>
-          <p className="text-xs text-slate-400 font-medium whitespace-nowrap">
-            {currentTab === "mi-biblioteca" ? "Sincronizando biblioteca personal..." : "Sincronizando red de la comunidad..."}
-          </p>
-        </div>
-      ) : filteredPrompts.length === 0 ? (
-        <div className="bg-[#1e293b]/60 border border-slate-700 border-dashed rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4">
-          <div className="w-12 h-12 bg-slate-800 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto border border-slate-700 animate-pulse">
-            <FolderOpen size={20} />
-          </div>
-          <div>
-            <h3 className="font-extrabold text-white text-sm">
-              {currentTab === "mi-biblioteca" ? "Biblioteca sin resultados" : "Comunidad sin resultados"}
-            </h3>
-            <p className="text-slate-400 text-xs px-6 mt-1.5 leading-relaxed font-sans animate-fade-in">
-              {currentTab === "mi-biblioteca" ? (
-                prompts.length === 0
-                  ? "Tu biblioteca esta lista. Elige un pack pequeno para empezar segun tu objetivo, o crea un prompt nuevo desde cero."
-                  : "No se encontraron prompts en tu biblioteca que coincidan con la categoría o filtros."
-              ) : (
-                communityScope === "siguiendo" && followedCreatorUids.length === 0
-                  ? "Todavia no sigues a ningun creador. Explora la comunidad, abre un perfil y pulsa Seguir Creador para construir tu feed."
-                  : communityScope === "siguiendo"
-                  ? "Los creadores que sigues aun no tienen prompts publicos que coincidan con tus filtros."
-                  : communityScope === "favoritos"
-                  ? "Todavia no guardaste favoritos sociales. Abre un prompt publico y marca Favorito para guardarlo como referencia privada."
-                  : communityScope === "remixeados"
-                  ? "Todavia no tienes remixes creados desde la comunidad. Usa Guardar en mi biblioteca para adaptar prompts de otros creadores."
-                  : visibleCommunityCatalogPrompts.length === 0
-                  ? "Aun no hay prompts publicos publicados en la comunidad. Se el primero compartiendo una de tus plantillas personales activando el interruptor Hacer publico."
-                  : "No se encontraron prompts publicos que coincidan con los filtros de busqueda o categoria en la comunidad."
-              )}
-            </p>
-          </div>
-          {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
-            <button
-              onClick={() => setShowSeedPackModal(true)}
-              className="px-4 py-2 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
-            >
-              {prompts.length === 0
-                ? "Elegir pack inicial"
-                : "Sumar prompts del pack"}
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filteredPrompts.map((p) => (
-              <motion.div
-                key={p.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -12 }}
-                transition={{ 
-                  type: "spring", 
-                  stiffness: 300, 
-                  damping: 26, 
-                  mass: 0.8,
-                  opacity: { duration: 0.2 }
-                }}
-              >
-                <PromptCard
-                  prompt={p}
-                  folders={folders}
-                  onFavoriteToggle={handleFavoriteToggle}
-                  onEdit={handleOpenEdit}
-                  onDelete={handleDeletePrompt}
-                  onUse={(p) => handleUsePrompt(p, currentTab)}
-                  onCopyFilled={(p) => handleCopyFilledPrompt(p)}
-                  onNotification={triggerNotification}
-                  isCommunityView={currentTab === "comunidad"}
-                  currentUser={user}
-                  onFork={(prompt) => void resolvePublicSavePrompt(prompt)}
-                  onLikeToggle={handleLikeToggle}
-                  onAuthorClick={openPublicProfile}
-                  onViewDetails={setSelectedPublicPrompt}
-                  onSocialFavoriteToggle={handleToggleSocialFavorite}
-                  onHidePrompt={(prompt) => void handleHideCommunityPrompt(prompt)}
-                  onReportPrompt={(prompt) => void handleReportCommunityPrompt(prompt)}
-                  isSocialFavorite={socialFavoritePromptIds.has(p.id)}
-                  knownRemixCount={knownRemixCountsByPromptId.get(p.id) || 0}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-      {/* Category Prompts Popup Overlay */}
+      {/* ── SUITE POPUP OVERLAY ────────────────────────────────── */}
       {selectedCategoryPopup && (
         <CategoryPromptsModal
           isOpen={true}

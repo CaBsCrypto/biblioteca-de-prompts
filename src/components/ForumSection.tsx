@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { ClipboardCheck, Lightbulb, MessageSquare, Plus, Search, Users } from "lucide-react";
+import { ClipboardCheck, Lightbulb, MessageSquare, Plus, Search, Users, X, Hash } from "lucide-react";
 import type { CommunityPost, CommunityPostType } from "../typesCommunity";
 import type { CommunityPostInput } from "../hooks/useCommunityPosts";
 import CommunityPostCard from "./CommunityPostCard";
@@ -35,19 +35,45 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
 
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [tagSearchInput, setTagSearchInput] = useState("");
+
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    posts.forEach((p) => {
+      if (p.tags) {
+        p.tags.forEach((t) => set.add(t));
+      }
+    });
+    return Array.from(set);
+  }, [posts]);
+
+  const tagSuggestions = useMemo(() => {
+    if (!tagSearchInput) return availableTags.filter(t => !selectedTags.includes(t));
+    const clean = tagSearchInput.toLowerCase().replace("#", "");
+    return availableTags.filter(
+      (t) => t.toLowerCase().includes(clean) && !selectedTags.includes(t)
+    );
+  }, [availableTags, tagSearchInput, selectedTags]);
+
   const forumPosts = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return posts
       .filter((post) => post.type !== "showcase")
       .filter((post) => filter === "all" || post.type === filter)
       .filter((post) => {
+        if (selectedTags.length > 0) {
+          const postTags = post.tags || [];
+          if (!selectedTags.every(st => postTags.includes(st))) return false;
+        }
         if (!needle) return true;
-        return [post.title, post.body, post.authorName, post.authorHandle || "", ...post.tags]
+        return [post.title, post.body, post.authorName, post.authorHandle || "", ...(post.tags || [])]
           .join(" ")
           .toLowerCase()
           .includes(needle);
       });
-  }, [filter, posts, search]);
+  }, [filter, posts, search, selectedTags]);
 
   const openCreate = (type: CommunityPostType = "idea") => {
     if (!currentUser) {
@@ -129,15 +155,77 @@ export default function ForumSection({ posts, loading, currentUser, onSignIn, on
             </button>
           ))}
         </div>
-        <label className="flex min-w-0 items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 sm:w-80">
-          <Search size={14} className="text-slate-500" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-xs font-bold text-slate-200 outline-none placeholder:text-slate-600"
-            placeholder="Buscar por tema, autor o tag"
-          />
-        </label>
+        <div className="relative flex flex-col sm:flex-row gap-2 items-center flex-1 max-w-xl w-full">
+          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 w-full">
+            <Search size={14} className="text-slate-500 shrink-0" />
+            
+            {/* Selected Tags in Omnibar */}
+            {selectedTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 text-[10px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md"
+              >
+                #{tag}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
+                  className="hover:text-red-400 p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            
+            <input
+              value={search}
+              onChange={(event) => {
+                const val = event.target.value;
+                setSearch(val);
+                if (val.includes("#")) {
+                  const parts = val.split("#");
+                  setTagSearchInput(parts[parts.length - 1]);
+                  setIsTagDropdownOpen(true);
+                } else {
+                  setIsTagDropdownOpen(false);
+                }
+              }}
+              onFocus={() => {
+                if (search.includes("#")) {
+                  setIsTagDropdownOpen(true);
+                }
+              }}
+              className="min-w-0 flex-1 bg-transparent text-xs font-bold text-slate-200 outline-none placeholder:text-slate-600"
+              placeholder="Buscar o escribe #tag..."
+            />
+          </div>
+
+          {/* Floating Tag Dropdown */}
+          {isTagDropdownOpen && tagSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-[#0f172a]/95 backdrop-blur-md p-1.5 shadow-2xl z-20 space-y-0.5 scrollbar-thin">
+              <p className="text-[10px] text-slate-550 font-bold uppercase tracking-wider px-2 py-1">
+                Etiquetas del foro
+              </p>
+              {tagSuggestions.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTags((prev) => [...prev, tag]);
+                    const idx = search.lastIndexOf("#");
+                    if (idx !== -1) {
+                      setSearch(search.substring(0, idx).trim());
+                    }
+                    setIsTagDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Hash size={11} className="text-slate-500" />
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (

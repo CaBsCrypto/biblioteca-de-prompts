@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import {
   collection,
   doc,
@@ -51,27 +51,29 @@ import PromptPlaylistPlayer from "./components/PromptPlaylistPlayer";
 import ToastHUD from "./components/ToastHUD";
 import MainHeader from "./components/MainHeader";
 import { LibraryWorkspaceView } from "./components/LibraryWorkspaceView";
-import AnalyticsDashboardView from "./components/AnalyticsDashboardView";
 import PromptCard from "./components/PromptCard";
 import ActivationChecklist from "./components/ActivationChecklist";
-import AdminDashboard from "./components/AdminDashboard";
 import BetaInvitePanel from "./components/BetaInvitePanel";
-import ConnectionsPanel from "./components/ConnectionsPanel";
-import CommunityExplore from "./components/CommunityExplore";
 import CreatorGrowthPanel from "./components/CreatorGrowthPanel";
 import DailyMissionPanel from "./components/DailyMissionPanel";
 import DailyWorkspace from "./components/DailyWorkspace";
-import TrustModerationPanel from "./components/TrustModerationPanel";
 import AppTopNav from "./components/AppTopNav";
-import ForumSection from "./components/ForumSection";
-import HackathonsSection from "./components/HackathonsSection";
-import ShowcaseSection from "./components/ShowcaseSection";
-import NewsSection from "./components/NewsSection";
 import PublicBriefingView from "./components/PublicBriefingView";
 import SeedPackModal from "./components/SeedPackModal";
-import ClassroomView from "./components/ClassroomView";
 import JoinClassModal from "./components/JoinClassModal";
-import { AIAssistantAside, AppModalLayer, PublicProfileSurface } from "./components/AppDeferredSurfaces";
+
+const AnalyticsDashboardView = lazy(() => import("./components/AnalyticsDashboardView"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const ConnectionsPanel = lazy(() => import("./components/ConnectionsPanel"));
+const TrustModerationPanel = lazy(() => import("./components/TrustModerationPanel"));
+const ForumSection = lazy(() => import("./components/ForumSection"));
+const HackathonsSection = lazy(() => import("./components/HackathonsSection"));
+const ShowcaseSection = lazy(() => import("./components/ShowcaseSection"));
+const NewsSection = lazy(() => import("./components/NewsSection"));
+const ClassroomView = lazy(() => import("./components/ClassroomView"));
+const CommunityExplore = lazy(() => import("./components/CommunityExplore"));
+
+import { AIAssistantAside, AppModalLayer, PublicProfileSurface, DeferredInlineFallback } from "./components/AppDeferredSurfaces";
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
@@ -127,10 +129,15 @@ const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
 type UiThemeMode = "dark" | "clear";
 const STARTER_PROMPT_GOAL = 8;
 
+import { useAppStore } from "./store/appStore";
+
 export default function App() {
+  const { state: appStoreState, goSection } = useAppStore();
+  const currentSection = appStoreState.section as AppSection;
+  const setCurrentSection = (sect: AppSection) => goSection(sect as any);
+
   // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad" | "dashboard">("mi-biblioteca");
-  const [currentSection, setCurrentSection] = useState<AppSection>("inicio");
   const [uiThemeMode, setUiThemeMode] = useState<UiThemeMode>(() => {
     const savedTheme = window.localStorage.getItem("biblioteca-ui-theme");
     return savedTheme === "dark" ? "dark" : "clear";
@@ -1745,24 +1752,26 @@ export default function App() {
       {/* Main Core Area layout */}
       {activeClassroom ? (
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12">
-          <ClassroomView
-            classroom={activeClassroom}
-            user={user}
-            membership={activeClassMembership}
-            savedCount={classSavedPromptCount}
-            missingCount={classMissingPromptCount}
-            loading={loadingClassroomAction}
-            onBack={handleCloseClassroom}
-            onSignIn={handleSignIn}
-            onJoin={() => void joinClassroom(activeClassroom)}
-            onSavePack={() => void saveClassroomPack(activeClassroom)}
-            onOpenLibrary={() => {
-              handleCloseClassroom();
-              handleSectionChange("mi-biblioteca");
-            }}
-            isInstructor={isFounder}
-            classMembers={classMembers}
-          />
+          <Suspense fallback={<DeferredInlineFallback label="Cargando clase..." />}>
+            <ClassroomView
+              classroom={activeClassroom}
+              user={user}
+              membership={activeClassMembership}
+              savedCount={classSavedPromptCount}
+              missingCount={classMissingPromptCount}
+              loading={loadingClassroomAction}
+              onBack={handleCloseClassroom}
+              onSignIn={handleSignIn}
+              onJoin={() => void joinClassroom(activeClassroom)}
+              onSavePack={() => void saveClassroomPack(activeClassroom)}
+              onOpenLibrary={() => {
+                handleCloseClassroom();
+                handleSectionChange("mi-biblioteca");
+              }}
+              isInstructor={isFounder}
+              classMembers={classMembers}
+            />
+          </Suspense>
         </main>
       ) : sharedBriefing ? (
         <PublicBriefingView
@@ -1800,67 +1809,77 @@ export default function App() {
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
           {currentSection === "admin" && isFounder ? (
-            <AdminDashboard
-              loading={adminDashboard.loading}
-              permissionIssue={adminDashboard.permissionIssue}
-              userMetrics={adminDashboard.userMetrics}
-              totals={adminDashboard.totals}
-              classroomMetrics={adminDashboard.classroomMetrics}
-            />
+            <Suspense fallback={<DeferredInlineFallback label="Cargando panel de administración..." />}>
+              <AdminDashboard
+                loading={adminDashboard.loading}
+                permissionIssue={adminDashboard.permissionIssue}
+                userMetrics={adminDashboard.userMetrics}
+                totals={adminDashboard.totals}
+                classroomMetrics={adminDashboard.classroomMetrics}
+              />
+            </Suspense>
           ) : currentSection === "foro" ? (
-            <ForumSection
-              posts={communityPosts}
-              loading={loadingPosts}
-              currentUser={user}
-              onSignIn={handleSignIn}
-              onSave={savePost}
-              onDelete={deletePost}
-              onLike={togglePostLike}
-              onAuthorClick={openPublicProfile}
-              onNotification={triggerNotification}
-              initialDraft={pendingForumDraft}
-              onDraftConsumed={() => setPendingForumDraft(null)}
-            />
+            <Suspense fallback={<DeferredInlineFallback label="Cargando foro de comunidad..." />}>
+              <ForumSection
+                posts={communityPosts}
+                loading={loadingPosts}
+                currentUser={user}
+                onSignIn={handleSignIn}
+                onSave={savePost}
+                onDelete={deletePost}
+                onLike={togglePostLike}
+                onAuthorClick={openPublicProfile}
+                onNotification={triggerNotification}
+                initialDraft={pendingForumDraft}
+                onDraftConsumed={() => setPendingForumDraft(null)}
+              />
+            </Suspense>
           ) : currentSection === "hackathons" ? (
-            <HackathonsSection
-              hackathons={hackathons}
-              loading={loadingHackathons}
-              currentUser={user}
-              onSignIn={handleSignIn}
-              onSave={saveHackathon}
-              onDelete={deleteHackathon}
-              onCreateTeamPostFromNews={(item) => handleCreateForumPostFromNews(item, "team")}
-            />
+            <Suspense fallback={<DeferredInlineFallback label="Cargando radar de hackathons..." />}>
+              <HackathonsSection
+                hackathons={hackathons}
+                loading={loadingHackathons}
+                currentUser={user}
+                onSignIn={handleSignIn}
+                onSave={saveHackathon}
+                onDelete={deleteHackathon}
+                onCreateTeamPostFromNews={(item) => handleCreateForumPostFromNews(item, "team")}
+              />
+            </Suspense>
           ) : currentSection === "galeria" ? (
-            <ShowcaseSection
-              posts={communityPosts}
-              loading={loadingPosts}
-              currentUser={user}
-              onSignIn={handleSignIn}
-              onSave={savePost}
-              onDelete={deletePost}
-              onLike={togglePostLike}
-              onAuthorClick={openPublicProfile}
-              onNotification={triggerNotification}
-            />
+            <Suspense fallback={<DeferredInlineFallback label="Cargando galería de prompts..." />}>
+              <ShowcaseSection
+                posts={communityPosts}
+                loading={loadingPosts}
+                currentUser={user}
+                onSignIn={handleSignIn}
+                onSave={savePost}
+                onDelete={deletePost}
+                onLike={togglePostLike}
+                onAuthorClick={openPublicProfile}
+                onNotification={triggerNotification}
+              />
+            </Suspense>
           ) : currentSection === "noticias" ? (
-            <NewsSection
-              savedIdeas={savedIdeas}
-              savedIdeaIds={savedIdeaIds}
-              loadingSavedIdeas={loadingSavedIdeas}
-              onCreatePromptFromNews={handleCreatePromptFromNews}
-              onCreateForumPostFromNews={handleCreateForumPostFromNews}
-              onCreateForumDigest={handleCreateForumDigest}
-              onCreatePublicBriefing={(items, category) => void handleCreatePublicBriefing(items, category)}
-              onCreateNewsletterFromNews={handleCreateNewsletterFromNews}
-              onSaveIdeaFromNews={(item) => void handleSaveIdeaFromNews(item)}
-              onDeleteSavedIdea={(idea) => void deleteSavedIdea(idea)}
-              onCreatePromptFromSavedIdea={handleCreatePromptFromSavedIdea}
-              onCreateForumPostFromSavedIdea={handleCreateForumPostFromSavedIdea}
-              onSummarizeNews={(item) => openNewsInAssistant(item, "summary")}
-              onTranslateNews={(item) => openNewsInAssistant(item, "translation")}
-              onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}
-            />
+            <Suspense fallback={<DeferredInlineFallback label="Cargando feed de noticias de IA..." />}>
+              <NewsSection
+                savedIdeas={savedIdeas}
+                savedIdeaIds={savedIdeaIds}
+                loadingSavedIdeas={loadingSavedIdeas}
+                onCreatePromptFromNews={handleCreatePromptFromNews}
+                onCreateForumPostFromNews={handleCreateForumPostFromNews}
+                onCreateForumDigest={handleCreateForumDigest}
+                onCreatePublicBriefing={(items, category) => void handleCreatePublicBriefing(items, category)}
+                onCreateNewsletterFromNews={handleCreateNewsletterFromNews}
+                onSaveIdeaFromNews={(item) => void handleSaveIdeaFromNews(item)}
+                onDeleteSavedIdea={(idea) => void deleteSavedIdea(idea)}
+                onCreatePromptFromSavedIdea={handleCreatePromptFromSavedIdea}
+                onCreateForumPostFromSavedIdea={handleCreateForumPostFromSavedIdea}
+                onSummarizeNews={(item) => openNewsInAssistant(item, "summary")}
+                onTranslateNews={(item) => openNewsInAssistant(item, "translation")}
+                onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}
+              />
+            </Suspense>
           ) : (
             <>
           

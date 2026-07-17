@@ -357,6 +357,40 @@ export default function PromptFormModal({
     }
   }, [prompt]);
 
+  // Load draft on mount (only for new prompts to prevent overwriting existing prompt edits)
+  useEffect(() => {
+    if (!prompt) {
+      const saved = localStorage.getItem("prompts_editor_draft");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.promptText && window.confirm("¿Deseas restaurar tu borrador anterior sin guardar?")) {
+            if (parsed.title) setTitle(parsed.title);
+            if (parsed.description) setDescription(parsed.description);
+            if (parsed.promptText) setPromptText(parsed.promptText);
+            if (parsed.category) setCategory(parsed.category);
+            if (parsed.tagsInput) setTagsInput(parsed.tagsInput);
+          }
+        } catch (e) {
+          console.error("Error parsing saved draft", e);
+        }
+      }
+    }
+  }, [prompt]);
+
+  // Autosave draft on change
+  useEffect(() => {
+    if (!prompt && (title.trim() || description.trim() || promptText.trim())) {
+      localStorage.setItem("prompts_editor_draft", JSON.stringify({
+        title,
+        description,
+        promptText,
+        category,
+        tagsInput
+      }));
+    }
+  }, [title, description, promptText, category, tagsInput, prompt]);
+
   // Parse variables dynamically from text if we see double braces
   const handleExtractVariables = () => {
     const regex = /\{\{([a-zA-Z0-9_ñáéíóúÁÉÍÓÚ]+)\}\}/g;
@@ -401,6 +435,8 @@ export default function PromptFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !promptText.trim()) return;
+
+    localStorage.removeItem("prompts_editor_draft");
 
     const parsedTags = tagsInput
       .split(",")
