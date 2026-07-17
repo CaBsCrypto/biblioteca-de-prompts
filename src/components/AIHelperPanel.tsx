@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Sparkles, ArrowRight, Save, RotateCcw, Copy, Check, FileText, BarChart3, AlertCircle, Eye } from "lucide-react";
 import { auth } from "../firebase";
 import type { Prompt } from "../types";
+import AIModelSelector from "./AIModelSelector";
+
 
 interface PromptVariableInput {
   name: string;
@@ -103,6 +105,8 @@ export default function AIHelperPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+
 
   // Suggested tags & category from AI result
   const [aiMetadata, setAiMetadata] = useState<{
@@ -150,7 +154,7 @@ export default function AIHelperPanel({
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ ...payload, ...(selectedModel ? { modelId: selectedModel } : {}) })
     });
 
     const data = await response.json().catch(() => null);
@@ -160,6 +164,7 @@ export default function AIHelperPanel({
 
     return data as GeneratedPromptData;
   };
+
 
   const handleCreatePrompt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,15 +273,18 @@ export default function AIHelperPanel({
           </div>
           <div>
             <h2 className="font-extrabold text-white text-sm leading-tight">AI Sandbox & Optimizer</h2>
-            <p className="text-[10px] text-slate-400 font-mono">Modelado en vivo con Gemini 1.5 Pro</p>
+            <p className="text-[10px] text-slate-400 font-mono">Modelado en vivo: {selectedModel || "Gemini 1.5 Pro"}</p>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="text-xs font-bold text-slate-350 hover:text-white bg-slate-805 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
-        >
-          Cerrar
-        </button>
+        <div className="flex items-center gap-2">
+          <AIModelSelector selectedModel={selectedModel} onSelect={setSelectedModel} compact />
+          <button
+            onClick={onClose}
+            className="text-xs font-bold text-slate-350 hover:text-white bg-slate-805 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
 
       {/* Tabs Selector */}

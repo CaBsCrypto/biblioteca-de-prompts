@@ -9,7 +9,7 @@ import firebaseConfig from "./firebase-applet-config.json";
 dotenv.config();
 
 const port = Number(process.env.PORT || 3000);
-const geminiModel = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const promptCategories = ["YouTube", "Marketing", "Programación", "Redacción", "IA Agentes", "IA Imágenes", "IA Videos", "Acompañante Personal", "Asistente de Prompts", "Refactorización", "Seguridad", "Buenas Prácticas", "General"] as const;
 const categoryOptions = promptCategories.join(", ");
 const aiWindowMs = Number(process.env.AI_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000);
@@ -18,6 +18,64 @@ const aiBuckets = new Map<string, { count: number; resetAt: number }>();
 const newsCache = new Map<string, { items: NewsItemPayload[]; expiresAt: number }>();
 let certCache: { certs: Record<string, string>; expiresAt: number } | null = null;
 const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS || 30_000);
+
+// ─── OpenRouter config ────────────────────────────────────────────────────────
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+
+/** Models available via OpenRouter (curated list). */
+export const OPENROUTER_MODELS: Array<{ id: string; name: string; provider: string; context: number }> = [
+  { id: "anthropic/claude-sonnet-4-5",        name: "Claude Sonnet 4.5",     provider: "Anthropic",  context: 200_000 },
+  { id: "anthropic/claude-opus-4",             name: "Claude Opus 4",        provider: "Anthropic",  context: 200_000 },
+  { id: "openai/gpt-4o",                        name: "GPT-4o",               provider: "OpenAI",     context: 128_000 },
+  { id: "openai/gpt-4o-mini",                   name: "GPT-4o Mini",          provider: "OpenAI",     context: 128_000 },
+  { id: "google/gemini-2.5-flash",              name: "Gemini 2.5 Flash",     provider: "Google",     context: 1_048_576 },
+  { id: "meta-llama/llama-3.3-70b-instruct",   name: "Llama 3.3 70B",        provider: "Meta",       context: 128_000 },
+  { id: "mistralai/mixtral-8x22b-instruct",    name: "Mixtral 8x22B",        provider: "Mistral",    context: 65_536 },
+  { id: "deepseek/deepseek-r1",                 name: "DeepSeek R1",          provider: "DeepSeek",   context: 128_000 },
+];
+
+/** Call OpenRouter chat-completion and return the text. */
+async function callOpenRouter(
+  model: string,
+  systemPrompt: string,
+  userMessage: string,
+  signal?: AbortSignal
+): Promise<string> {
+  if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY no configurada.");
+
+  const resp = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://biblioteca.browns.studio",
+      "X-Title": "Biblioteca de Prompts"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userMessage }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7
+    }),
+    signal
+  });
+
+  if (!resp.ok) {
+    const errBody = await resp.text().catch(() => "");
+    throw new Error(`OpenRouter ${resp.status}: ${errBody.slice(0, 300)}`);
+  }
+
+  const data = await resp.json() as {
+    choices?: Array<{ message?: { content?: string } }>
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("OpenRouter devolvió respuesta vacía.");
+  return text;
+}
 
 function pruneExpiredBuckets() {
   const now = Date.now();
@@ -632,6 +690,11 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   if (!apiKey) {
     console.warn("WARNING: GEMINI_API_KEY environment variable is not set. AI interactions won't work.");
   }
+  if (!OPENROUTER_API_KEY) {
+    console.info("[AI] OPENROUTER_API_KEY not set — using Gemini only.");
+  } else {
+    console.info(`[AI] OpenRouter active. ${OPENROUTER_MODELS.length} models available.`);
+  }
 
   // Initialize Gemini client (server side)
   const ai = new GoogleGenAI({
@@ -641,6 +704,34 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
         'User-Agent': 'aistudio-build',
       }
     }
+  });
+
+  /**
+   * Unified AI call: uses OpenRouter when `modelId` is an OpenRouter model ID,
+   * falls back to Gemini otherwise.
+   */
+  async function callAI(
+    modelId: string | undefined,
+    systemPrompt: string,
+    userMessage: string,
+    geminiCall: () => Promise<string>,
+    signal?: AbortSignal
+  ): Promise<string> {
+    const isOpenRouterModel = modelId && OPENROUTER_MODELS.some(m => m.id === modelId);
+    if (isOpenRouterModel && OPENROUTER_API_KEY) {
+      return callOpenRouter(modelId!, systemPrompt, userMessage, signal);
+    }
+    return geminiCall();
+  }
+
+  // ─── GET /api/ai/models — list available AI models ─────────────────────────
+  app.get("/api/ai/models", (_req, res) => {
+    res.json({
+      openrouterAvailable: Boolean(OPENROUTER_API_KEY),
+      geminiModel,
+      models: OPENROUTER_API_KEY ? OPENROUTER_MODELS : [],
+      defaultModel: OPENROUTER_API_KEY ? OPENROUTER_MODELS[0].id : "gemini"
+    });
   });
 
   app.get("/api/news", rateLimitNews, async (req, res) => {
@@ -668,10 +759,11 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
 
   app.post("/api/ai/crear", async (req: AuthenticatedRequest, res) => {
     try {
-      const { description, targetRole, channelContext } = req.body;
+      const { description, targetRole, channelContext, modelId } = req.body;
       const safeDescription = requireTextField(description, "La descripción", 1000);
       const safeTargetRole = typeof targetRole === "string" ? targetRole.trim().slice(0, 120) : "";
       const safeChannelContext = typeof channelContext === "string" ? channelContext.trim().slice(0, 250) : "";
+      const safeModelId = typeof modelId === "string" ? modelId.trim().slice(0, 100) : undefined;
 
       auditLog("ai:crear:request", {
         uid: req.user?.uid,
@@ -679,75 +771,78 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
         descriptionLength: safeDescription.length,
         hasTargetRole: Boolean(safeTargetRole),
         hasChannelContext: Boolean(safeChannelContext),
+        model: safeModelId || geminiModel,
       });
 
-      const promptInstructions = `
-        Eres un experto Diseñador de Prompts (Prompt Engineer) de clase mundial.
-        El usuario quiere crear un prompt para su biblioteca personal de prompts. Esto le servirá para su canal de YouTube donde enseña Inteligencia Artificial y para su uso diario.
-        
-        Su requerimiento: "${safeDescription}"
-        ${safeTargetRole ? `Rol objetivo de la IA en el prompt: "${safeTargetRole}"` : ""}
-        ${safeChannelContext ? `Contexto del canal de YouTube/audiencia: "${safeChannelContext}"` : ""}
+      const systemPrompt = `Eres un experto Diseñador de Prompts (Prompt Engineer) de clase mundial. Respondes siempre en JSON válido con los campos: title, description, promptText, category, tags, suggestedVariables.`;
 
-        Diseña un prompt altamente profesional y estructurado con las mejores prácticas:
-        1. Define un ROL claro y asombroso.
-        2. Proporciona INSTRUCCIONES paso a paso, claras y lógicas.
-        3. Define RESTRICCIONES y pautas de formato para el resultado.
-        4. Usa marcadores de posición dinámicos usando doble llave, por ejemplo: {{tema}}, {{estilo}}, o {{audiencia}} para que el usuario pueda rellenarlos en un formulario interactivo.
-        5. Devuelve el prompt estructurado en secciones usando Markdown encabezados (#, ##).
-        6. Agrega un ejemplo de cómo completarlo paso a paso.
-        Toda la respuesta de descripción, título, y variables debe estar en español español neutro y claro.
-      `;
+      const userMessage = `
+El usuario quiere crear un prompt para su biblioteca personal. Esto le servirá para su canal de YouTube donde enseña IA y para su uso diario.
+
+Requerimiento: "${safeDescription}"
+${safeTargetRole ? `Rol objetivo de la IA en el prompt: "${safeTargetRole}"` : ""}
+${safeChannelContext ? `Contexto del canal de YouTube/audiencia: "${safeChannelContext}"` : ""}
+
+Diseña un prompt altamente profesional y estructurado:
+1. Define un ROL claro y asombroso.
+2. Proporciona INSTRUCCIONES paso a paso, claras y lógicas.
+3. Define RESTRICCIONES y pautas de formato para el resultado.
+4. Usa variables con doble llave: {{tema}}, {{estilo}}, {{audiencia}}.
+5. Devuelve el prompt estructurado con Markdown (#, ##).
+6. Toda la respuesta en español neutro.
+
+Categorías válidas: ${categoryOptions}
+
+Responde SOLO con JSON:
+{
+  "title": "...",
+  "description": "...",
+  "promptText": "...",
+  "category": "...",
+  "tags": ["..."],
+  "suggestedVariables": [{"name":"...","description":"...","defaultValue":"..."}]
+}`;
 
       const abortCrear = new AbortController();
       const timeoutCrear = setTimeout(() => abortCrear.abort(), geminiTimeoutMs);
-      let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+
+      let responseText: string;
       try {
-        response = await ai.models.generateContent({
-          model: geminiModel,
-          contents: promptInstructions,
-          config: {
-            abortSignal: abortCrear.signal,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING, description: "A catchy, descriptive title for the AI prompt in Spanish." },
-                description: { type: Type.STRING, description: "A brief, clear summary of what the prompt accomplishes in Spanish." },
-                promptText: { type: Type.STRING, description: "The full, high-quality markdown prompt text with placeholder variables enclosed in double curly brackets like {{variable_name}}." },
-                category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
-                tags: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "A list of 3-5 tags relevant to the prompt, e.g., ['video', 'seo', 'creative']."
-                },
-                suggestedVariables: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      name: { type: Type.STRING, description: "Name of the variable as declared inside double curly brackets in promptText, e.g., 'tema' (no spaces, all lowercase)." },
-                      description: { type: Type.STRING, description: "Explanation in Spanish of what values should be placed here." },
-                      defaultValue: { type: Type.STRING, description: "A smart or typical default fallback value in Spanish." }
-                    },
-                    required: ["name", "description"]
+        responseText = await callAI(
+          safeModelId,
+          systemPrompt,
+          userMessage,
+          async () => {
+            const r = await ai.models.generateContent({
+              model: geminiModel,
+              contents: userMessage,
+              config: {
+                abortSignal: abortCrear.signal,
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    promptText: { type: Type.STRING },
+                    category: { type: Type.STRING, description: `One of: ${categoryOptions}` },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    suggestedVariables: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, description: { type: Type.STRING }, defaultValue: { type: Type.STRING } }, required: ["name", "description"] } }
                   },
-                  description: "List of variables defined in promptText using double curly brackets {{variable_name}}."
+                  required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
                 }
-              },
-              required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
-            }
-          }
-        });
+              }
+            });
+            if (!r.text) throw new Error("Respuesta vacía de Gemini.");
+            return r.text;
+          },
+          abortCrear.signal
+        );
       } finally {
         clearTimeout(timeoutCrear);
       }
 
-      const responseText = response.text;
-      if (!responseText) {
-        throw new Error("No se pudo obtener una respuesta válida del modelo de IA.");
-      }
-
+      if (!responseText) throw new Error("No se pudo obtener una respuesta válida del modelo de IA.");
       res.json(normalizeGeneratedPrompt(responseText));
     } catch (error) {
       console.error("Error creating prompt:", error);
@@ -762,86 +857,88 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   // API Route: Optimize an existing prompt
   app.post("/api/ai/optimizar", async (req: AuthenticatedRequest, res) => {
     try {
-      const { originalPromptText, comments } = req.body;
-      const safeOriginalPromptText = requireTextField(originalPromptText, "El texto del prompt original", 10000);
-      const safeComments = typeof comments === "string" ? comments.trim().slice(0, 500) : "";
+      const { originalPromptText, promptText, comments, instructions, modelId } = req.body;
+      // Accept both field names for backwards compat
+      const rawText = originalPromptText || promptText;
+      const rawInstructions = comments || instructions;
+      const safeOriginalPromptText = requireTextField(rawText, "El texto del prompt original", 10000);
+      const safeComments = typeof rawInstructions === "string" ? rawInstructions.trim().slice(0, 500) : "";
+      const safeModelId = typeof modelId === "string" ? modelId.trim().slice(0, 100) : undefined;
 
       auditLog("ai:optimizar:request", {
         uid: req.user?.uid,
         ip: getClientIp(req),
         promptLength: safeOriginalPromptText.length,
         hasComments: Boolean(safeComments),
+        model: safeModelId || geminiModel,
       });
 
-      const promptInstructions = `
-        Eres un experto Diseñador de Prompts (Prompt Engineer) de nivel senior.
-        Mejora y optimiza el siguiente prompt de usuario para que sea de nivel profesional y rinda extremadamente bien en modelos de IA modernos (como Gemini, GPT, Claude, etc.):
-        
-        PROMPT ORIGINAL:
-        """
-        ${safeOriginalPromptText}
-        """
+      const systemPrompt = `Eres un experto Prompt Engineer de nivel senior. Mejora el prompt del usuario aplicando las mejores prácticas: roles claros, variables con {{doble_llave}}, formato estructurado en Markdown, tono y restricciones definidas. Respondes SOLO con JSON válido.`;
 
-        ${safeComments ? `Instrucciones específicas de optimización del usuario: "${safeComments}"` : ""}
+      const userMessage = `
+Mejora y optimiza el siguiente prompt para que sea de nivel profesional:
 
-        Aplica las mejores técnicas de Prompt Engineering:
-        - Estructura clara (Roles, Contexto, Instrucciones paso a paso, Instrucciones de Salida, Ejemplo).
-        - Añade variables envolviendo texto genérico en doble llaves, por ejemplo: {{tema_especifico}} o {{formato_salida}} para flexibilizarlo.
-        - Elimina ambigüedades.
-        - Añade pautas de tono, longitud y estilo.
-        - Si el original contiene variables, consérvalas o mejoralas pero mantén la sintaxis {{nombre_variable}}.
-        Toda la respuesta de descripción, título, y variables debe estar en español español neutro y claro.
-      `;
+PROMPT ORIGINAL:
+"""
+${safeOriginalPromptText}
+"""
+
+${safeComments ? `Instrucciones específicas: "${safeComments}"` : ""}
+
+Categorías válidas: ${categoryOptions}
+
+Responde SOLO con JSON:
+{
+  "title": "...",
+  "description": "...",
+  "promptText": "...mejorado...",
+  "category": "...",
+  "tags": ["..."],
+  "suggestedVariables": [{"name":"...","description":"...","defaultValue":"..."}]
+}`;
+
+
 
       const abortOptimizar = new AbortController();
       const timeoutOptimizar = setTimeout(() => abortOptimizar.abort(), geminiTimeoutMs);
-      let response: Awaited<ReturnType<typeof ai.models.generateContent>>;
+
+      let responseText: string;
       try {
-        response = await ai.models.generateContent({
-          model: geminiModel,
-          contents: promptInstructions,
-          config: {
-            abortSignal: abortOptimizar.signal,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING, description: "An updated catchy title for this optimized prompt in Spanish." },
-                description: { type: Type.STRING, description: "A brief description of what this optimized prompt does." },
-                promptText: { type: Type.STRING, description: "The complete optimized markdown prompt, including double curly braced placeholders {{placeholder}}." },
-                category: { type: Type.STRING, description: `The category that best fits. Select exactly one of: ${categoryOptions}.` },
-                tags: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "A list of 3-5 tags relevant to the prompt."
-                },
-                suggestedVariables: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      name: { type: Type.STRING, description: "Name of the variable as found in double curly brackets in promptText, e.g., 'tema'." },
-                      description: { type: Type.STRING, description: "Explanation in Spanish of what values should represent." },
-                      defaultValue: { type: Type.STRING, description: "A realistic default starting value for the variable." }
-                    },
-                    required: ["name", "description"]
+        responseText = await callAI(
+          safeModelId,
+          systemPrompt,
+          userMessage,
+          async () => {
+            const r = await ai.models.generateContent({
+              model: geminiModel,
+              contents: userMessage,
+              config: {
+                abortSignal: abortOptimizar.signal,
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    promptText: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    suggestedVariables: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, description: { type: Type.STRING }, defaultValue: { type: Type.STRING } }, required: ["name", "description"] } }
                   },
-                  description: "Variables found inside the newly optimized prompt text."
+                  required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
                 }
-              },
-              required: ["title", "description", "promptText", "category", "tags", "suggestedVariables"]
-            }
-          }
-        });
+              }
+            });
+            if (!r.text) throw new Error("Respuesta vacía de Gemini.");
+            return r.text;
+          },
+          abortOptimizar.signal
+        );
       } finally {
         clearTimeout(timeoutOptimizar);
       }
 
-      const responseText = response.text;
-      if (!responseText) {
-        throw new Error("No se pudo obtener una respuesta con el modelo de IA.");
-      }
-
+      if (!responseText) throw new Error("No se pudo obtener una respuesta con el modelo de IA.");
       res.json(normalizeGeneratedPrompt(responseText));
     } catch (error) {
       console.error("Error optimizing prompt:", error);

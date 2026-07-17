@@ -3,6 +3,8 @@ import { X, Save, Plus, Trash2, Tag, HelpCircle, Sparkles, StickyNote, Globe, Hi
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { Prompt, PromptVariable, Folder } from "../types";
+import AIModelSelector from "./AIModelSelector";
+
 
 function extractVariables(text: string): string[] {
   const matches = text.match(/\{\{([^}]+)\}\}/g);
@@ -232,6 +234,8 @@ export default function PromptFormModal({
   const [loadingAI, setLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [mockValues, setMockValues] = useState<Record<string, string>>({});
+  const [selectedAIModel, setSelectedAIModel] = useState<string | null>(null);
+
 
   const activeVariables = React.useMemo(() => {
     return extractVariables(promptText);
@@ -263,9 +267,11 @@ export default function PromptFormModal({
         },
         body: JSON.stringify({
           promptText: promptText.trim(),
-          instructions: aiInstructions.trim() || undefined
+          instructions: aiInstructions.trim() || undefined,
+          ...(selectedAIModel ? { modelId: selectedAIModel } : {})
         })
       });
+
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error al optimizar.");
@@ -886,9 +892,12 @@ export default function PromptFormModal({
 
                 {/* AI Refiner */}
                 <div className="bg-[#1e293b]/60 p-4.5 rounded-2xl border border-slate-700/60 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-pink-400 animate-pulse" />
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-200">Refinar con Gemini</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={14} className="text-pink-400 animate-pulse" />
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-200">Refinar con IA</span>
+                    </div>
+                    <AIModelSelector selectedModel={selectedAIModel} onSelect={setSelectedAIModel} compact />
                   </div>
                   <textarea
                     value={aiInstructions}
