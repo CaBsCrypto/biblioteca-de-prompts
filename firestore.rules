@@ -30,7 +30,26 @@ service cloud.firestore {
           folderId is string
           && folderId.size() <= 128
           && exists(/databases/$(database)/documents/folders/$(folderId))
-          && get(/databases/$(database)/documents/folders/$(folderId)).data.userId == request.auth.uid
+          && (
+            get(/databases/$(database)/documents/folders/$(folderId)).data.userId == request.auth.uid
+            || (
+              get(/databases/$(database)/documents/folders/$(folderId)).data.collaborators != null
+              && request.auth.uid in get(/databases/$(database)/documents/folders/$(folderId)).data.collaborators
+              && get(/databases/$(database)/documents/folders/$(folderId)).data.collaborators[request.auth.uid].role == 'editor'
+            )
+          )
+        );
+    }
+
+    function canReadPromptFolder(folderId) {
+      return folderId != null
+        && exists(/databases/$(database)/documents/folders/$(folderId))
+        && (
+          get(/databases/$(database)/documents/folders/$(folderId)).data.userId == request.auth.uid
+          || (
+            get(/databases/$(database)/documents/folders/$(folderId)).data.collaborators != null
+            && request.auth.uid in get(/databases/$(database)/documents/folders/$(folderId)).data.collaborators
+          )
         );
     }
 
@@ -713,14 +732,16 @@ service cloud.firestore {
     }
 
     match /prompts/{promptId} {
-      // Secure list query and document retrieve (allow authenticated owner or explicitly shared prompt)
+      // Secure list query and document retrieve (allow authenticated owner, explicitly shared prompt, or collaborator in same folder)
       allow get: if isFounder()
         || (existing().isShared == true) 
-        || (isSignedIn() && existing().userId == request.auth.uid);
+        || (isSignedIn() && existing().userId == request.auth.uid)
+        || (isSignedIn() && canReadPromptFolder(existing().folderId));
         
       allow list: if isFounder()
         || (existing().isShared == true) 
-        || (isSignedIn() && existing().userId == request.auth.uid);
+        || (isSignedIn() && existing().userId == request.auth.uid)
+        || (isSignedIn() && canReadPromptFolder(existing().folderId));
       
       // Strict creation verification
       allow create: if isSignedIn() 
@@ -778,6 +799,17 @@ service cloud.firestore {
                 && existing().likedBy.hasAll(incoming().likedBy)
               )
             ))
+          ||
+          // Case 3: Collaborator editor write
+          (existing().folderId != null
+            && exists(/databases/$(database)/documents/folders/$(existing().folderId))
+            && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.collaborators != null
+            && request.auth.uid in get(/databases/$(database)/documents/folders/$(existing().folderId)).data.collaborators
+            && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.collaborators[request.auth.uid].role == 'editor'
+            && incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+            && incoming().updatedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'suggestedVariables', 'updatedAt']))
         );
         
       // Strictly deletion
