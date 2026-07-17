@@ -51,7 +51,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.gstatic.com https://firestore.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://hn.algolia.com https://gnews.io; frame-src 'self' https://*.firebaseapp.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.gstatic.com https://firestore.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://hn.algolia.com https://gnews.io https://openrouter.ai; frame-src 'self' https://*.firebaseapp.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
         }
       ]
     },
