@@ -204,7 +204,7 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
 
   const handleOpenShareFolderModal = (folder: Folder) => {
     setShowShareFolderModal(folder);
-    setIsFolderSharedInput(folder.isShared || false);
+    setIsFolderSharedInput(false);
     setPublishFolderPromptsInput(false);
   };
 
@@ -216,14 +216,15 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
     const foldersCollectionPath = "folders";
     try {
       await updateDoc(doc(db, foldersCollectionPath, showShareFolderModal.id), {
-        isShared: isFolderSharedInput,
+        // Catalog publication is a reviewed snapshot, independent of this private folder.
+        isShared: false,
         authorName: getAuthorIdentity().authorName,
         authorHandle: getAuthorIdentity().authorHandle,
         collaborators: collaborators || showShareFolderModal.collaborators || {}
       });
 
       onNotification(
-        isFolderSharedInput ? "Enlace de colección preparado. Solo mostrará recursos aprobados." : "La colección ahora es privada.",
+        "Colaboración privada de la carpeta actualizada.",
         "success"
       );
       setShowShareFolderModal(null);

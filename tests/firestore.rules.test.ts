@@ -7,12 +7,16 @@ import {
   type RulesTestEnvironment
 } from "@firebase/rules-unit-testing";
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from "firebase/firestore";
 
 let testEnv: RulesTestEnvironment;
@@ -143,6 +147,22 @@ describe("firestore.rules follows y eventos", () => {
 });
 
 describe("firestore.rules carpetas y prompts", () => {
+  test("isShared no expone carpetas legacy ni colaboradores y conserva accesos autorizados", async () => {
+    const collaborators = { bob: { role: "editor", displayName: "Bob", email: "bob@example.invalid" } };
+    await seedDoc("folders/legacy-shared", validFolder("alice", { isShared: true, collaborators }));
+    await seedDoc("users/founder", validProfile("founder", { role: "founder" }));
+    for (const uid of [undefined, "charlie"]) {
+      await assertFails(getDoc(doc(dbFor(uid), "folders/legacy-shared")));
+      await assertFails(getDocs(query(collection(dbFor(uid), "folders"), where("isShared", "==", true))));
+    }
+    expect((await assertSucceeds(getDoc(doc(dbFor("alice"), "folders/legacy-shared")))).data()?.collaborators).toEqual(collaborators);
+    expect((await assertSucceeds(getDoc(doc(dbFor("bob"), "folders/legacy-shared")))).data()?.collaborators).toEqual(collaborators);
+    await assertSucceeds(getDocs(query(collection(dbFor("alice"), "folders"), where("userId", "==", "alice"))));
+    await assertSucceeds(getDocs(query(collection(dbFor("bob"), "folders"), where("collaborators.bob.role", "==", "editor"))));
+    await assertSucceeds(getDoc(doc(dbFor("founder"), "folders/legacy-shared")));
+    await assertSucceeds(getDocs(collection(dbFor("founder"), "folders")));
+  });
+
   test("permite carpeta propia y bloquea prompt dentro de carpeta ajena", async () => {
     await assertSucceeds(setDoc(doc(dbFor("alice"), "folders/alice-folder"), validFolder("alice")));
     await seedDoc("folders/bob-folder", validFolder("bob"));
@@ -181,6 +201,65 @@ describe("firestore.rules carpetas y prompts", () => {
     }));
     await assertFails(deleteDoc(doc(dbFor("bob"), "prompts/owned-prompt")));
     await assertSucceeds(deleteDoc(doc(dbFor("alice"), "prompts/owned-prompt")));
+  });
+
+  test("el colaborador editor respeta tipos y límites sin cambiar propiedad y el viewer no escribe", async () => {
+    await seedDoc("folders/team-folder", validFolder("alice", { collaborators: { bob: { role: "editor" }, carla: { role: "viewer" } } }));
+    await seedDoc("prompts/team-prompt", validPrompt("alice", { folderId: "team-folder" }));
+    await assertSucceeds(updateDoc(doc(dbFor("bob"), "prompts/team-prompt"), { title: "Editado por Bob", promptText: "Resume {{tema}}", description: "Texto colaborativo", tags: ["equipo"], suggestedVariables: [{ name: "tema", description: "Tema a resumir" }], updatedAt: serverTimestamp() }));
+    const invalidChanges = [
+      { title: 7 }, { title: "" }, { title: "x".repeat(151) },
+      { promptText: { unexpected: "map" } }, { promptText: "" }, { promptText: "x".repeat(10001) },
+      { category: 8 }, { category: "x".repeat(51) },
+      { description: [] }, { description: "x".repeat(1001) },
+      { tags: "texto" }, { tags: Array.from({ length: 11 }, (_, i) => `tag-${i}`) },
+      { suggestedVariables: "texto" }, { userId: "bob" }, { folderId: null }, { authorName: "Bob" }
+    ];
+    for (const change of invalidChanges) await assertFails(updateDoc(doc(dbFor("bob"), "prompts/team-prompt"), { ...change, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(dbFor("carla"), "prompts/team-prompt"), { title: "Viewer no edita", updatedAt: serverTimestamp() }));
+    expect((await getDoc(doc(dbFor("alice"), "prompts/team-prompt"))).data()?.userId).toBe("alice");
+    expect((await getDoc(doc(dbFor("alice"), "prompts/team-prompt"))).data()?.title).toBe("Editado por Bob");
+  });
+});
+
+describe("firestore.rules autoría comunitaria", () => {
+  test("solo crea posts con su UID y conserva edición y likes legítimos", async () => {
+    const post = { type: "idea", title: "Idea del autor", body: "Comparte un recurso", tags: ["idea"], imageUrl: "", linkUrl: "", authorUid: "alice", authorName: "Alice", authorHandle: "alice", authorAvatar: "", likesCount: 0, likedBy: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    await assertFails(setDoc(doc(dbFor("bob"), "communityPosts/forged-author"), post));
+    await assertFails(setDoc(doc(dbFor("alice"), "communityPosts/forged-founder"), { ...post, authorUid: "founder" }));
+    await assertSucceeds(setDoc(doc(dbFor("alice"), "communityPosts/own-post"), post));
+    await assertSucceeds(updateDoc(doc(dbFor("alice"), "communityPosts/own-post"), { title: "Idea actualizada", updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(dbFor("alice"), "communityPosts/own-post"), { authorUid: "founder", updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(dbFor("bob"), "communityPosts/own-post"), { body: "Contenido ajeno", updatedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(doc(dbFor("bob"), "communityPosts/own-post"), { likedBy: ["bob"], likesCount: 1, updatedAt: serverTimestamp() }));
+    await assertSucceeds(getDoc(doc(dbFor(), "communityPosts/own-post")));
+  });
+});
+
+describe("firestore.rules chats", () => {
+  test("vincula el ID a dos participantes únicos y conserva la conversación privada legítima", async () => {
+    const thread = (participants: unknown[]) => ({ participants, participantNames: { alice: "Alice", bob: "Bob", charlie: "Charlie" }, participantHandles: {}, participantAvatars: {}, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const message = (senderUid: string, recipientUid: string) => ({ chatId: "alice__bob", senderUid, senderName: senderUid, senderAvatar: "", recipientUid, text: "Mensaje privado", createdAt: serverTimestamp() });
+    await seedDoc("users/charlie/connections/alice", { status: "connected" });
+    await seedDoc("users/alice/connections/bob", { status: "connected" });
+    await seedDoc("users/bob/connections/alice", { status: "connected" });
+    await seedDoc("users/alice/connections/alice", { status: "connected" });
+    await assertFails(setDoc(doc(dbFor("charlie"), "chats/alice__bob"), thread(["alice", "charlie"])));
+    await assertFails(setDoc(doc(dbFor("alice"), "chats/alice__alice"), thread(["alice", "alice"])));
+    await assertFails(setDoc(doc(dbFor("alice"), "chats/alice__7"), thread(["alice", 7])));
+    await assertFails(getDoc(doc(dbFor(), "chats/alice__bob")));
+    expect((await assertSucceeds(getDoc(doc(dbFor("alice"), "chats/alice__bob")))).exists()).toBe(false);
+    await assertSucceeds(setDoc(doc(dbFor("alice"), "chats/alice__bob"), thread(["alice", "bob"])));
+    await assertSucceeds(setDoc(doc(dbFor("bob"), "chats/bob__alice"), thread(["bob", "alice"])));
+    await assertSucceeds(setDoc(doc(dbFor("alice"), "chats/alice__bob/messages/own-message"), message("alice", "bob")));
+    await assertFails(setDoc(doc(dbFor("charlie"), "chats/alice__bob/messages/intruder-message"), message("charlie", "alice")));
+    await assertFails(setDoc(doc(dbFor("bob"), "chats/alice__bob/messages/forged-message"), message("alice", "bob")));
+    await assertSucceeds(getDoc(doc(dbFor("bob"), "chats/alice__bob/messages/own-message")));
+    for (const uid of [undefined, "charlie"]) {
+      await assertFails(getDoc(doc(dbFor(uid), "chats/alice__bob")));
+      await assertFails(getDocs(collection(dbFor(uid), "chats/alice__bob/messages")));
+    }
+    await assertFails(updateDoc(doc(dbFor("alice"), "chats/alice__bob"), { participants: ["alice", "charlie"], lastMessageSenderUid: "alice", updatedAt: serverTimestamp() }));
   });
 });
 

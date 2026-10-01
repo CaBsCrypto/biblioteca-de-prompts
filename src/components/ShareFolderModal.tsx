@@ -1,6 +1,8 @@
 import { FormEvent, useState } from "react";
 import { Copy, Share2, X, Plus, User, Trash2 } from "lucide-react";
 import type { Folder, Prompt } from "../types";
+import { db } from "../firebase";
+import { fetchPublishedResourceForSource } from "../services/firestore/catalogService";
 
 interface ShareFolderModalProps {
   folder: Folder;
@@ -18,24 +20,39 @@ interface ShareFolderModalProps {
 
 export default function ShareFolderModal({
   folder,
-  prompts,
-  isFolderSharedInput,
-  publishFolderPromptsInput,
   isSavingFolderShare,
-  setIsFolderSharedInput,
-  setPublishFolderPromptsInput,
   onSave,
   onClose,
   onNotification,
   connectedConnections = []
 }: ShareFolderModalProps) {
 
-  const privatePromptsCount = prompts.filter((prompt) => prompt.folderId === folder.id && !prompt.isShared).length;
   const publicLink = `${window.location.origin}/?collection=${encodeURIComponent(folder.id)}`;
 
   const [collaborators, setCollaborators] = useState<any>(folder.collaborators || {});
   const [collabInput, setCollabInput] = useState("");
   const [collabRole, setCollabRole] = useState<"viewer" | "editor">("viewer");
+  const [copyingLink, setCopyingLink] = useState(false);
+
+  const handleCopyApprovedCollection = async () => {
+    if (copyingLink) return;
+    setCopyingLink(true);
+    try {
+      const resources = await fetchPublishedResourceForSource(db, { folderId: folder.id });
+      if (!resources.length) {
+        onNotification("Esta carpeta aún no tiene recursos aprobados. Postula sus prompts desde Publicar antes de compartir el enlace.", "info");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(publicLink);
+        onNotification("Enlace a los recursos aprobados de la colección copiado.", "success");
+      } catch {
+        onNotification("No pudimos copiar el enlace. Puedes seleccionarlo para copiarlo manualmente.", "info");
+      }
+    } catch {
+      onNotification("No pudimos comprobar los recursos aprobados. Inténtalo de nuevo.", "info");
+    } finally { setCopyingLink(false); }
+  };
 
   const handleAddCollaborator = () => {
     if (!collabInput.trim()) return;
@@ -82,11 +99,12 @@ export default function ShareFolderModal({
         <div className="ui-modal-header flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Share2 size={18} className="text-emerald-400" />
-            <h3 className="font-extrabold text-white text-md">Configuración de la Carpeta</h3>
+            <h3 className="font-extrabold text-white text-md">Colaboración privada de la carpeta</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
+            aria-label="Cerrar configuración de la carpeta"
             className="ui-action-secondary p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
           >
             <X size={16} />
@@ -212,56 +230,33 @@ export default function ShareFolderModal({
           </div>
 
 
-          <div className="ui-muted-panel flex items-center justify-between bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
-            <div className="space-y-0.5 pointer-events-none">
-              <p className="text-xs font-extrabold text-white">Publicar carpeta en la web</p>
-              <p className="text-[10px] text-slate-400 font-sans">El enlace muestra solo recursos que hayan pasado la revisión del catálogo.</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-4">
-              <input
-                type="checkbox"
-                checked={isFolderSharedInput}
-                onChange={(event) => {
-                  setIsFolderSharedInput(event.target.checked);
-                  if (!event.target.checked) {
-                    setPublishFolderPromptsInput(false);
-                  }
-                }}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white"></div>
-            </label>
-          </div>
-
-          {isFolderSharedInput && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-              <p className="text-xs text-slate-400">Este enlace solo muestra recursos aprobados de la carpeta. Los borradores y prompts privados permanecen privados. Postula cada recurso desde Publicar.</p>
+            <div className="ui-muted-panel space-y-3 bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
+              <p className="text-xs font-extrabold text-white">Compartir los recursos aprobados</p>
+              <p className="text-xs text-slate-400">Gestiona aquí los colaboradores privados. Para el catálogo, postula cada recurso desde Publicar; este enlace reúne únicamente las versiones aprobadas de esta carpeta.</p>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-black tracking-wider text-emerald-400 uppercase">Enlace de la Colección Pública</label>
+                <label htmlFor="approved-collection-link" className="text-[10px] font-black tracking-wider text-emerald-400 uppercase">Enlace a los recursos aprobados</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    id="approved-collection-link"
                     readOnly
                     value={publicLink}
                     className="flex-1 text-[11px] rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-350 focus:outline-none font-mono"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(publicLink);
-                      onNotification("¡Enlace de colección copiado con éxito!", "success");
-                    }}
+                    onClick={() => void handleCopyApprovedCollection()}
+                    disabled={copyingLink}
                     className="px-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                     title="Copiar enlace"
                   >
                     <Copy size={13} />
-                    <span className="hidden sm:inline">Copiar</span>
+                    <span className="hidden sm:inline">{copyingLink ? "Comprobando…" : "Copiar"}</span>
                   </button>
                 </div>
               </div>
             </div>
-          )}
         </div>
 
         <div className="ui-modal-footer flex justify-end gap-2.5 px-4 sm:px-6 py-4 border-t border-slate-800/60">

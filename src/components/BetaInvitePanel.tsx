@@ -55,7 +55,7 @@ export default function BetaInvitePanel({
           </p>
           <h3 className="ui-text-primary mt-3 text-lg font-black text-white">Lista para invitar 3-10 testers.</h3>
           <p className="ui-text-muted mt-1 max-w-3xl text-sm leading-relaxed text-slate-400">
-            Comparte el link, pide una prueba de 5-8 minutos desde celular y centraliza el feedback en el foro. Nada se publica sin accion manual del usuario.
+            Comparte el enlace, pide una prueba de 5-8 minutos desde celular y centraliza el feedback en el foro. Los prompts y las skills aparecen en el catálogo después de su revisión.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">

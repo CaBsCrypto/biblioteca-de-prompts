@@ -14,7 +14,7 @@ npm run test:unit
 npm run test:rules
 ```
 
-`npm run qa` equivale a lint y build. Las 37 pruebas unitarias de catálogo y rutas validan Agent Skills, archivos, repositorios fijados a un commit, URLs, búsqueda, atribución y enlaces compartibles. Las 23 pruebas de reglas validan los permisos legacy y del catálogo, decisiones atómicas, snapshots inmutables, IDs cruzados, revisiones, retirada, copias privadas y el recorrido con los servicios reales. Si falla QA o cualquiera de estas suites, el cambio no está listo para lanzamiento.
+`npm run qa` equivale a lint y build. Las 37 pruebas unitarias de catálogo y rutas validan Agent Skills, archivos, repositorios fijados a un commit, URLs, búsqueda, atribución y enlaces compartibles. Las 27 pruebas de reglas validan los permisos legacy y del catálogo, autoría comunitaria, colaboración privada, identidad de chats, decisiones atómicas, snapshots inmutables, IDs cruzados, revisiones, retirada, copias privadas y el recorrido con los servicios reales. Si falla QA o cualquiera de estas suites, el cambio no está listo para lanzamiento.
 
 CI ejecuta typecheck, pruebas unitarias y build; otro job instala Temurin JDK 21 y ejecuta `npm run test:rules`. El job de smoke depende de ambos. Un job de smoke omitido por falta de acceso al Preview no cuenta como una validación funcional aprobada: completar esa comprobación manualmente.
 
@@ -74,3 +74,11 @@ vercel logs <deployment-url> --no-follow --since 30m --level error --expand
 Los errores de Firestore pueden indicar reglas no desplegadas en la base nombrada o índices de catálogo pendientes. Los bloqueos CSP al comprobar GitHub deben revisarse en `vercel.json`, que permite `api.github.com` y `raw.githubusercontent.com`.
 
 Un futuro Firebase de staging puede aislar Vercel Preview de producción. Las pruebas de reglas ya están activas en CI con JDK 21 y deben mantenerse obligatorias.
+
+## Evidencia de implementación — 1 de octubre de 2026
+
+En navegador local con Auth y Firestore emulados se comprobó crear → postular → revisar → aprobar → buscar → abrir muestra → copiar/rellenar variables → guardar remix privado con atribución. La descarga real de `SKILL.md` coincidió exactamente con el entregable aprobado; guardar la skill la incorporó a Mi Biblioteca. Una actualización pendiente conservó visible y copiable la versión aprobada anterior; el rechazo mostró su motivo al autor y la retirada dejó de ofrecer el recurso públicamente.
+
+También se comprobó el catálogo a 390 px sin desbordamiento horizontal, el cambio entre cuentas de creador y fundador sin mezclar identidad o controles de revisión, y la configuración de colaboración privada de carpetas sin publicación directa. El enlace de una carpeta sin recursos aprobados indica que primero deben postularse.
+
+GitHub Actions ejecuta QA, pruebas unitarias, reglas y smoke HTTP sobre el Preview de la PR. El Preview real carga el frontend; la comprobación del catálogo en Firebase sigue pendiente del lanzamiento coordinado de reglas e índices sobre la base nombrada. No se han sembrado recursos de demostración en producción. El rol founder se confirmó mediante acceso administrativo. Las muestras `[DEMO]` y cuentas de prueba solo pertenecen al emulador local.
