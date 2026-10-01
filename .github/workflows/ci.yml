@@ -49,6 +49,9 @@ jobs:
     needs: [qa, firestore-rules]
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
+    permissions:
+      contents: read
+      deployments: read
     steps:
       - uses: actions/checkout@v4
 
@@ -63,13 +66,14 @@ jobs:
 
       - name: Wait for Vercel preview
         id: vercel
-        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
-        with:
-          token: ${{ secrets.VERCEL_TOKEN }}
-          max-time: 240
+        run: node scripts/wait-vercel-preview.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_SHA: ${{ github.event.pull_request.head.sha }}
+          PREVIEW_PROJECT: biblioteca-de-prompts
 
       - name: Smoke test
-        run: npm run smoke:vercel -- ${{ steps.vercel.outputs.url }}
+        run: npm run smoke:vercel -- "${{ steps.vercel.outputs.url }}"
         env:
           GEMINI_API_KEY: ci-placeholder
 

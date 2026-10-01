@@ -63,6 +63,9 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
     const displayName = currentUser.displayName || currentUser.email?.split("@")[0] || "Miembro de la comunidad";
     const photoURL = currentUser.photoURL || "";
     const existingProfile = await getDoc(profileRef);
+    const isCurrentAccount = () => auth.currentUser?.uid === currentUser.uid;
+    // A slow response from the previous account must neither refresh its profile nor restore its role in the UI.
+    if (!isCurrentAccount()) return;
 
     if (!existingProfile.exists()) {
       const profile: Omit<UserProfile, "id"> = {
@@ -82,7 +85,7 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
         updatedAt: serverTimestamp()
       };
       await setDoc(profileRef, profile);
-      setCurrentUserProfile({ ...profile, createdAt: null, updatedAt: null });
+      if (isCurrentAccount()) setCurrentUserProfile({ ...profile, createdAt: null, updatedAt: null });
       return;
     }
 
@@ -91,9 +94,11 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
       photoURL,
       updatedAt: serverTimestamp()
     });
+    if (!isCurrentAccount()) return;
     setCurrentUserProfile({
       id: existingProfile.id,
       ...existingProfile.data(),
+      uid: currentUser.uid,
       displayName,
       photoURL
     } as unknown as UserProfile);
@@ -114,13 +119,12 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setCurrentUserProfile(profile => profile?.uid === currentUser?.uid ? profile : null);
       setUser(currentUser);
       if (currentUser) {
         ensureUserProfile(currentUser).catch((error) => {
           console.error("Error ensuring user profile:", error);
         });
-      } else {
-        setCurrentUserProfile(null);
       }
       setAuthLoading(false);
     });

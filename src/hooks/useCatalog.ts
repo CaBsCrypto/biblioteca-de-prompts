@@ -16,6 +16,10 @@ interface UseCatalogOptions {
 }
 
 function errorMessage(error: unknown): string {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+  if (code === 'permission-denied') return 'No pudimos acceder al catálogo. Vuelve a intentarlo más tarde.';
+  if (code === 'unavailable') return 'No hay conexión con la biblioteca. Comprueba tu conexión e inténtalo de nuevo.';
+  if (code === 'failed-precondition') return 'El catálogo todavía se está preparando. Vuelve a intentarlo más tarde.';
   return error instanceof Error ? error.message : 'No se pudo completar la operación del catálogo.';
 }
 

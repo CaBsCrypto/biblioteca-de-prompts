@@ -292,7 +292,7 @@ export default function App() {
       router.navigateUrl(url);
     }
   });
-  const isFounder = currentUserProfile?.role === "founder";
+  const isFounder = Boolean(user && currentUserProfile?.uid === user.uid && currentUserProfile.role === "founder");
   const catalogIdentity = useMemo(() => ({
     name: currentUserProfile?.displayName || user?.displayName || "Creador",
     handle: currentUserProfile?.handle || "",
@@ -343,7 +343,7 @@ export default function App() {
     }
   };
 
-  const adminDashboard = useAdminDashboard(isFounder);
+  const adminDashboard = useAdminDashboard(isFounder && currentSection === 'admin');
 
   const {
     prompts,
