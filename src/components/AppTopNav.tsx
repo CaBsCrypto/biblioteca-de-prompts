@@ -1,6 +1,5 @@
-import { BarChart3, BookOpen, ClipboardCheck, FolderOpen, Home, Image, MessageSquare, Newspaper, ShieldCheck, Trophy, Users } from "lucide-react";
-
-import type { AppSection } from "../typesCommunity";
+import { BookOpen, FolderOpen, Users, Plus, ShieldCheck, ChevronDown } from 'lucide-react';
+import type { AppSection } from '../typesCommunity';
 
 interface AppTopNavProps {
   currentSection: AppSection;
@@ -16,92 +15,39 @@ interface AppTopNavProps {
   onGuidedModeClick?: () => void;
 }
 
-const NAV_ITEMS: Array<{
-  id: AppSection;
-  label: string;
-  icon: typeof Home;
-  countKey?: "prompts" | "library" | "posts" | "hackathons" | "showcases" | "news";
-  priority: "primary" | "secondary";
-}> = [
-  { id: "inicio",        label: "Inicio",      icon: Home,         priority: "primary" },
-  { id: "prompts",       label: "Prompts",     icon: BookOpen,     countKey: "prompts",    priority: "primary" },
-  { id: "noticias",      label: "Noticias",    icon: Newspaper,    countKey: "news",       priority: "primary" },
-  { id: "mi-biblioteca", label: "Biblioteca",  icon: FolderOpen,   countKey: "library",    priority: "primary" },
-  { id: "progreso",      label: "Mi Progreso", icon: BarChart3,     priority: "primary" },
-  { id: "foro",          label: "Foro",        icon: MessageSquare,countKey: "posts",      priority: "secondary" },
-  { id: "hackathons",    label: "Hackathons",  icon: Trophy,       countKey: "hackathons", priority: "secondary" },
-  { id: "galeria",       label: "Galeria",     icon: Image,        countKey: "showcases",  priority: "secondary" }
+const MAIN = [
+  { id: 'explorar', label: 'Explorar', icon: BookOpen },
+  { id: 'creadores', label: 'Creadores', icon: Users },
+  { id: 'mi-biblioteca', label: 'Mi Biblioteca', icon: FolderOpen },
+  { id: 'publicar', label: 'Publicar', icon: Plus },
+] as const;
+const SECONDARY: { id: AppSection; label: string }[] = [
+  { id: 'noticias', label: 'Noticias' }, { id: 'foro', label: 'Foro' },
+  { id: 'hackathons', label: 'Hackathons' }, { id: 'galeria', label: 'Galería' },
+  { id: 'progreso', label: 'Mi progreso' },
 ];
 
-export default function AppTopNav({
-  currentSection,
-  promptsCount,
-  libraryCount,
-  postsCount,
-  hackathonsCount,
-  showcasesCount,
-  newsCount = 0,
-  showAdmin = false,
-  showGuidedMode = false,
-  onSectionChange,
-  onGuidedModeClick
-}: AppTopNavProps) {
-  const counts = {
-    prompts: promptsCount,
-    library: libraryCount,
-    posts: postsCount,
-    hackathons: hackathonsCount,
-    showcases: showcasesCount,
-    news: newsCount
-  };
-
+export default function AppTopNav({ currentSection, showAdmin, onSectionChange, showGuidedMode, onGuidedModeClick }: AppTopNavProps) {
+  const active = currentSection === 'inicio' || currentSection === 'prompts' ? 'explorar' : currentSection;
   return (
-    <nav className="app-top-nav sticky top-[64px] sm:top-[73px] z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-2 sm:px-3 md:px-12">
-      <div className="nav-scroll-track no-scrollbar mx-auto flex max-w-7xl items-center gap-1.5 sm:gap-2 overflow-x-auto py-2.5">
-        {showGuidedMode && (
-          <button
-            type="button"
-            onClick={onGuidedModeClick}
-            className="guided-mode-button flex shrink-0 items-center gap-2 rounded-xl border border-amber-500/45 bg-amber-500 px-3 py-2.5 sm:px-3.5 text-[11px] sm:text-xs font-black text-slate-950 shadow-lg shadow-amber-900/20 transition-all hover:bg-amber-400 active:scale-[0.98] cursor-pointer"
-            title="Abrir modo guiado de beta"
-          >
-            <ClipboardCheck size={14} />
-            <span>Modo guiado</span>
-            <span className="rounded-md bg-slate-950/15 px-1.5 py-0.5 text-[10px] font-mono font-black text-slate-950">
-              Beta
-            </span>
-          </button>
-        )}
-        {[...NAV_ITEMS, ...(showAdmin ? [{ id: "admin" as AppSection, label: "Admin", icon: ShieldCheck, priority: "secondary" as const }] : [])].map((item) => {
-          const Icon = item.icon === Users ? Users : item.icon;
-          const isActive = currentSection === item.id;
-          const count = item.countKey ? counts[item.countKey] : null;
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSectionChange(item.id)}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={`Ir a ${item.label}`}
-              className={`nav-section-button nav-priority-${item.priority} flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-3.5 py-2.5 sm:py-2 text-[11px] sm:text-xs font-black transition-all active:scale-[0.98] cursor-pointer ${
-                isActive
-                  ? "nav-section-button-active border-indigo-500/50 bg-indigo-600 text-white shadow-lg shadow-indigo-700/15"
-                  : "border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 hover:text-slate-100"
-              }`}
-            >
-              <Icon size={14} />
-              <span>{item.label}</span>
-              {typeof count === "number" && count > 0 && (
-                <span className={`nav-section-count rounded-md px-1.5 py-0.5 text-[10px] font-mono font-black ${
-                  isActive ? "bg-white/15 text-white" : "bg-slate-950 text-indigo-300"
-                }`}>
-                  {count}
-                </span>
-              )}
+    <nav className="biblioteca-nav" aria-label="Navegación principal">
+      <div className="biblioteca-nav-inner">
+        <div className="biblioteca-nav-main">
+          {MAIN.map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => onSectionChange(id)} aria-current={active === id ? 'page' : undefined}>
+              <Icon size={17} aria-hidden="true" /><span>{label}</span>
             </button>
-          );
-        })}
+          ))}
+          {showAdmin && <button type="button" onClick={() => onSectionChange('revisiones')} aria-current={active === 'revisiones' ? 'page' : undefined}><ShieldCheck size={17} aria-hidden="true" /><span>Revisiones</span></button>}
+        </div>
+        <details className="biblioteca-more">
+          <summary>Más <ChevronDown size={15} aria-hidden="true" /></summary>
+          <div className="biblioteca-more-menu">
+            {SECONDARY.map(item => <button type="button" key={item.id} onClick={event => { onSectionChange(item.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{item.label}</button>)}
+            {showAdmin && <button type="button" onClick={() => onSectionChange('admin')}>Administración</button>}
+            {showGuidedMode && <button type="button" onClick={onGuidedModeClick}>Guía de biblioteca</button>}
+          </div>
+        </details>
       </div>
     </nav>
   );

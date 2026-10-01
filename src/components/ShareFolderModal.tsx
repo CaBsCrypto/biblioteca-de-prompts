@@ -31,7 +31,7 @@ export default function ShareFolderModal({
 }: ShareFolderModalProps) {
 
   const privatePromptsCount = prompts.filter((prompt) => prompt.folderId === folder.id && !prompt.isShared).length;
-  const publicLink = `${window.location.origin}${window.location.pathname}?collection=${folder.id}`;
+  const publicLink = `${window.location.origin}/?collection=${encodeURIComponent(folder.id)}`;
 
   const [collaborators, setCollaborators] = useState<any>(folder.collaborators || {});
   const [collabInput, setCollabInput] = useState("");
@@ -215,7 +215,7 @@ export default function ShareFolderModal({
           <div className="ui-muted-panel flex items-center justify-between bg-slate-900/30 p-4 rounded-2xl border border-slate-800">
             <div className="space-y-0.5 pointer-events-none">
               <p className="text-xs font-extrabold text-white">Publicar carpeta en la web</p>
-              <p className="text-[10px] text-slate-400 font-sans">Cualquiera con el enlace podrá ver los prompts guardados en esta carpeta.</p>
+              <p className="text-[10px] text-slate-400 font-sans">El enlace muestra solo recursos que hayan pasado la revisión del catálogo.</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-4">
               <input
@@ -235,22 +235,7 @@ export default function ShareFolderModal({
 
           {isFolderSharedInput && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-              {privatePromptsCount > 0 && (
-                <label className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={publishFolderPromptsInput}
-                    onChange={(event) => setPublishFolderPromptsInput(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-950 text-amber-500 focus:ring-amber-500"
-                  />
-                  <span className="space-y-1">
-                    <span className="block text-xs font-extrabold text-amber-300">Publicar también los prompts de esta carpeta</span>
-                    <span className="block text-[10px] leading-relaxed text-slate-400 font-sans">
-                      Hay {privatePromptsCount} prompts privados en esta carpeta. Si marcas esta opción, también quedarán visibles para cualquiera con el enlace.
-                    </span>
-                  </span>
-                </label>
-              )}
+              <p className="text-xs text-slate-400">Este enlace solo muestra recursos aprobados de la carpeta. Los borradores y prompts privados permanecen privados. Postula cada recurso desde Publicar.</p>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-black tracking-wider text-emerald-400 uppercase">Enlace de la Colección Pública</label>

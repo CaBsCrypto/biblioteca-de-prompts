@@ -222,21 +222,8 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
         collaborators: collaborators || showShareFolderModal.collaborators || {}
       });
 
-      const promptsToPublish = prompts.filter((p) => p.folderId === showShareFolderModal.id && !p.isShared);
-      if (isFolderSharedInput && publishFolderPromptsInput && promptsToPublish.length > 0) {
-        await Promise.all(promptsToPublish.map((prompt) => updateDoc(doc(db, "prompts", prompt.id), {
-          isShared: true,
-          ...getAuthorIdentity(),
-          updatedAt: serverTimestamp()
-        })));
-      }
-
       onNotification(
-        isFolderSharedInput
-          ? publishFolderPromptsInput && promptsToPublish.length > 0
-            ? `Colección compartida y ${promptsToPublish.length} prompts publicados.`
-            : "Colección compartida públicamente. Puedes copiar el enlace."
-          : "La coleccion ahora es privada.",
+        isFolderSharedInput ? "Enlace de colección preparado. Solo mostrará recursos aprobados." : "La colección ahora es privada.",
         "success"
       );
       setShowShareFolderModal(null);

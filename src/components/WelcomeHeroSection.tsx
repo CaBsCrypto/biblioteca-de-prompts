@@ -269,7 +269,6 @@ export default function WelcomeHeroSection({
             style={{
               background: "rgba(255,255,255,0.025)",
               borderColor: "rgba(255,255,255,0.08)",
-              divideColor: "rgba(255,255,255,0.08)",
             }}
           >
             {[

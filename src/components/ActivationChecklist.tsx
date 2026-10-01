@@ -35,7 +35,7 @@ export default function ActivationChecklist({ state, onAction }: ActivationCheck
             Activa tu biblioteca a tu ritmo
           </h3>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Elige un pack pequeno, usa un recurso, guarda un remix privado y publica solo cuando este listo.
+            Elige un pack pequeño, usa un recurso, guarda un remix privado y prepara una postulación desde Publicar.
           </p>
         </div>
 

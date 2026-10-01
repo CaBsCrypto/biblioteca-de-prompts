@@ -456,7 +456,7 @@ export default function PromptFormModal({
       category,
       tags: parsedTags,
       isFavorite: prompt?.isFavorite || false,
-      isShared,
+      isShared: false,
       notas: notas.trim(),
       suggestedVariables: variables.filter(v => v.name.trim() !== ""),
       forkedFrom: prompt?.forkedFrom,
@@ -505,7 +505,7 @@ export default function PromptFormModal({
                 <span className="text-slate-300">
                   Basado en <span className="font-bold text-indigo-200">{forkSourceTitle}</span>
                   {forkSourceAuthor ? <> por <span className="font-bold text-indigo-200">{forkSourceAuthor}</span></> : ""}.
-                  Puedes editarlo libremente; solo se publica si activas compartir publicamente.
+                  Puedes editarlo libremente; para publicarlo debes enviarlo a revisión desde Publicar.
                 </span>
               </div>
             </div>
@@ -745,22 +745,9 @@ export default function PromptFormModal({
             />
           </div>
 
-          {/* Row 4.8: Enlace Compartido Toggle */}
           <div className="ui-muted-panel border border-indigo-500/15 rounded-2xl p-4 bg-indigo-500/5 space-y-2">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isShared}
-                onChange={e => setIsShared(e.target.checked)}
-                className="w-4.5 h-4.5 rounded text-pink-500 bg-[#0f172a] border-slate-700/80 focus:ring-opacity-45 focus:ring-pink-500 shrink-0 cursor-pointer accent-indigo-500"
-              />
-              <span className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe size={13} className="text-pink-400 animate-pulse" /> Permitir compartir públicamente
-              </span>
-            </label>
-            <p className="text-[10px] text-slate-400 pl-7 leading-relaxed">
-              Cualquier creador podrá acceder de forma directa para rellenar este prompt por medio de su identificador único, sin necesidad de iniciar sesión. Ideal para compartir plantillas en la descripción de tus videos de YouTube.
-            </p>
+            <p className="text-xs font-bold">Este prompt se guarda en tu biblioteca privada.</p>
+            <p className="text-xs text-slate-400">Para ofrecerlo a la comunidad, guárdalo y abre Publicar. Podrás completar su ficha, añadir un ejemplo y enviarlo a revisión.</p>
           </div>
 
           {/* Row 5: Variables Section */}

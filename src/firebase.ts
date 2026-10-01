@@ -1,14 +1,19 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import firebaseConfig from '@/firebase-applet-config.json';
 
 // Initialize Firebase App
-const app = initializeApp(firebaseConfig);
+const useEmulators = import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true';
+const app = initializeApp(useEmulators ? { ...firebaseConfig, projectId: 'demo-biblioteca', apiKey: 'demo-key', authDomain: 'localhost' } : firebaseConfig);
 
 // CRITICAL: Initialize Firestore using the designated database ID from config
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || 'default');
+export const db = getFirestore(app, useEmulators ? '(default)' : firebaseConfig.firestoreDatabaseId || '(default)');
 export const auth = getAuth(app);
+if (useEmulators) {
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099');
+}
 
 // Authentication Provider (Google)
 export const googleProvider = new GoogleAuthProvider();

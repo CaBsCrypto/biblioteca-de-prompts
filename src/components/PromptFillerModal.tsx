@@ -177,7 +177,7 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
             
             <p className="text-[10px] text-slate-500 mt-2 font-sans flex items-center gap-1">
               <Info size={10} className="text-pink-500" />
-              <span>El texto de arriba tiene las variables auto-sustituidas. Cópialo para ChatGPT o Gemini del canal de YouTube.</span>
+              <span>El texto de arriba incluye tus variables. Cópialo en una herramienta compatible.</span>
             </p>
           </div>
 

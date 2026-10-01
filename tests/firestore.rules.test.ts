@@ -162,9 +162,11 @@ describe("firestore.rules carpetas y prompts", () => {
     await assertFails(getDoc(doc(dbFor(), "prompts/private-prompt")));
   });
 
-  test("un prompt publico puede ser leido por visitantes", async () => {
+  test("isShared no publica un prompt legacy sin revisión del catálogo", async () => {
     await seedDoc("prompts/public-prompt", validPrompt("alice", { isShared: true }));
-    await assertSucceeds(getDoc(doc(dbFor(), "prompts/public-prompt")));
+    await assertFails(getDoc(doc(dbFor(), "prompts/public-prompt")));
+    await assertFails(getDoc(doc(dbFor("bob"), "prompts/public-prompt")));
+    await assertSucceeds(getDoc(doc(dbFor("alice"), "prompts/public-prompt")));
   });
 
   test("solo el dueno puede editar o borrar el prompt completo", async () => {
@@ -183,14 +185,14 @@ describe("firestore.rules carpetas y prompts", () => {
 });
 
 describe("firestore.rules likes", () => {
-  test("un usuario puede agregar y quitar solo su propio like", async () => {
+  test("los likes legacy no permiten escribir en el prompt privado de otro autor", async () => {
     await seedDoc("prompts/shared-prompt", validPrompt("alice", { isShared: true }));
-    await assertSucceeds(updateDoc(doc(dbFor("bob"), "prompts/shared-prompt"), {
+    await assertFails(updateDoc(doc(dbFor("bob"), "prompts/shared-prompt"), {
       likedBy: ["bob"],
       likesCount: 1,
       updatedAt: serverTimestamp()
     }));
-    await assertSucceeds(updateDoc(doc(dbFor("bob"), "prompts/shared-prompt"), {
+    await assertFails(updateDoc(doc(dbFor("bob"), "prompts/shared-prompt"), {
       likedBy: [],
       likesCount: 0,
       updatedAt: serverTimestamp()

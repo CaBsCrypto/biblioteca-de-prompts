@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import {
   collection,
   doc,
@@ -135,11 +135,16 @@ type UiThemeMode = "dark" | "clear";
 const STARTER_PROMPT_GOAL = 8;
 
 import { useAppStore } from "./store/appStore";
+import { useAppRouter } from "./router/useAppRouter";
+import { useCatalog } from "./hooks/useCatalog";
+import type { CatalogResource } from "./typesCatalog";
+const CatalogWorkspace = lazy(() => import("./components/catalog/CatalogWorkspace"));
 
 export default function App() {
   const { state: appStoreState, goSection } = useAppStore();
   const currentSection = appStoreState.section as AppSection;
-  const setCurrentSection = (sect: AppSection) => goSection(sect as any);
+  const setCurrentSection = (sect: AppSection) => goSection(sect);
+  const router = useAppRouter();
 
   // Social / Community navigation
   const [currentTab, setCurrentTab] = useState<"mi-biblioteca" | "comunidad" | "dashboard">("mi-biblioteca");
@@ -247,10 +252,10 @@ export default function App() {
   // Notifications feedback State
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
 
-  const triggerNotification = (message: string, type: "success" | "info" = "success") => {
+  const triggerNotification = useCallback((message: string, type: "success" | "info" = "success") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
-  };
+  }, []);
 
   const {
     user,
@@ -266,6 +271,7 @@ export default function App() {
     setProfileBioInput,
     isSavingProfile,
     handleSignIn,
+    handleEmulatorSignIn,
     handleSignOut,
     handleOpenProfileModal,
     handleSaveProfile,
@@ -281,11 +287,21 @@ export default function App() {
       setSelectedAuthor(null);
       setShowAIAssistant(false);
       const url = new URL(window.location.href);
+    url.pathname = "/";
       url.searchParams.delete("user");
-      window.history.replaceState({}, "", url.toString());
+      router.navigateUrl(url);
     }
   });
   const isFounder = currentUserProfile?.role === "founder";
+  const catalogIdentity = useMemo(() => ({
+    name: currentUserProfile?.displayName || user?.displayName || "Creador",
+    handle: currentUserProfile?.handle || "",
+    avatar: currentUserProfile?.photoURL || user?.photoURL || "",
+  }), [currentUserProfile?.displayName, currentUserProfile?.handle, currentUserProfile?.photoURL, user?.displayName, user?.photoURL]);
+  const catalog = useCatalog({ user, identity: catalogIdentity, isFounder });
+  const publishedPromptSourceIds = useMemo(() => new Set(catalog.myResources
+    .filter(resource => resource.kind === 'prompt' && resource.state === 'published' && resource.sourcePromptId)
+    .map(resource => resource.sourcePromptId)), [catalog.myResources]);
 
   const {
     connectionByTargetUid,
@@ -619,19 +635,21 @@ export default function App() {
     setCommunityScope("todos");
     setPublicProfileTab("prompts");
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("user", author.uid);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
     url.searchParams.delete("class");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
   };
 
   const closePublicProfile = () => {
     setSelectedAuthor(null);
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("user");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
   };
 
   const handleSectionChange = (section: AppSection) => {
@@ -660,12 +678,13 @@ export default function App() {
     }
 
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("user");
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
     url.searchParams.delete("class");
-    window.history.replaceState({}, "", url.toString());
+    router.setRouter({ section: section === "inicio" || section === "prompts" ? "explorar" : section });
   };
 
   const openGuidedBetaMode = () => {
@@ -687,17 +706,19 @@ export default function App() {
     closeClassroom();
 
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("user");
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
     url.searchParams.delete("class");
-    window.history.replaceState({}, "", url.toString());
+    router.setRouter({ section: "mi-biblioteca" });
   };
 
   const handleCopyPublicProfileLink = () => {
     if (!selectedAuthor) return;
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("user", selectedAuthor.uid);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
@@ -890,11 +911,12 @@ export default function App() {
     if (!briefingId) return;
 
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("briefing", briefingId);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("user");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
     setSharedBriefingId(briefingId);
     const loadedBriefing = await loadBriefing(briefingId);
     if (loadedBriefing) {
@@ -972,6 +994,7 @@ export default function App() {
   const handleCopyBriefingLink = async () => {
     if (!sharedBriefing) return;
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("briefing", sharedBriefing.id);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
@@ -1095,12 +1118,9 @@ export default function App() {
   }, [uiThemeMode]);
 
   const communityCatalogPrompts = useMemo(() => {
-    const communityIds = new Set(communityPrompts.map((prompt) => prompt.id));
-    return [
-      ...founderPackPrompts.filter((prompt) => !communityIds.has(prompt.id)),
-      ...communityPrompts
-    ];
-  }, [communityPrompts, founderPackPrompts]);
+    // The seed pack remains available for private import; public discovery uses approved catalog fichas.
+    return communityPrompts;
+  }, [communityPrompts]);
 
   const visibleCommunityCatalogPrompts = useMemo(() => {
     return communityCatalogPrompts.filter((prompt) => !hiddenPromptIds.has(prompt.id));
@@ -1160,151 +1180,33 @@ export default function App() {
     };
   }, []);
 
-  // 1.5 Detect and fetch shared prompt or collection on mount
+  // Resolve public prompt/profile/collection links through reviewed snapshots.
   useEffect(() => {
-    const checkShareParam = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const shareId = searchParams.get("share");
-      const colId = searchParams.get("collection");
-      const userId = searchParams.get("user");
-      const briefingId = searchParams.get("briefing");
-      const classId = searchParams.get("class");
-
-      if (classId && !briefingId && !shareId && !colId && !userId) {
-        const classroom = resolveClassroomId(classId);
-        if (classroom) {
-          openClassroom(classroom);
-          setCurrentSection("inicio");
-          setCurrentTab("mi-biblioteca");
-          setSharedPrompt(null);
-          setSharedPromptId(null);
-          setSharedCollection(null);
-          setSharedCollectionId(null);
-          setSharedBriefing(null);
-          setSharedBriefingId(null);
-          setSelectedAuthor(null);
-        } else {
-          triggerNotification("La clase no existe o ya no esta activa.", "info");
+    let active = true;
+    setSharedPrompt(null);
+    setSharedPromptId(null);
+    setSharedCollection(null);
+    setSharedCollectionId(null);
+    setSelectedAuthor(null);
+    if (router.state.class) {
+      const classroom = resolveClassroomId(router.state.class);
+      if (classroom) openClassroom(classroom);
+      else triggerNotification("La clase no existe o ya no está activa.", "info");
+    } else closeClassroom();
+    if (router.state.briefing) {
+      setSharedBriefingId(router.state.briefing);
+      void loadBriefing(router.state.briefing).then(briefing => {
+        if (active) {
+          setSharedBriefing(briefing);
+          if (!briefing) triggerNotification("El briefing no está disponible.", "info");
         }
-      }
-
-      if (briefingId && !shareId && !colId) {
-        setSharedBriefingId(briefingId);
-        setSharedPrompt(null);
-        setSharedPromptId(null);
-        setSharedCollection(null);
-        setSharedCollectionId(null);
-        setSelectedAuthor(null);
-        const loadedBriefing = await loadBriefing(briefingId);
-        if (loadedBriefing) {
-          setSharedBriefing(loadedBriefing);
-          triggerNotification("Briefing publico cargado.", "success");
-        } else {
-          setSharedBriefing(null);
-          triggerNotification("El briefing no existe o no esta publicado.", "info");
-        }
-      }
-
-      if (userId && !shareId && !colId && !briefingId) {
-        setCurrentSection("prompts");
-        setCurrentTab("comunidad");
-        setSelectedAuthor({ name: "Creador", uid: userId });
-        setPublicProfileTab("prompts");
-      }
-      
-      if (shareId) {
-        setCurrentSection("prompts");
-        setSharedPromptId(shareId);
-        setSelectedAuthor(null);
-        setSharedCollection(null);
-        setSharedCollectionId(null);
-        setSharedBriefing(null);
-        setSharedBriefingId(null);
-        setLoadingSharedPrompt(true);
-        try {
-          const docRef = doc(db, "prompts", shareId);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.isShared) {
-              setSharedPrompt({
-                id: docSnap.id,
-                ...data
-              } as Prompt);
-              triggerNotification("Recurso publico cargado. Puedes probarlo o guardarlo como remix privado.", "success");
-            } else {
-              triggerNotification("Este prompt no está marcado como público.", "info");
-              setSharedPrompt(null);
-            }
-          } else {
-            triggerNotification("El prompt compartido no existe.", "info");
-            setSharedPrompt(null);
-          }
-        } catch (error) {
-          console.error("Error fetching shared prompt:", error);
-          triggerNotification("Error al intentar obtener el prompt compartido.", "info");
-        } finally {
-          setLoadingSharedPrompt(false);
-        }
-      }
-
-      if (colId) {
-        setCurrentSection("prompts");
-        setSharedCollectionId(colId);
-        setSharedPrompt(null);
-        setSharedPromptId(null);
-        setSelectedAuthor(null);
-        setSharedBriefing(null);
-        setSharedBriefingId(null);
-        setLoadingSharedCollection(true);
-        try {
-          const docRef = doc(db, "folders", colId);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            const folderData = docSnap.data() as Folder;
-            if (folderData.isShared) {
-              setSharedCollection({
-                id: docSnap.id,
-                ...folderData
-              });
-              
-              // Now fetch all prompts in this folder
-              const promptsQuery = query(
-                collection(db, "prompts"),
-                where("folderId", "==", colId),
-                where("isShared", "==", true)
-              );
-              const pSnap = await getDocs(promptsQuery);
-              const pList: Prompt[] = [];
-              pSnap.forEach((d) => {
-                pList.push({
-                  id: d.id,
-                  ...d.data()
-                } as Prompt);
-              });
-              setSharedCollectionPrompts(pList);
-              triggerNotification("Colección compartida cargada.", "success");
-            } else {
-              triggerNotification("Esta colección no está marcada como pública o está inactiva.", "info");
-              setSharedCollection(null);
-            }
-          } else {
-            triggerNotification("La colección solicitada no existe.", "info");
-            setSharedCollection(null);
-          }
-        } catch (error) {
-          console.error("Error fetching shared collection:", error);
-          triggerNotification("Error al obtener la colección compartida.", "info");
-          setSharedCollection(null);
-        } finally {
-          setLoadingSharedCollection(false);
-        }
-      }
-    };
-    checkShareParam();
-  }, []);
+      });
+    } else {
+      setSharedBriefing(null);
+      setSharedBriefingId(null);
+    }
+    return () => { active = false; };
+  }, [router.state.class, router.state.briefing, router.state.resourceId, router.state.share, router.state.folder, router.state.profile]);
 
   // Direct Option: Open Form creation
   const handleOpenAdd = () => {
@@ -1316,16 +1218,18 @@ export default function App() {
     setSharedPrompt(null);
     // Clean query parameter from address bar without reloading
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("share");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
   };
 
   const handleCloseBriefing = () => {
     setSharedBriefing(null);
     setSharedBriefingId(null);
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("briefing");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
   };
 
   const openPublicBriefing = (briefing: Briefing) => {
@@ -1337,11 +1241,12 @@ export default function App() {
     setSharedCollectionId(null);
     setSelectedAuthor(null);
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("briefing", briefing.id);
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("user");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
     triggerNotification("Briefing publico cargado.", "success");
   };
 
@@ -1374,20 +1279,22 @@ export default function App() {
     setSharedBriefingId(null);
 
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.set("class", classroom.id);
     url.searchParams.delete("user");
     url.searchParams.delete("share");
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
     triggerNotification("Clase privada cargada.", "success");
   };
 
   const handleCloseClassroom = () => {
     closeClassroom();
     const url = new URL(window.location.href);
+    url.pathname = "/";
     url.searchParams.delete("class");
-    window.history.replaceState({}, "", url.toString());
+    router.navigateUrl(url);
   };
 
   // Live trigger optimize with AI directly from Form
@@ -1430,15 +1337,8 @@ export default function App() {
     }
 
     if (stepId === "share") {
-      setCurrentSection("mi-biblioteca");
-      setCurrentTab("mi-biblioteca");
-      const promptToShare = prompts.find((prompt) => !prompt.isShared) || prompts[0];
-      if (promptToShare) {
-        handleOpenEdit(promptToShare);
-        triggerNotification("Activa Permitir compartir publicamente y guarda para completar este paso.", "info");
-      } else {
-        triggerNotification("Primero crea o carga prompts para poder publicar uno.", "info");
-      }
+      handleSectionChange("publicar");
+      triggerNotification("Prepara una ficha con un ejemplo y postúlala para revisión.", "info");
     }
   };
 
@@ -1451,11 +1351,16 @@ export default function App() {
   }, [prompts]);
 
   // 7. Filtering and Searching Locally For ultra responsive actions
+  // Publication status is derived from approved catalog metadata, without changing private documents.
+  const libraryDisplayPrompts = useMemo(() => prompts.map(prompt => ({
+    ...prompt, isShared: publishedPromptSourceIds.has(prompt.id),
+  })), [prompts, publishedPromptSourceIds]);
+
   const filteredPrompts = useMemo(() => {
     return filterPrompts({
-      prompts,
+      prompts: libraryDisplayPrompts,
       communityPrompts: visibleCommunityCatalogPrompts,
-      currentTab,
+      currentTab: currentTab === 'dashboard' ? 'mi-biblioteca' : currentTab,
       selectedAuthor,
       communityScope,
       followedCreatorUids,
@@ -1469,7 +1374,7 @@ export default function App() {
       communitySort,
       libraryViewFilter
     });
-  }, [prompts, visibleCommunityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids, socialFavoritePromptIds, hiddenPromptIds, ownForkedSourceIds, communitySort, libraryViewFilter]);
+  }, [libraryDisplayPrompts, visibleCommunityCatalogPrompts, currentTab, selectedCategory, searchQuery, selectedTags, selectedAuthor, selectedFolderId, communityScope, followedCreatorUids, socialFavoritePromptIds, hiddenPromptIds, ownForkedSourceIds, communitySort, libraryViewFilter]);
 
   const defaultPromptTitles = useMemo(
     () => new Set(DEFAULT_PROMPTS.map((prompt) => prompt.title.trim().toLocaleLowerCase("es"))),
@@ -1495,14 +1400,15 @@ export default function App() {
     userEvents,
     defaultPromptTitles,
     defaultPromptsTotal: DEFAULT_PROMPTS.length,
-    defaultPromptsStarterGoal: STARTER_PROMPT_GOAL
-  }), [prompts, folders, userEvents, defaultPromptTitles]);
+    defaultPromptsStarterGoal: STARTER_PROMPT_GOAL,
+    hasPublishedPrompt: catalog.myResources.some(resource => resource.kind === 'prompt' && resource.state === 'published'),
+  }), [prompts, folders, userEvents, defaultPromptTitles, catalog.myResources]);
 
   const allAvailableTags = useMemo(() => {
     return getAvailableTags({
       prompts,
       communityPrompts: visibleCommunityCatalogPrompts,
-      currentTab,
+      currentTab: currentTab === 'dashboard' ? 'mi-biblioteca' : currentTab,
       selectedAuthor,
       communityScope,
       followedCreatorUids,
@@ -1662,8 +1568,8 @@ export default function App() {
 
   const ownPublicPrompts = useMemo(() => {
     if (!user) return [];
-    return prompts.filter((prompt) => prompt.isShared);
-  }, [prompts, user]);
+    return libraryDisplayPrompts.filter((prompt) => prompt.isShared);
+  }, [libraryDisplayPrompts, user]);
 
   // Statistics counters
   const favoritesCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
@@ -1682,13 +1588,125 @@ export default function App() {
     triggerNotification(successMessage, "success");
   };
 
-  useEffect(() => {
-    if (!user || authLoading) return;
-    if (currentSection !== "inicio") return;
-    if (activeClassroom || sharedBriefing || sharedPrompt || sharedCollection || selectedAuthor) return;
-    setCurrentSection("mi-biblioteca");
-    setCurrentTab("mi-biblioteca");
-  }, [activeClassroom, authLoading, currentSection, selectedAuthor, sharedBriefing, sharedCollection, sharedPrompt, user]);
+  const openCatalogResource = (resource: CatalogResource) => {
+    setSharedBriefing(null);
+    closeClassroom();
+    router.setRouter({ section: "explorar", resourceId: resource.id, resourceKind: resource.kind });
+  };
+  const catalogMode = currentSection === "creadores" ? "creators"
+    : currentSection === "publicar" ? "publish"
+    : currentSection === "revisiones" ? "review" : "explore";
+  const showCatalog = ["inicio", "explorar", "prompts", "creadores", "publicar", "revisiones"].includes(currentSection);
+  const renderCatalog = (mode: "explore" | "creators" | "publish" | "review" | "library") => (
+    <Suspense fallback={<DeferredInlineFallback label="Cargando Biblioteca..." />}>
+      <CatalogWorkspace
+        mode={mode} catalog={catalog} user={user} identity={catalogIdentity} ownPrompts={prompts}
+        onSignIn={() => void handleSignIn()} onOpenResource={openCatalogResource}
+        onUsePrompt={(prompt) => handleUsePrompt(prompt, "catalog")}
+        onSavePrompt={(prompt) => { handleSectionChange('mi-biblioteca'); void handleForkPrompt(prompt); }} onNotify={triggerNotification}
+        selectedResourceId={router.state.resourceId || null} selectedResourceKind={router.state.resourceKind || null}
+        legacyShareId={router.state.share} legacyCollectionId={router.state.folder} initialAuthorUid={router.state.profile}
+        onCloseResource={() => router.setRouter({ section: "explorar" })}
+      />
+    </Suspense>
+  );
+
+  const renderProgressTools = () => (<div className="space-y-6">
+              {true && (
+                <ActivationChecklist
+                  state={activationChecklistState}
+                  onAction={handleActivationAction}
+                />
+              )}
+
+              {user && true && (
+                <DailyMissionPanel
+                  savedIdeasCount={savedIdeas.length}
+                  publicBriefingsCount={ownPublicBriefings.length}
+                  publicPromptsCount={ownPublicPrompts.length}
+                  publishCandidates={dailyWorkspaceState.publishCandidates}
+                  recentPrompts={dailyWorkspaceState.recentPrompts}
+                  recentRemixes={dailyWorkspaceState.recentRemixes}
+                  socialFavoritePromptsCount={dailyWorkspaceState.socialFavoritePrompts.length}
+                  onOpenNews={() => handleSectionChange("noticias")}
+                  onOpenCommunity={() => handleSectionChange("explorar")}
+                  onEditPrompt={handleOpenEdit}
+                  onUsePrompt={(prompt) => handleUsePrompt(prompt, "daily_mission")}
+                />
+              )}
+
+              {user && true && (
+                <BetaInvitePanel
+                  publicUrl={publicAppUrl}
+                  publicPromptsCount={ownPublicPrompts.length}
+                  publicBriefingsCount={ownPublicBriefings.length}
+                  forumPostsCount={forumPostsCount}
+                  savedIdeasCount={savedIdeas.length}
+                  onCopy={(text, message) => void handleCopyText(text, message)}
+                  onCreateFeedbackPost={handleCreateBetaFeedbackPost}
+                />
+              )}
+
+              {user && true && (
+                <ConnectionsPanel
+                  connectedConnections={connectedConnections}
+                  incomingConnectionRequests={incomingConnectionRequests}
+                  outgoingConnectionRequests={outgoingConnectionRequests}
+                  activeChatConnection={activeChatConnection}
+                  chatMessages={chatMessages}
+                  chatDraft={chatDraft}
+                  loadingChatMessages={loadingChatMessages}
+                  blockedUserIds={blockedUserIds}
+                  currentUserUid={user.uid}
+                  onAccept={(targetUid) => void acceptConnection(targetUid)}
+                  onRemove={(targetUid) => void removeConnection(targetUid)}
+                  onBlock={(connection) => void handleBlockConnection(connection)}
+                  onReportChat={() => void reportChat()}
+                  onOpenChat={openChat}
+                  onCloseChat={closeChat}
+                  onChatDraftChange={setChatDraft}
+                  onSendChatMessage={() => void sendChatMessage()}
+                />
+              )}
+
+              {user && true && (
+                <CreatorGrowthPanel
+                  briefings={ownPublicBriefings}
+                  publicPrompts={ownPublicPrompts}
+                  publishCandidates={dailyWorkspaceState.publishCandidates}
+                  userEvents={userEvents}
+                  onOpenBriefing={openPublicBriefing}
+                  onEditPrompt={handleOpenEdit}
+                  onOpenNews={() => handleSectionChange("noticias")}
+                  onOpenCommunity={() => handleSectionChange("explorar")}
+                />
+              )}
+
+              {user && true && (
+                <DailyWorkspace
+                  state={dailyWorkspaceState}
+                  onEdit={handleOpenEdit}
+                  onUse={(prompt) => handleUsePrompt(prompt, "daily_workspace")}
+                  onViewSocial={setSelectedPublicPrompt}
+                  onSaveSocial={(prompt) => void resolvePublicSavePrompt(prompt)}
+                  onOpenSocialFavorites={() => handleSectionChange("explorar")}
+                />
+              )}
+
+              {user && true && (
+                <TrustModerationPanel
+                  publicPrompts={publicOwnPrompts}
+                  reportedPrompts={reportedPrompts}
+                  hiddenCount={hiddenPromptIds.size}
+                  totalReportsCount={totalReportsCount}
+                  hasPermissionIssue={hasModerationPermissionIssue}
+                  onEditPrompt={handleOpenEdit}
+                  onViewPrompt={setSelectedPublicPrompt}
+                  onOpenCommunity={() => handleSectionChange("explorar")}
+                />
+              )}
+
+  </div>);
 
   return (
     <div className={`ui-page min-h-screen text-slate-100 flex flex-col font-sans selection:bg-pink-500/30 selection:text-white transition-all duration-200 ${
@@ -1720,7 +1738,7 @@ export default function App() {
 
       <AppTopNav
         currentSection={currentSection}
-        promptsCount={visibleCommunityCatalogPrompts.length}
+        promptsCount={catalog.resources.length}
         libraryCount={prompts.length}
         postsCount={forumPostsCount}
         hackathonsCount={hackathons.length}
@@ -1731,6 +1749,14 @@ export default function App() {
         onSectionChange={handleSectionChange}
         onGuidedModeClick={openGuidedBetaMode}
       />
+
+      {import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true' && (
+        <aside className="biblioteca-emulator-tools" aria-label="Cuentas de prueba locales">
+          <span>Prueba local · datos ficticios</span>
+          <button onClick={() => void handleEmulatorSignIn('creator')}>Entrar como creador de prueba</button>
+          <button onClick={() => void handleEmulatorSignIn('founder')}>Entrar como fundador de prueba</button>
+        </aside>
+      )}
 
       {/* Main Core Area layout */}
       {activeClassroom ? (
@@ -1776,8 +1802,9 @@ export default function App() {
           onClose={() => {
             setSharedCollection(null);
             const url = new URL(window.location.href);
+    url.pathname = "/";
             url.searchParams.delete("collection");
-            window.history.replaceState({}, "", url.toString());
+            router.navigateUrl(url);
           }}
           user={user}
           onCloneCollection={handleCloneCollection}
@@ -1791,13 +1818,17 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
-          {currentSection === "progreso" ? (
+          {currentSection === "mi-biblioteca" && renderCatalog("library")}
+          {showCatalog ? renderCatalog(catalogMode) : currentSection === "progreso" ? (
+            <>
             <Suspense fallback={<DeferredInlineFallback label="Cargando Mi Progreso..." />}>
               <ProgressDashboard
-                prompts={prompts}
+                prompts={libraryDisplayPrompts}
                 userDisplayName={currentUserProfile?.displayName || user?.displayName || undefined}
               />
             </Suspense>
+            {user && renderProgressTools()}
+            </>
           ) : currentSection === "admin" && isFounder ? (
             <Suspense fallback={<DeferredInlineFallback label="Cargando panel de administración..." />}>
               <AdminDashboard
@@ -1936,62 +1967,9 @@ export default function App() {
             // Authenticated Dashboard Layout
             <div className="space-y-8">
               
-              {/* Sleek Navigation Tabs */}
-              <div className="library-switcher-surface flex items-center gap-1 p-1 bg-[#0f172a]/65 rounded-2xl border border-slate-800/80 w-fit">
-                <button
-                  onClick={() => {
-                    setCurrentSection("mi-biblioteca");
-                    setCurrentTab("mi-biblioteca");
-                    setSelectedCategory("Todas");
-                    closePublicProfile();
-                    setCommunityScope("todos");
-                  }}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    currentTab === "mi-biblioteca"
-                      ? "bg-gradient-to-r from-indigo-650 to-indigo-555 text-white shadow-md shadow-indigo-600/10"
-                      : "text-slate-450 hover:text-slate-205"
-                  }`}
-                >
-                  <FolderOpen size={13} />
-                  <span>Mi Biblioteca</span>
-                  <span className="text-[10px] bg-slate-900 text-indigo-300 font-extrabold px-2 py-0.5 rounded-md font-mono">
-                    {prompts.length}
-                  </span>
-                </button>
-                <button
-                  onClick={() => {
-                    setCurrentSection("prompts");
-                    setCurrentTab("comunidad");
-                    setSelectedCategory("Todas");
-                    closePublicProfile();
-                    setCommunityScope("todos");
-                  }}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    currentTab === "comunidad"
-                      ? "bg-gradient-to-r from-indigo-650 to-indigo-555 text-white shadow-md shadow-indigo-600/10"
-                      : "text-slate-450 hover:text-slate-205"
-                  }`}
-                >
-                  <Users size={13} />
-                  <span>Red de la Comunidad</span>
-                  <span className="text-[10px] bg-slate-900 text-pink-400 font-extrabold px-2 py-0.5 rounded-md font-mono animate-pulse">
-                    {visibleCommunityCatalogPrompts.length}
-                  </span>
-                </button>
-                <button
-                  onClick={() => {
-                    setCurrentTab("dashboard");
-                    closePublicProfile();
-                  }}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    currentTab === "dashboard"
-                      ? "bg-gradient-to-r from-indigo-650 to-indigo-555 text-white shadow-md shadow-indigo-600/10"
-                      : "text-slate-450 hover:text-slate-205"
-                  }`}
-                >
-                  <BarChart3 size={13} />
-                  <span>Dashboard</span>
-                </button>
+              <div className="flex gap-4 text-sm">
+                <button onClick={() => handleSectionChange("explorar")} className="catalog-link">Explorar recursos</button>
+                <button onClick={() => handleSectionChange("progreso")} className="catalog-link">Mi Progreso</button>
               </div>
 
               {currentTab === "comunidad" && !selectedAuthor && (
@@ -2233,130 +2211,13 @@ export default function App() {
                 />
               )}
 
-              {currentTab === "mi-biblioteca" && (
-                <ActivationChecklist
-                  state={activationChecklistState}
-                  onAction={handleActivationAction}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <DailyMissionPanel
-                  savedIdeasCount={savedIdeas.length}
-                  publicBriefingsCount={ownPublicBriefings.length}
-                  publicPromptsCount={ownPublicPrompts.length}
-                  publishCandidates={dailyWorkspaceState.publishCandidates}
-                  recentPrompts={dailyWorkspaceState.recentPrompts}
-                  recentRemixes={dailyWorkspaceState.recentRemixes}
-                  socialFavoritePromptsCount={dailyWorkspaceState.socialFavoritePrompts.length}
-                  onOpenNews={() => handleSectionChange("noticias")}
-                  onOpenCommunity={() => {
-                    setCurrentSection("prompts");
-                    setCurrentTab("comunidad");
-                    setCommunityScope("todos");
-                    setSelectedAuthor(null);
-                    setSelectedCategory("Todas");
-                  }}
-                  onEditPrompt={handleOpenEdit}
-                  onUsePrompt={(prompt) => handleUsePrompt(prompt, "daily_mission")}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <BetaInvitePanel
-                  publicUrl={publicAppUrl}
-                  publicPromptsCount={ownPublicPrompts.length}
-                  publicBriefingsCount={ownPublicBriefings.length}
-                  forumPostsCount={forumPostsCount}
-                  savedIdeasCount={savedIdeas.length}
-                  onCopy={(text, message) => void handleCopyText(text, message)}
-                  onCreateFeedbackPost={handleCreateBetaFeedbackPost}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <ConnectionsPanel
-                  connectedConnections={connectedConnections}
-                  incomingConnectionRequests={incomingConnectionRequests}
-                  outgoingConnectionRequests={outgoingConnectionRequests}
-                  activeChatConnection={activeChatConnection}
-                  chatMessages={chatMessages}
-                  chatDraft={chatDraft}
-                  loadingChatMessages={loadingChatMessages}
-                  blockedUserIds={blockedUserIds}
-                  currentUserUid={user.uid}
-                  onAccept={(targetUid) => void acceptConnection(targetUid)}
-                  onRemove={(targetUid) => void removeConnection(targetUid)}
-                  onBlock={(connection) => void handleBlockConnection(connection)}
-                  onReportChat={() => void reportChat()}
-                  onOpenChat={openChat}
-                  onCloseChat={closeChat}
-                  onChatDraftChange={setChatDraft}
-                  onSendChatMessage={() => void sendChatMessage()}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <CreatorGrowthPanel
-                  briefings={ownPublicBriefings}
-                  publicPrompts={ownPublicPrompts}
-                  publishCandidates={dailyWorkspaceState.publishCandidates}
-                  userEvents={userEvents}
-                  onOpenBriefing={openPublicBriefing}
-                  onEditPrompt={handleOpenEdit}
-                  onOpenNews={() => handleSectionChange("noticias")}
-                  onOpenCommunity={() => {
-                    setCurrentSection("prompts");
-                    setCurrentTab("comunidad");
-                    setCommunityScope("todos");
-                    setSelectedAuthor(null);
-                    setSelectedCategory("Todas");
-                  }}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <DailyWorkspace
-                  state={dailyWorkspaceState}
-                  onEdit={handleOpenEdit}
-                  onUse={(prompt) => handleUsePrompt(prompt, "daily_workspace")}
-                  onViewSocial={setSelectedPublicPrompt}
-                  onSaveSocial={(prompt) => void resolvePublicSavePrompt(prompt)}
-                  onOpenSocialFavorites={() => {
-                    setCurrentSection("prompts");
-                    setCurrentTab("comunidad");
-                    setCommunityScope("favoritos");
-                    setSelectedAuthor(null);
-                    setSelectedCategory("Todas");
-                  }}
-                />
-              )}
-
-              {user && currentTab === "mi-biblioteca" && (
-                <TrustModerationPanel
-                  publicPrompts={publicOwnPrompts}
-                  reportedPrompts={reportedPrompts}
-                  hiddenCount={hiddenPromptIds.size}
-                  totalReportsCount={totalReportsCount}
-                  hasPermissionIssue={hasModerationPermissionIssue}
-                  onEditPrompt={handleOpenEdit}
-                  onViewPrompt={setSelectedPublicPrompt}
-                  onOpenCommunity={() => {
-                    setCurrentTab("comunidad");
-                    setCommunityScope("todos");
-                    setSelectedAuthor(null);
-                    setSelectedCategory("Todas");
-                  }}
-                />
-              )}
-
               {currentTab === "dashboard" ? (
                 <AnalyticsDashboardView prompts={prompts} folders={folders} />
               ) : (
                 <LibraryWorkspaceView
                   user={user}
                   currentTab={currentTab}
-                  prompts={prompts}
+                  prompts={libraryDisplayPrompts}
                   loadingPrompts={loadingPrompts}
                   loadingCommunityPrompts={loadingCommunityPrompts}
                   filteredPrompts={filteredPrompts}
@@ -2592,10 +2453,9 @@ export default function App() {
       )}
       {/* Humble Footer */}
       <footer className="bg-[#0f172a]/95 border-t border-[#334155]/50 py-5 px-6 md:px-12 text-center text-[10px] text-slate-450 shrink-0 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 select-none">
-        <p>© {new Date().getFullYear()} Biblioteca de Prompts — Diseñado para creadores de YouTube de Inteligencia Artificial.</p>
+        <p>© {new Date().getFullYear()} Biblioteca · Prompts y skills de la comunidad.</p>
         <p className="flex items-center justify-center gap-1.5 font-mono text-[9px] text-slate-500">
           <Zap size={10} className="text-yellow-400" fill="currentColor" />
-          <span>Sincronizado de forma segura con Firebase Cloud Database</span>
         </p>
       </footer>
 

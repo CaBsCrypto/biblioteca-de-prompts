@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "refactor/**"]
+    branches: [main, "refactor/**", "codex/**"]
   pull_request:
     branches: [main]
 
@@ -26,6 +26,9 @@ jobs:
       - name: Typecheck
         run: npm run lint
 
+      - name: Catalog and route tests
+        run: npm run test:unit
+
       - name: Build
         run: npm run build
         env:
@@ -43,7 +46,7 @@ jobs:
   smoke:
     name: Smoke test against PR preview
     runs-on: ubuntu-latest
-    needs: qa
+    needs: [qa, firestore-rules]
     if: github.event_name == 'pull_request'
     timeout-minutes: 10
     steps:
@@ -64,10 +67,27 @@ jobs:
         with:
           token: ${{ secrets.VERCEL_TOKEN }}
           max-time: 240
-        continue-on-error: true
 
       - name: Smoke test
-        if: steps.vercel.outcome == 'success'
         run: npm run smoke:vercel -- ${{ steps.vercel.outputs.url }}
         env:
           GEMINI_API_KEY: ci-placeholder
+
+  firestore-rules:
+    name: Firestore isolation and catalog approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install dependencies
+        run: npm ci
+      - name: Test Firestore rules in emulator
+        run: npm run test:rules

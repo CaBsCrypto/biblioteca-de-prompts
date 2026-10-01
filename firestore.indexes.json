@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "catalogResources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "sourcePromptId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "catalogResources",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "sourceFolderId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "prompts",
       "queryScope": "COLLECTION",
       "fields": [

@@ -1,0 +1,33 @@
+.biblioteca-wordmark { color: #12233d !important; font: inherit; background: none; cursor: pointer; }
+.ui-page #main-app-header .app-logo-mark { background: #285de5 !important; color: white !important; box-shadow: none; border-radius: 11px; }
+.ui-page #main-app-header h1 > span { text-transform: none; letter-spacing: normal; background: #edf3ff; color: #285de5; border-color: #dceafb; font-size: 10px; }
+.biblioteca-nav { position: sticky; top: 64px; z-index: 25; border-bottom: 1px solid #dce4ef; background: #fff; color: #12233d; }
+.biblioteca-nav-inner { max-width: 1280px; margin: auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+.biblioteca-nav-main { display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+.biblioteca-nav button { font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.biblioteca-nav-main > button { display: inline-flex; align-items: center; gap: 8px; padding: 19px 13px; color: #58677e; white-space: nowrap; border-bottom: 3px solid transparent; }
+.biblioteca-nav-main > button:hover { color: #285de5; background: #f5f8fc; }
+.biblioteca-nav-main > button[aria-current='page'] { color: #285de5; border-bottom-color: #285de5; }
+.biblioteca-more { position: relative; flex-shrink: 0; }
+.biblioteca-more summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 12px; }
+.biblioteca-more summary::-webkit-details-marker { display: none; }
+.biblioteca-more-menu { position: absolute; right: 0; top: 48px; width: 210px; background: #fff; padding: 7px; border: 1px solid #dce4ef; border-radius: 10px; box-shadow: 0 10px 30px #12233d16; }
+.biblioteca-more-menu > button { display: block; padding: 11px; width: 100%; text-align: left; border-radius: 6px; color: #12233d; }
+.biblioteca-more-menu > button:hover { background: #edf3ff; }
+.biblioteca-nav button:focus-visible, .biblioteca-more summary:focus-visible, .biblioteca-wordmark:focus-visible { outline: 3px solid #285de5; outline-offset: 2px; }
+.dark-ui .biblioteca-wordmark { color: #e5edff !important; }
+.dark-ui .biblioteca-nav, .dark-ui .biblioteca-more-menu { background: #17243a; color: #e5edff; border-color: #30405b; }
+.dark-ui .biblioteca-nav-main > button, .dark-ui .biblioteca-more-menu > button { color: #b5c4dd; }
+.dark-ui .biblioteca-nav-main > button[aria-current='page'] { color: #91b6ff; border-color: #91b6ff; }
+.dark-ui .biblioteca-nav-main > button:hover, .dark-ui .biblioteca-more-menu > button:hover { background: #263957; }
+@media (min-width: 640px) { .biblioteca-nav { top: 73px; } }
+@media (max-width: 640px) {
+  .biblioteca-nav-inner { padding: 0 10px; gap: 4px; }
+  .biblioteca-nav-main { gap: 0; }
+  .biblioteca-nav-main > button { font-size: 11px; padding: 15px 9px; gap: 5px; }
+  .biblioteca-nav-main > button svg { display: none; }
+  .biblioteca-more summary { padding: 10px 5px; font-size: 11px; }
+}
+.biblioteca-emulator-tools { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .5rem 2rem; background: #fef3c7; color: #713f12; font-size: .75rem; }
+.biblioteca-emulator-tools button { padding: .3rem .5rem; border: 1px solid #a16207; border-radius: .3rem; font-weight: 600; }
+.biblioteca-emulator-tools button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

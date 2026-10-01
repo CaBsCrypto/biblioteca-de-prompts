@@ -1,18 +1,18 @@
-# Biblioteca de Prompts
+# Biblioteca · Prompts y skills
 
-Aplicacion full-stack para guardar, clasificar, compartir y optimizar prompts con React, Firebase y Gemini.
+Catálogo comunitario gratuito para encontrar una capacidad, ver su resultado y obtener un prompt o una skill. Conserva la biblioteca personal y las herramientas existentes en React, Vite, Firebase y Vercel.
 
 ## Funcionalidades
 
 - Login con Google mediante Firebase Auth.
 - Biblioteca personal de prompts con favoritos, carpetas, etiquetas y busqueda.
-- Comunidad de prompts publicos con likes, comentarios, follows, favoritos sociales y remixes privados.
-- Vitrina publica para explorar prompts antes de iniciar sesion.
-- Perfil publico tipo hub de creador con prompts originales, colecciones y remixes publicados.
-- Detalle social de prompt como recurso vivo, con original conocido y remixes relacionados.
-- Creator Hub con mejores recursos para empezar, rutas por categoria y CTA claro para seguir/guardar remix.
-- Centro de confianza para revisar publicaciones propias, reportes recibidos y prompts ocultos del feed.
-- Enlaces publicos para prompts y colecciones compartidas.
+- Explorar por tarea, tipo, herramienta compatible y creador, con muestras de entrada y resultado.
+- Fichas compartibles `/recurso/prompt/:id` y `/recurso/skill/:id`, sin leer entregables al explorar.
+- Borradores privados, postulaciones inmutables y revisión exclusiva del fundador.
+- Nueva versión pendiente sin alterar la publicación aprobada, rechazo con motivo y retirada por el autor.
+- Descarga de `SKILL.md` o acceso a su carpeta GitHub pública fijada a un commit.
+- Remixes privados con atribución y skills guardadas por versión en Mi Biblioteca.
+- Enlaces heredados resueltos solo a publicaciones aprobadas; los recursos sin ficha muestran «no disponible».
 - Relleno interactivo de variables `{{variable}}`.
 - Exportacion de prompts como Markdown o mediante dialogo de impresion/PDF.
 - Asistente IA para crear u optimizar prompts usando Gemini desde el backend Express.
@@ -58,14 +58,32 @@ La aplicacion queda disponible en `http://localhost:3000`.
 - `npm run build`: genera el frontend y empaqueta el servidor en `dist/server.cjs`.
 - `npm run start`: ejecuta el build de produccion.
 - `npm run qa`: ejecuta lint y build, el QA obligatorio actual.
-- `npm run smoke:vercel -- <url>`: valida que la home responda `200` y que `/api/ai/crear` rechace llamadas sin token con `401`.
-- `npm run test:rules`: prueba futura opcional con Firestore Emulator; requiere Java/JDK y no forma parte del flujo local actual.
+- `npm run smoke:vercel -- <url>`: valida home y rutas compartibles, y exige `401` en la API IA sin token.
+- `npm run test:unit`: valida catálogo, Agent Skills y rutas.
+- `npm run test:rules`: ejecuta pruebas de aislamiento y aprobación con Firestore Emulator; requiere JDK 21.
 
 ## QA y Vercel
 
 - El flujo principal de QA funcional vive en `QA_VERCEL.md`.
 - Vercel Preview valida la app desplegada, incluyendo frontend, rutas API, Firebase Auth, Firestore y Gemini.
-- Firestore Emulator queda preparado pero dormido; se activara mas adelante en CI o staging cuando queramos pruebas automaticas de reglas sin instalar Java local.
+- CI exige tipos, build, pruebas unitarias y reglas en emulador con JDK 21.
+- El modelo, las condiciones de aprobación y el lanzamiento coordinado están documentados en [docs/catalog-rollout.md](docs/catalog-rollout.md). No se publican recursos anteriores automáticamente.
+
+## Comprobación local del catálogo
+
+Con JDK 21 y dos terminales, usa el proyecto aislado `demo-biblioteca`:
+
+```bash
+npx firebase emulators:start --config firebase.emulators.json --project demo-biblioteca --only firestore,auth
+```
+
+En `.env.local`, configura `VITE_FIREBASE_EMULATORS=true` y ejecuta `npm run dev`. Luego prepara las cuentas y dos fichas ficticias:
+
+```bash
+npx tsx scripts/seed-catalog-emulator.ts
+```
+
+El seed solo acepta localhost en 8080/9099 y nunca modifica producción. Las cuentas `creador@biblioteca.test` y `fundador@biblioteca.test` permiten comprobar publicación y revisión. El modo emulador está limitado al servidor de desarrollo; no se activa en builds de producción.
 
 ## Notas de continuidad
 
