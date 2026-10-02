@@ -16,6 +16,18 @@ const checks = [
     expectedStatus: 200
   },
   {
+    name: "ficha compartible resuelve el frontend",
+    url: new URL("/recurso/skill/smoke-unavailable", baseUrl),
+    options: { method: "GET" },
+    expectedStatus: 200
+  },
+  {
+    name: "enlace heredado resuelve el frontend",
+    url: new URL("/?share=smoke-unavailable", baseUrl),
+    options: { method: "GET" },
+    expectedStatus: 200
+  },
+  {
     name: "API IA requiere token",
     url: new URL("/api/ai/crear", baseUrl),
     options: {

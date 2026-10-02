@@ -25,6 +25,7 @@ interface ActivationChecklistInput {
   defaultPromptTitles: Set<string>;
   defaultPromptsTotal: number;
   defaultPromptsStarterGoal?: number;
+  hasPublishedPrompt?: boolean;
 }
 
 const normalizeTitle = (title: string) => title.trim().toLocaleLowerCase("es");
@@ -35,7 +36,8 @@ export function getActivationChecklistState({
   userEvents,
   defaultPromptTitles,
   defaultPromptsTotal,
-  defaultPromptsStarterGoal = 8
+  defaultPromptsStarterGoal = 8,
+  hasPublishedPrompt = false
 }: ActivationChecklistInput): ActivationChecklistState {
   const savedDefaultTitles = new Set(
     prompts
@@ -49,7 +51,7 @@ export function getActivationChecklistState({
   );
   const hasRemix = prompts.some((prompt) => Boolean(prompt.forkedFromPromptId || prompt.forkedFrom));
   const hasFolder = folders.length > 0;
-  const hasSharedPrompt = prompts.some((prompt) => prompt.isShared === true);
+  const hasSharedPrompt = hasPublishedPrompt;
 
   const steps: ActivationChecklistStep[] = [
     {

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, User } from "firebase/auth";
+import { getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithPopup, signInWithRedirect, signOut, User } from "firebase/auth";
 import { auth, db, googleProvider } from "../firebase";
 import { UserProfile } from "../types";
 import { buildProfileHandle, getAuthorIdentity, normalizeProfileHandle } from "../utils/profile";
@@ -63,6 +63,9 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
     const displayName = currentUser.displayName || currentUser.email?.split("@")[0] || "Miembro de la comunidad";
     const photoURL = currentUser.photoURL || "";
     const existingProfile = await getDoc(profileRef);
+    const isCurrentAccount = () => auth.currentUser?.uid === currentUser.uid;
+    // A slow response from the previous account must neither refresh its profile nor restore its role in the UI.
+    if (!isCurrentAccount()) return;
 
     if (!existingProfile.exists()) {
       const profile: Omit<UserProfile, "id"> = {
@@ -82,7 +85,7 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
         updatedAt: serverTimestamp()
       };
       await setDoc(profileRef, profile);
-      setCurrentUserProfile({ ...profile, createdAt: null, updatedAt: null });
+      if (isCurrentAccount()) setCurrentUserProfile({ ...profile, createdAt: null, updatedAt: null });
       return;
     }
 
@@ -91,9 +94,11 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
       photoURL,
       updatedAt: serverTimestamp()
     });
+    if (!isCurrentAccount()) return;
     setCurrentUserProfile({
       id: existingProfile.id,
       ...existingProfile.data(),
+      uid: currentUser.uid,
       displayName,
       photoURL
     } as unknown as UserProfile);
@@ -114,13 +119,12 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setCurrentUserProfile(profile => profile?.uid === currentUser?.uid ? profile : null);
       setUser(currentUser);
       if (currentUser) {
         ensureUserProfile(currentUser).catch((error) => {
           console.error("Error ensuring user profile:", error);
         });
-      } else {
-        setCurrentUserProfile(null);
       }
       setAuthLoading(false);
     });
@@ -129,7 +133,8 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
 
   const handleSignIn = async () => {
     try {
-      if (shouldUseRedirectSignIn()) {
+      // Redirect also works in embedded preview browsers when testing with the Auth Emulator.
+      if ((import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true') || shouldUseRedirectSignIn()) {
         await signInWithRedirect(auth, googleProvider);
         return;
       }
@@ -144,6 +149,30 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
         return;
       }
       onNotification(getGoogleAuthErrorMessage(error), "info");
+    }
+  };
+
+  const handleEmulatorSignIn = async (role: 'creator' | 'founder') => {
+    if (!import.meta.env.DEV || import.meta.env.VITE_FIREBASE_EMULATORS !== 'true') {
+      throw new Error('El ingreso de prueba solo está disponible en desarrollo con emuladores locales.');
+    }
+    const emulator = auth.emulatorConfig;
+    if (auth.app.options.projectId !== 'demo-biblioteca' || !emulator
+      || !['localhost', '127.0.0.1'].includes(emulator.host) || emulator.port !== 9099 || emulator.protocol !== 'http') {
+      throw new Error('El ingreso de prueba requiere Auth Emulator local en demo-biblioteca, puerto 9099.');
+    }
+    if (role !== 'creator' && role !== 'founder') throw new Error('Elige una cuenta de prueba válida.');
+    const account = role === 'founder'
+      ? { sub: 'biblioteca-local-founder', email: 'fundador@biblioteca.test', email_verified: true, name: 'Fundador de prueba' }
+      : { sub: 'biblioteca-local-creator', email: 'creador@biblioteca.test', email_verified: true, name: 'Creador de prueba' };
+    try {
+      // Official Auth Emulator credential flow, avoiding popup storage partitioning in embedded previews.
+      // Roles remain governed by separately seeded Firestore profiles; this helper never assigns a role.
+      await signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify(account)));
+      onNotification('Sesión de prueba local iniciada.', 'success');
+    } catch (error) {
+      console.error('Error signing in with the local Auth Emulator:', error);
+      onNotification('No se pudo ingresar a la cuenta local. Comprueba el emulador Auth y ejecuta el seed de pruebas.', 'info');
     }
   };
 
@@ -240,6 +269,7 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
     setProfileBioInput,
     isSavingProfile,
     handleSignIn,
+    handleEmulatorSignIn,
     handleSignOut,
     handleOpenProfileModal,
     handleSaveProfile,

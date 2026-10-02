@@ -37,17 +37,17 @@ export default function MainHeader({
     <header id="main-app-header" className="bg-[#1e293b]/75 border-b border-[#334155]/60 backdrop-blur-md px-3 py-2.5 sm:px-4 sm:py-3.5 md:px-12 flex items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shrink-0">
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="app-logo-mark w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-[#4f46e5] to-[#ec4899] text-white flex items-center justify-center shadow-lg shadow-indigo-600/10 shrink-0">
-          <Zap size={18} fill="currentColor" className="text-yellow-300 animate-pulse" />
+          <BookOpen size={21} />
         </div>
         <div className="min-w-0">
           <h1 className="font-extrabold text-white text-sm sm:text-md leading-tight font-sans tracking-tight flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span className="text-gradient-brand bg-gradient-to-r from-[#818cf8] to-[#ec4899] bg-clip-text text-transparent truncate">Biblioteca de Prompts</span>
+            <button className="biblioteca-wordmark" type="button" onClick={() => handleSectionChange('explorar')}>Biblioteca</button>
             <span className="hidden sm:inline bg-pink-500/10 text-pink-400 border border-pink-500/20 rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest leading-none shrink-0">
-              Creadores IA
+              Prompts y skills
             </span>
           </h1>
           <p className="text-[10px] text-slate-400 font-sans hidden md:block">
-            Red social + radar para guardar, remixear y compartir prompts
+            Encuentra una capacidad. Descubre lo que puedes hacer.
           </p>
         </div>
       </div>

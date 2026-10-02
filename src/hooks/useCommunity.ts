@@ -57,43 +57,12 @@ export function useCommunity({
     return unsubscribe;
   }, [user]);
 
+  // The reviewed catalog owns discovery. Draft prompt documents and folders
+  // are never subscribed to publicly, even when a legacy isShared flag exists.
   useEffect(() => {
-    setLoadingCommunityPrompts(true);
-    const communityQuery = query(collection(db, "prompts"), where("isShared", "==", true));
-
-    const unsubscribe = onSnapshot(
-      communityQuery,
-      (snapshot) => {
-        setCommunityPrompts(sortCommunityPrompts(snapshot.docs.map(mapPromptDoc)));
-        setLoadingCommunityPrompts(false);
-      },
-      (error) => {
-        console.error("Error subscribing to community prompts:", error);
-        setLoadingCommunityPrompts(false);
-      }
-    );
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    const foldersQuery = query(collection(db, "folders"), where("isShared", "==", true));
-    const unsubscribe = onSnapshot(
-      foldersQuery,
-      (snapshot) => {
-        setCommunityFolders(snapshot.docs.map(mapFolderDoc));
-      },
-      (error) => {
-        if ((error as { code?: string }).code === "permission-denied") {
-          setCommunityFolders([]);
-          console.warn("Community folders are not readable with the current Firestore rules.");
-          return;
-        }
-        console.error("Error subscribing to community folders:", error);
-      }
-    );
-
-    return unsubscribe;
+    setCommunityPrompts([]);
+    setCommunityFolders([]);
+    setLoadingCommunityPrompts(false);
   }, []);
 
   const handleLikeToggle = async (prompt: Prompt) => {
@@ -151,7 +120,7 @@ export function useCommunity({
 
       const forkData = {
         userId: user.uid,
-        title: `${prompt.title} (Clon)`,
+        title: `${prompt.title.slice(0, 143)} (Clon)`,
         description: prompt.description || "",
         promptText: prompt.promptText,
         category: prompt.category,

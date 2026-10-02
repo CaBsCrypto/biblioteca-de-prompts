@@ -19,12 +19,9 @@ import { useAppStore } from "../store/appStore";
 import { auth } from "../firebase";
 import type { Prompt } from "../types";
 import type { User } from "firebase/auth";
+import type { GeminiRecommendationResult } from '../components/RecommendationModal';
 
-export interface GeminiRecommendationResult {
-  promptIds: string[];
-  rationale: string;
-  goal: string;
-}
+export type { GeminiRecommendationResult } from '../components/RecommendationModal';
 
 interface UseAIRecommendationOptions {
   prompts: Prompt[];
@@ -99,9 +96,9 @@ export function useAIRecommendation({
         if (!response.ok) throw new Error(data.error || "Error al generar recomendación.");
 
         setResult({
-          promptIds: data.promptIds ?? [],
-          rationale: data.rationale ?? "",
-          goal: goalText
+          recommendations: Array.isArray(data.recommendations) ? data.recommendations : [],
+          gapAnalysis: data.gapAnalysis ?? "",
+          ...(data.suggestedNewPrompt ? { suggestedNewPrompt: data.suggestedNewPrompt } : {})
         });
 
         if (onNotification) {

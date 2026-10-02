@@ -6,6 +6,8 @@ import { Prompt, Folder as FolderType } from "../types";
 import { User } from "firebase/auth";
 import CommentsSection from "./CommentsSection";
 import { escapeHtml } from "../utils/sanitize";
+import { fetchPublishedResourceForSource } from "../services/firestore/catalogService";
+import { catalogResourcePath } from "../router/useAppRouter";
 
 interface PromptCardProps {
   key?: React.Key;
@@ -53,6 +55,7 @@ export default function PromptCard({
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
   const isFounderPackPrompt = prompt.userId === "founder-pack" || prompt.id.startsWith("founder-pack-");
@@ -121,25 +124,30 @@ export default function PromptCard({
     }
   };
 
-  const handleShareClick = (e: React.MouseEvent) => {
+  const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!prompt.isShared) {
-      if (onNotification) {
-        onNotification("Este prompt es privado. Activa 'Permitir compartir públicamente' al editar.", "info");
+    if (shareLoading) return;
+    setShareLoading(true);
+    try {
+      const publications = await fetchPublishedResourceForSource(db, { promptId: prompt.id });
+      const resource = publications[0];
+      if (!resource) {
+        onNotification?.("Postula este prompt desde Publicar. Podrás compartir su ficha cuando tenga una versión aprobada.", "info");
+        return;
       }
-      return;
-    }
-
-    // Determine the share URL
-    const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?share=${prompt.id}`;
-    
-    navigator.clipboard.writeText(shareUrl);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
-    
-    if (onNotification) {
-      onNotification("¡Enlace de compartición copiado al portapapeles!", "success");
+      const shareUrl = new URL(catalogResourcePath(resource.kind, resource.id), window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+        onNotification?.("Enlace de la ficha aprobada copiado.", "success");
+      } catch {
+        onNotification?.("No pudimos copiar el enlace. Inténtalo de nuevo.", "info");
+      }
+    } catch {
+      onNotification?.("No pudimos comprobar la publicación del catálogo. Inténtalo de nuevo.", "info");
+    } finally {
+      setShareLoading(false);
     }
   };
 
@@ -351,14 +359,14 @@ ${notesStr}
                 <span>{folders.find(f => f.id === prompt.folderId)?.name}</span>
               </span>
             )}
-            {prompt.isShared && (
+            {prompt.isShared && isCommunityView && (
               <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Publicado en Comunidad">
                 <Globe size={11} className="animate-pulse" />
                 <span>En Comunidad</span>
               </span>
             )}
-            {!prompt.isShared && !isCommunityView && (
-              <span className="text-[10px] bg-slate-950/45 text-slate-400 border border-slate-700/70 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Privado en tu biblioteca">
+            {!isCommunityView && (
+              <span className="text-[10px] bg-slate-950/45 text-slate-400 border border-slate-700/70 font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5" title="Este original vive en tu biblioteca privada. Sus publicaciones aprobadas se gestionan desde Publicar.">
                 <EyeOff size={11} />
                 <span>Privado</span>
               </span>
@@ -625,14 +633,14 @@ ${notesStr}
               <button
                 id={`btn-share-${prompt.id}`}
                 onClick={handleShareClick}
+                disabled={shareLoading}
+                aria-label={shareLoading ? "Comprobando publicación del catálogo" : "Copiar enlace de la ficha aprobada del catálogo"}
                 className={`p-2 rounded-lg transition-all ${
                   linkCopied
                     ? "text-emerald-400 bg-emerald-500/10"
-                    : prompt.isShared
-                    ? "text-indigo-400 hover:text-white hover:bg-indigo-500/10"
-                    : "text-slate-550 hover:text-indigo-400 hover:bg-slate-800"
+                    : "text-slate-550 hover:text-indigo-400 hover:bg-slate-800 disabled:opacity-50"
                 }`}
-                title={prompt.isShared ? "Copiar enlace de compartición pública" : "Activar compartir en Editar para obtener enlace"}
+                title={shareLoading ? "Comprobando publicación…" : "Copiar enlace de una versión aprobada en el catálogo"}
               >
                 {linkCopied ? <Check size={16} className="text-emerald-400" /> : <Share2 size={16} />}
               </button>

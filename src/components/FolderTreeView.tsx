@@ -157,18 +157,10 @@ export default function FolderTreeView({
                   e.stopPropagation();
                   handleOpenShareFolderModal(folder);
                 }}
-                className={`p-1 hover:bg-slate-800 rounded transition-all cursor-pointer ${
-                  folder.isShared
-                    ? "text-emerald-400"
-                    : "text-slate-400 hover:text-white"
-                }`}
-                title={
-                  folder.isShared
-                    ? "Colección compartida. Ajustar configuración."
-                    : "Compartir Colección"
-                }
+                className="p-1 hover:bg-slate-800 rounded transition-all cursor-pointer text-slate-400 hover:text-white"
+                title="Gestionar colaboración privada y enlaces de recursos aprobados"
               >
-                <Share2 size={11} className={folder.isShared ? "animate-pulse" : ""} />
+                <Share2 size={11} />
               </button>
             )}
             {isOwner && (

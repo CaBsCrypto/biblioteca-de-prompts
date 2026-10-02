@@ -159,7 +159,7 @@ export default function CreatorGrowthPanel({
             </article>
           )) : (
             <p className="rounded-xl border border-dashed border-slate-800 p-3 text-xs leading-relaxed text-slate-500">
-              Todavia no publicaste prompts. Activa Hacer publico en tus mejores recursos.
+              Todavía no hay prompts aprobados. Prepara una ficha desde Publicar y postúlala para revisión.
             </p>
           )}
         </div>

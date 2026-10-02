@@ -59,6 +59,225 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'founder';
     }
 
+    // Catalog drafts and submissions contain private snapshots; only the
+    // approved listing contains metadata and the payload contains delivery text.
+    function boundedText(value, maximum) {
+      return value is string && value.size() <= maximum;
+    }
+
+    function requiredText(value, maximum) {
+      return boundedText(value, maximum) && value.size() > 0;
+    }
+
+    function catalogStringList(values, maximum) {
+      let count = values.size();
+      let pattern = '^[\\s\\S]{0,' + string(maximum) + '}$';
+      return values is list && count <= 20
+        && (count < 1 || values[0].matches(pattern))
+        && (count < 2 || values[1].matches(pattern))
+        && (count < 3 || values[2].matches(pattern))
+        && (count < 4 || values[3].matches(pattern))
+        && (count < 5 || values[4].matches(pattern))
+        && (count < 6 || values[5].matches(pattern))
+        && (count < 7 || values[6].matches(pattern))
+        && (count < 8 || values[7].matches(pattern))
+        && (count < 9 || values[8].matches(pattern))
+        && (count < 10 || values[9].matches(pattern))
+        && (count < 11 || values[10].matches(pattern))
+        && (count < 12 || values[11].matches(pattern))
+        && (count < 13 || values[12].matches(pattern))
+        && (count < 14 || values[13].matches(pattern))
+        && (count < 15 || values[14].matches(pattern))
+        && (count < 16 || values[15].matches(pattern))
+        && (count < 17 || values[16].matches(pattern))
+        && (count < 18 || values[17].matches(pattern))
+        && (count < 19 || values[18].matches(pattern))
+        && (count < 20 || values[19].matches(pattern));
+    }
+
+    function catalogHttpsUrl(value) {
+      return boundedText(value, 2048) && (value == '' || value.matches('^https://[^\\s]+$'));
+    }
+
+    function catalogMetadataComplete(data) {
+      return requiredText(data.title, 150) && requiredText(data.summary, 1000)
+        && requiredText(data.outcome, 2000) && requiredText(data.category, 100)
+        && data.compatibility.size() > 0 && requiredText(data.usage, 20000)
+        && requiredText(data.license, 2000) && requiredText(data.exampleInput, 10000)
+        && requiredText(data.exampleOutput, 20000) && requiredText(data.authorName, 120);
+    }
+
+    function catalogMetadata(data, complete) {
+      return data is map
+        && data.keys().hasOnly(['title', 'summary', 'outcome', 'category', 'tags', 'compatibility', 'requirements', 'usage', 'license', 'exampleInput', 'exampleOutput', 'imageUrl', 'demoUrl', 'authorName', 'authorHandle', 'authorAvatar'])
+        && boundedText(data.title, 150) && boundedText(data.summary, 1000)
+        && boundedText(data.outcome, 2000) && boundedText(data.category, 100)
+        && data.tags.size() <= 10 && catalogStringList(data.tags, 64) && catalogStringList(data.compatibility, 100)
+        && boundedText(data.requirements, 10000) && boundedText(data.usage, 20000)
+        && boundedText(data.license, 2000) && boundedText(data.exampleInput, 10000)
+        && boundedText(data.exampleOutput, 20000)
+        && catalogHttpsUrl(data.imageUrl) && catalogHttpsUrl(data.demoUrl)
+        && boundedText(data.authorName, 120) && boundedText(data.authorHandle, 40)
+        && boundedText(data.authorAvatar, 1000) && catalogHttpsUrl(data.authorAvatar)
+        && (!complete || (data.title.size() > 0 && data.summary.size() > 0
+          && data.outcome.size() > 0 && data.category.size() > 0
+          && data.compatibility.size() > 0 && data.usage.size() > 0
+          && data.license.size() > 0 && data.exampleInput.size() > 0
+          && data.exampleOutput.size() > 0 && data.authorName.size() > 0));
+    }
+
+    function catalogContent(data, kind, complete) {
+      return data is map
+        && data.keys().hasOnly(['text', 'source', 'repositoryUrl', 'repositoryCommit', 'repositoryPath'])
+        && kind in ['prompt', 'skill']
+        && boundedText(data.text, kind == 'prompt' ? 10000 : 50000)
+        && data.source in ['inline', 'github']
+        && boundedText(data.repositoryUrl, 2048)
+        && boundedText(data.repositoryCommit, 40)
+        && boundedText(data.repositoryPath, 500)
+        && (!complete || (data.text.size() > 0
+          && (kind != 'skill' || data.text.matches('^\\x{FEFF}?---[\\s\\S]*'))
+          && ((data.source == 'inline' && data.repositoryUrl == '' && data.repositoryCommit == '' && data.repositoryPath == '')
+            || (kind == 'skill' && data.source == 'github'
+              && data.repositoryUrl.matches('^https://github[.]com/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+/?$')
+              && data.repositoryCommit.matches('^[a-fA-F0-9]{40}$')
+              && data.repositoryPath.size() > 0
+              && !data.repositoryPath.matches('^/.*')
+              && !data.repositoryPath.matches('(.*/)?[.][.](/.*)?')
+              && !data.repositoryPath.matches('.*[\\\\?#].*')))));
+    }
+
+    function catalogSourceId(value) {
+      return value == '' || isValidId(value);
+    }
+
+    function catalogSnapshot(data, complete) {
+      return data.kind in ['prompt', 'skill']
+        && catalogMetadata(data.metadata, complete)
+        && catalogContent(data.content, data.kind, complete)
+        && catalogSourceId(data.sourcePromptId) && catalogSourceId(data.sourceFolderId);
+    }
+
+    function catalogOwnSources(data) {
+      return (data.sourcePromptId == ''
+          || get(/databases/$(database)/documents/prompts/$(data.sourcePromptId)).data.userId == request.auth.uid)
+        && (data.sourceFolderId == '' || ownsFolder(data.sourceFolderId));
+    }
+
+    function catalogMatchesDraft(data) {
+      let draft = getAfter(/databases/$(database)/documents/catalogDrafts/$(data.resourceId)).data;
+      return draft.ownerUid == data.ownerUid && draft.kind == data.kind
+        && draft.metadata == data.metadata && draft.content == data.content
+        && draft.sourcePromptId == data.sourcePromptId && draft.sourceFolderId == data.sourceFolderId;
+    }
+
+    function catalogListingMatches(data, resourceId, submissionId) {
+      let submission = getAfter(/databases/$(database)/documents/catalogSubmissions/$(submissionId)).data;
+      return data.keys().hasOnly(['ownerUid', 'kind', 'metadata', 'sourcePromptId', 'sourceFolderId', 'submissionId', 'state', 'publishedAt', 'updatedAt'])
+        && submission.resourceId == resourceId && submission.status == 'approved'
+        && data.ownerUid == submission.ownerUid && data.kind == submission.kind
+        && data.metadata == submission.metadata
+        && data.sourcePromptId == submission.sourcePromptId && data.sourceFolderId == submission.sourceFolderId
+        && data.submissionId == submissionId && data.state == 'published'
+        && data.updatedAt == request.time;
+    }
+
+    function catalogPayloadMatches(data, resourceId, submissionId) {
+      let submission = getAfter(/databases/$(database)/documents/catalogSubmissions/$(submissionId)).data;
+      return data.keys().hasOnly(['resourceId', 'ownerUid', 'kind', 'submissionId', 'content', 'updatedAt'])
+        && submission.resourceId == resourceId && submission.status == 'approved'
+        && data.resourceId == resourceId && data.ownerUid == submission.ownerUid
+        && data.kind == submission.kind && data.content == submission.content
+        && data.submissionId == submissionId && data.updatedAt == request.time;
+    }
+
+    function catalogApprovingPending(submissionId) {
+      let before = get(/databases/$(database)/documents/catalogSubmissions/$(submissionId)).data;
+      let after = getAfter(/databases/$(database)/documents/catalogSubmissions/$(submissionId)).data;
+      return before.status == 'pending' && after.status == 'approved'
+        && after.reviewerUid == request.auth.uid && after.decidedAt == request.time;
+    }
+
+    function catalogApprovalAtomic(data, submissionId) {
+      let listing = getAfter(/databases/$(database)/documents/catalogResources/$(data.resourceId)).data;
+      let payload = getAfter(/databases/$(database)/documents/catalogPayloads/$(data.resourceId)).data;
+      return catalogListingMatches(listing, data.resourceId, submissionId)
+        && catalogPayloadMatches(payload, data.resourceId, submissionId);
+    }
+
+    match /catalogDrafts/{resourceId} {
+      allow get: if isSignedIn() && (!exists(/databases/$(database)/documents/catalogDrafts/$(resourceId))
+        || existing().ownerUid == request.auth.uid);
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(resourceId)
+        && incoming().keys().hasOnly(['ownerUid', 'kind', 'metadata', 'content', 'sourcePromptId', 'sourceFolderId', 'createdAt', 'updatedAt'])
+        && incoming().ownerUid == request.auth.uid && catalogSnapshot(incoming(), false)
+        && incoming().createdAt == request.time && incoming().updatedAt == request.time
+        && (!exists(/databases/$(database)/documents/catalogResources/$(resourceId))
+          || get(/databases/$(database)/documents/catalogResources/$(resourceId)).data.ownerUid == request.auth.uid);
+      allow update: if isSignedIn() && existing().ownerUid == request.auth.uid
+        && incoming().ownerUid == existing().ownerUid && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time && catalogSnapshot(incoming(), false)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['kind', 'metadata', 'content', 'sourcePromptId', 'sourceFolderId', 'updatedAt']);
+      allow delete: if isSignedIn() && existing().ownerUid == request.auth.uid;
+    }
+
+    match /catalogSubmissions/{submissionId} {
+      allow get, list: if isFounder() || (isSignedIn() && existing().ownerUid == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(submissionId) && isValidId(incoming().resourceId)
+        && incoming().keys().hasOnly(['resourceId', 'ownerUid', 'kind', 'metadata', 'content', 'sourcePromptId', 'sourceFolderId', 'status', 'submittedAt', 'decidedAt', 'reviewerUid', 'rejectionReason'])
+        // Exact draft equality inherits the shape and all size/type bounds
+        // enforced when that draft was created or edited. Validate readiness
+        // here without evaluating the two bounded 20-item lists a second time.
+        && incoming().ownerUid == request.auth.uid && catalogMatchesDraft(incoming())
+        && catalogMetadataComplete(incoming().metadata)
+        && catalogContent(incoming().content, incoming().kind, true)
+        && catalogOwnSources(incoming())
+        && incoming().status == 'pending' && incoming().submittedAt == request.time
+        && incoming().decidedAt == null && incoming().reviewerUid == '' && incoming().rejectionReason == '';
+      allow update: if isFounder() && existing().status == 'pending'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'decidedAt', 'reviewerUid', 'rejectionReason'])
+        && incoming().reviewerUid == request.auth.uid && incoming().decidedAt == request.time
+        && ((incoming().status == 'approved' && incoming().rejectionReason == '' && catalogApprovalAtomic(incoming(), submissionId))
+          || (incoming().status == 'rejected' && requiredText(incoming().rejectionReason, 2000)));
+      allow delete: if false;
+    }
+
+    match /catalogResources/{resourceId} {
+      // Public queries must use where('state', '==', 'published'). Authors
+      // query ownerUid to inspect their withdrawn listing; founder can review.
+      allow get: if isFounder() || existing().state == 'published'
+        || (isSignedIn() && existing().ownerUid == request.auth.uid);
+      allow list: if isFounder() || existing().state == 'published'
+        || (isSignedIn() && existing().ownerUid == request.auth.uid);
+      allow create: if isFounder() && isValidId(resourceId)
+        && catalogApprovingPending(incoming().submissionId)
+        && catalogListingMatches(incoming(), resourceId, incoming().submissionId)
+        && incoming().publishedAt == request.time;
+      allow update: if
+        (isFounder() && catalogApprovingPending(incoming().submissionId)
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().kind == existing().kind
+          && incoming().publishedAt == existing().publishedAt
+          && catalogListingMatches(incoming(), resourceId, incoming().submissionId))
+        || (isSignedIn() && (existing().ownerUid == request.auth.uid || isFounder())
+          && existing().state == 'published' && incoming().state == 'withdrawn'
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['state', 'updatedAt']));
+      allow delete: if false;
+    }
+
+    match /catalogPayloads/{resourceId} {
+      allow get: if get(/databases/$(database)/documents/catalogResources/$(resourceId)).data.state == 'published'
+        && existing().submissionId == get(/databases/$(database)/documents/catalogResources/$(resourceId)).data.submissionId;
+      allow list: if false;
+      allow create, update: if isFounder() && isValidId(resourceId)
+        && catalogApprovingPending(incoming().submissionId)
+        && catalogPayloadMatches(incoming(), resourceId, incoming().submissionId)
+        && catalogListingMatches(getAfter(/databases/$(database)/documents/catalogResources/$(resourceId)).data, resourceId, incoming().submissionId);
+      allow delete: if false;
+    }
+
     function isAllowedClassId(classId) {
       return classId in ['prompting-universidad-v1'];
     }
@@ -94,14 +313,20 @@ service cloud.firestore {
         && (!('stats' in data) || data.stats is map);
     }
 
-    // Basic validation helper for prompt format
-    function isValidPrompt(data) {
-      return data.userId == request.auth.uid
-        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+    // Content constraints shared by the owner and authorized folder editors.
+    // Ownership remains checked independently by each write permission.
+    function isValidPromptContent(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 150
         && data.promptText is string && data.promptText.size() > 0 && data.promptText.size() <= 10000
         && data.category is string && data.category.size() <= 50
         && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
         && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('suggestedVariables' in data) || data.suggestedVariables is list);
+    }
+
+    function isValidPrompt(data) {
+      return data.userId == request.auth.uid
+        && isValidPromptContent(data)
         && (!('isFavorite' in data) || data.isFavorite is bool)
         && (!('notas' in data) || (data.notas is string && data.notas.size() <= 6000))
         && (!('isShared' in data) || data.isShared is bool)
@@ -118,7 +343,6 @@ service cloud.firestore {
         && (!('forkedFromTitle' in data) || (data.forkedFromTitle is string && data.forkedFromTitle.size() <= 200))
         && (!('sourceClassId' in data) || (data.sourceClassId is string && data.sourceClassId.size() <= 128))
         && (!('sourceClassTitle' in data) || (data.sourceClassTitle is string && data.sourceClassTitle.size() <= 200))
-        && (!('suggestedVariables' in data) || data.suggestedVariables is list)
         && (!('folderId' in data) || ownsFolder(data.folderId));
     }
 
@@ -181,7 +405,17 @@ service cloud.firestore {
       return isSignedIn()
         && data.participants is list
         && data.participants.size() == 2
+        && data.participants[0] is string
+        && data.participants[1] is string
+        && data.participants[0] != data.participants[1]
         && request.auth.uid in data.participants;
+    }
+
+    function chatIdMatchesParticipants(chatId, data) {
+      // The application sorts the two UIDs. Rules accept either ordering,
+      // while preventing a different pair from occupying their conversation.
+      return chatId == data.participants[0] + '__' + data.participants[1]
+        || chatId == data.participants[1] + '__' + data.participants[0];
     }
 
     function isConnectedTo(targetUid) {
@@ -339,6 +573,7 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && isValidId(postId)
+        && incoming().authorUid == request.auth.uid
         && isValidCommunityPost(incoming())
         && incoming().likesCount == 0
         && incoming().likedBy.size() == 0
@@ -456,11 +691,14 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      allow get, list: if isChatParticipant(resource.data);
+      allow get: if isSignedIn() && (!exists(/databases/$(database)/documents/chats/$(chatId))
+        || isChatParticipant(resource.data));
+      allow list: if isChatParticipant(resource.data);
 
       allow create: if isSignedIn()
         && isValidId(chatId)
         && isValidChatThread(incoming())
+        && chatIdMatchesParticipants(chatId, incoming())
         && incoming().createdAt == request.time
         && (!('lastMessageSenderUid' in incoming()) || incoming().lastMessageSenderUid == request.auth.uid)
         && isConnectedTo(incoming().participants[0] == request.auth.uid ? incoming().participants[1] : incoming().participants[0]);
@@ -469,6 +707,7 @@ service cloud.firestore {
         && isValidId(chatId)
         && isChatParticipant(existing())
         && isValidChatThread(incoming())
+        && chatIdMatchesParticipants(chatId, incoming())
         && incoming().participants == existing().participants
         && incoming().createdAt == existing().createdAt
         && incoming().lastMessageSenderUid == request.auth.uid
@@ -631,6 +870,20 @@ service cloud.firestore {
         allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
+      // Saved skills are private copies. A saved version stays
+      // available to its owner when a public listing is updated or withdrawn.
+      match /savedCatalogSkills/{resourceId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId
+          && isValidId(resourceId) && isValidId(incoming().submissionId)
+          && incoming().resourceId == resourceId
+          && incoming().keys().hasOnly(['resourceId', 'submissionId', 'metadata', 'content', 'savedAt'])
+          && catalogMetadata(incoming().metadata, true)
+          && catalogContent(incoming().content, 'skill', true)
+          && incoming().savedAt == request.time;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
       match /favorites/{promptId} {
         allow get, list: if isSignedIn() && request.auth.uid == userId;
 
@@ -676,8 +929,9 @@ service cloud.firestore {
     }
 
     match /folders/{folderId} {
-      allow list: if resource.data.isShared == true 
-        || isFounder() 
+      // A legacy sharing marker never publishes the raw folder document.
+      // Shared collection links resolve reviewed catalogResources instead.
+      allow list: if isFounder()
         || (isSignedIn() && (
             resource.data.userId == request.auth.uid 
             || (resource.data.collaborators != null && request.auth.uid in resource.data.collaborators)
@@ -687,8 +941,7 @@ service cloud.firestore {
         || (isSignedIn() && (
             existing().userId == request.auth.uid 
             || (existing().collaborators != null && request.auth.uid in existing().collaborators)
-           )) 
-        || (existing().isShared == true);
+           ));
       
       allow create: if isSignedIn()
         && isValidId(folderId)
@@ -732,14 +985,13 @@ service cloud.firestore {
     }
 
     match /prompts/{promptId} {
-      // Secure list query and document retrieve (allow authenticated owner, explicitly shared prompt, or collaborator in same folder)
+      // Legacy isShared is an author marker, never a publication permission.
+      // Catalog approval is the sole path to a public prompt payload.
       allow get: if isFounder()
-        || (existing().isShared == true) 
         || (isSignedIn() && existing().userId == request.auth.uid)
         || (isSignedIn() && canReadPromptFolder(existing().folderId));
         
       allow list: if isFounder()
-        || (existing().isShared == true) 
         || (isSignedIn() && existing().userId == request.auth.uid)
         || (isSignedIn() && canReadPromptFolder(existing().folderId));
       
@@ -750,7 +1002,7 @@ service cloud.firestore {
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
         
-      // Strict update matching (Tiered: Owner edit OR Community global social Like)
+      // Only the owner or a folder editor can edit legacy private prompts.
       allow update: if isSignedIn()
         && isValidId(promptId)
         && (
@@ -762,45 +1014,7 @@ service cloud.firestore {
             && incoming().updatedAt == request.time
             && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'isFavorite', 'notas', 'suggestedVariables', 'isShared', 'authorName', 'authorAvatar', 'authorHandle', 'forkedFrom', 'forkedFromPromptId', 'forkedFromUserId', 'forkedFromAuthorName', 'forkedFromAuthorHandle', 'forkedFromTitle', 'sourceClassId', 'sourceClassTitle', 'updatedAt', 'folderId']))
           ||
-          // Case 2: Non-owner social interaction (liking/unliking shared prompts)
-          (existing().isShared == true
-            // Enforce immutability of other core fields to prevent injection
-            && incoming().userId == existing().userId
-            && incoming().title == existing().title
-            && incoming().promptText == existing().promptText
-            && incoming().category == existing().category
-            && incoming().isShared == existing().isShared
-            && incoming().createdAt == existing().createdAt
-            && incoming().diff(existing()).affectedKeys().hasOnly(['likedBy', 'likesCount', 'updatedAt'])
-            && incoming().likedBy is list
-            && incoming().likedBy.size() <= 1000
-            && incoming().likesCount is int
-            && incoming().likesCount == incoming().likedBy.size()
-            && (
-              (
-                !('likedBy' in existing())
-                && request.auth.uid in incoming().likedBy
-                && incoming().likedBy.size() == 1
-              )
-              ||
-              (
-                'likedBy' in existing()
-                && !(request.auth.uid in existing().likedBy)
-                && request.auth.uid in incoming().likedBy
-                && incoming().likedBy.size() == existing().likedBy.size() + 1
-                && incoming().likedBy.hasAll(existing().likedBy)
-              )
-              ||
-              (
-                'likedBy' in existing()
-                && request.auth.uid in existing().likedBy
-                && !(request.auth.uid in incoming().likedBy)
-                && incoming().likedBy.size() == existing().likedBy.size() - 1
-                && existing().likedBy.hasAll(incoming().likedBy)
-              )
-            ))
-          ||
-          // Case 3: Collaborator editor write
+          // Collaborator editor write
           (existing().folderId != null
             && exists(/databases/$(database)/documents/folders/$(existing().folderId))
             && get(/databases/$(database)/documents/folders/$(existing().folderId)).data.collaborators != null
@@ -809,6 +1023,7 @@ service cloud.firestore {
             && incoming().userId == existing().userId
             && incoming().createdAt == existing().createdAt
             && incoming().updatedAt == request.time
+            && isValidPromptContent(incoming())
             && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'promptText', 'category', 'tags', 'suggestedVariables', 'updatedAt']))
         );
         
@@ -818,13 +1033,12 @@ service cloud.firestore {
 
       // Subcollection for comments
       match /comments/{commentId} {
-        allow list, get: if (get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true)
+        allow list, get: if isFounder()
           || (isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid);
 
         allow create: if isSignedIn()
           && isValidId(commentId)
-          && (get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid
-              || get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true)
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid
           && incoming().userId == request.auth.uid
           && incoming().userName is string && incoming().userName.size() <= 200
           && (!('userAvatar' in incoming()) || (incoming().userAvatar is string && incoming().userAvatar.size() <= 1000))
@@ -845,7 +1059,7 @@ service cloud.firestore {
 
         allow create: if isSignedIn()
           && reporterId == request.auth.uid
-          && get(/databases/$(database)/documents/prompts/$(promptId)).data.isShared == true
+          && isFounder()
           && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId != request.auth.uid
           && incoming().reporterUid == request.auth.uid
           && incoming().reason is string && incoming().reason.size() > 0 && incoming().reason.size() <= 80

@@ -1,79 +1,94 @@
-import { useCallback, useEffect, useState, type SetStateAction } from "react";
-import type { AppRouterState } from "../store/appStore";
+import { useCallback, useEffect, type SetStateAction } from 'react';
+import { useAppStore, type AppRouterState, type AppSectionId } from '../store/appStore';
+import type { CatalogKind } from '../typesCatalog';
 
 export type DeepLinkKey = keyof AppRouterState;
-
-const VALID_KEYS: DeepLinkKey[] = ["share", "folder", "profile", "briefing"];
+const SECTIONS = new Set(['inicio', 'explorar', 'creadores', 'publicar', 'revisiones', 'prompts', 'mi-biblioteca', 'progreso', 'foro', 'hackathons', 'galeria', 'noticias', 'admin']);
+const safeId = (value: string | null) => value && value.length <= 200 && !/[\/#?\u0000-\u001f]/.test(value) ? value : undefined;
 
 export function parseSearchParams(search: string): AppRouterState {
   const params = new URLSearchParams(search);
   const result: AppRouterState = {};
-  for (const key of VALID_KEYS) {
-    const value = params.get(key);
-    if (typeof value === "string" && value.length > 0 && value.length <= 200) {
-      result[key] = value;
+  result.share = safeId(params.get('share'));
+  result.folder = safeId(params.get('collection') || params.get('folder'));
+  result.profile = safeId(params.get('user') || params.get('profile'));
+  result.briefing = safeId(params.get('briefing'));
+  result.class = safeId(params.get('class'));
+  const section = params.get('section');
+  if (section && SECTIONS.has(section)) result.section = section === 'prompts' || section === 'inicio' ? 'explorar' : section;
+  return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined)) as AppRouterState;
+}
+
+export function catalogResourcePath(kind: CatalogKind, id: string): string {
+  return '/recurso/' + kind + '/' + encodeURIComponent(id);
+}
+
+export function parseLocation(pathname: string, search: string): AppRouterState {
+  const result = parseSearchParams(search);
+  const match = /^\/recurso\/(prompt|skill)\/([^/]+)\/?$/.exec(pathname);
+  const profileMatch = /^\/creador\/([^/]+)\/?$/.exec(pathname);
+  try {
+    if (match) {
+      const resourceId = safeId(decodeURIComponent(match[2]));
+      if (resourceId) return { section: 'explorar', resourceKind: match[1] as CatalogKind, resourceId };
     }
-  }
+    if (profileMatch) {
+      const profile = safeId(decodeURIComponent(profileMatch[1]));
+      if (profile) return { section: 'creadores', profile };
+    }
+  } catch { /* Malformed links never resolve to a raw draft. */ }
+  if (!result.section) result.section = result.profile ? 'creadores' : 'explorar';
   return result;
 }
 
 export function serializeRouterState(state: AppRouterState): string {
   const params = new URLSearchParams();
-  for (const key of VALID_KEYS) {
-    const value = state[key];
-    if (typeof value === "string" && value.length > 0) {
-      params.set(key, value);
-    }
+  for (const [key, alias] of [['share', 'share'], ['folder', 'collection'], ['profile', 'user'], ['briefing', 'briefing'], ['class', 'class']] as const) {
+    if (state[key]) params.set(alias, state[key]!);
   }
+  if (state.section && state.section !== 'explorar' && !state.profile) params.set('section', state.section);
   return params.toString();
 }
 
-export interface AppRouter {
-  state: AppRouterState;
-  setRouter: (next: SetStateAction<AppRouterState>) => void;
-  clearDeepLink: (key: DeepLinkKey) => void;
-  clearAll: () => void;
+export function serializeLocation(state: AppRouterState): string {
+  if (state.resourceId && state.resourceKind) return catalogResourcePath(state.resourceKind, state.resourceId);
+  if (state.profile && !state.share && !state.folder && !state.briefing && !state.class) return '/creador/' + encodeURIComponent(state.profile);
+  const qs = serializeRouterState(state);
+  return qs ? '/?' + qs : '/';
 }
 
-export function useAppRouter(initialSearch?: string): AppRouter {
-  const initial = initialSearch !== undefined ? parseSearchParams(initialSearch) : parseSearchParams(window.location.search);
-  const [state, setState] = useState<AppRouterState>(initial);
+export function useAppRouter() {
+  const { state: store, dispatch, goSection } = useAppStore();
+  const apply = useCallback((next: AppRouterState) => {
+    dispatch({ type: 'router', router: next });
+    if (next.section && SECTIONS.has(next.section)) goSection(next.section as AppSectionId);
+  }, [dispatch, goSection]);
 
   useEffect(() => {
-    const qs = serializeRouterState(state);
-    const nextSearch = qs.length > 0 ? `?${qs}` : window.location.pathname + window.location.hash;
-    const desired = qs.length > 0
-      ? `${window.location.pathname}?${qs}${window.location.hash}`
-      : `${window.location.pathname}${window.location.hash}`;
-    if (nextSearch !== window.location.search && `${window.location.pathname}${window.location.search}${window.location.hash}` !== desired) {
-      window.history.replaceState(null, "", desired);
+    const sync = () => apply(parseLocation(window.location.pathname, window.location.search));
+    sync();
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, [apply]);
+
+  const setRouter = useCallback((next: SetStateAction<AppRouterState>, replace = false) => {
+    const resolved = typeof next === 'function' ? next(store.router) : next;
+    const desired = serializeLocation(resolved);
+    if (window.location.pathname + window.location.search !== desired) {
+      window.history[replace ? 'replaceState' : 'pushState'](null, '', desired);
     }
-  }, [state]);
+    apply(resolved);
+  }, [store.router, apply]);
 
-  useEffect(() => {
-    const onPop = () => {
-      setState(parseSearchParams(window.location.search));
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  const navigateUrl = useCallback((url: URL, replace = false) => {
+    setRouter(parseLocation(url.pathname, url.search), replace);
+  }, [setRouter]);
 
-  const setRouter = useCallback((next: SetStateAction<AppRouterState>) => {
-    setState(next);
-  }, []);
-
-  const clearDeepLink = useCallback((key: DeepLinkKey) => {
-    setState((prev) => {
-      if (prev[key] === undefined) return prev;
-      const copy = { ...prev };
-      delete copy[key];
-      return copy;
-    });
-  }, []);
-
-  const clearAll = useCallback(() => {
-    setState({});
-  }, []);
-
-  return { state, setRouter, clearDeepLink, clearAll };
+  const clearDeepLink = useCallback((key: DeepLinkKey) => setRouter(previous => {
+    const next = { ...previous };
+    delete next[key];
+    return next;
+  }), [setRouter]);
+  const clearAll = useCallback(() => setRouter({ section: 'explorar' }), [setRouter]);
+  return { state: store.router, setRouter, navigateUrl, clearDeepLink, clearAll };
 }

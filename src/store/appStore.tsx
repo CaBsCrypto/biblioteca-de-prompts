@@ -25,6 +25,13 @@ export type Section = AppSectionId;
 
 export type AppSectionId =
   | "inicio"
+  | "explorar"
+  | "creadores"
+  | "publicar"
+  | "revisiones"
+  | "prompts"
+  | "mi-biblioteca"
+  | "progreso"
   | "biblioteca"
   | "comunidad"
   | "foro"
@@ -45,6 +52,10 @@ export interface AppRouterState {
   folder?: string;
   profile?: string;
   briefing?: string;
+  class?: string;
+  section?: string;
+  resourceId?: string;
+  resourceKind?: 'prompt' | 'skill';
 }
 
 export interface AppState {

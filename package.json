@@ -12,7 +12,8 @@
     "qa": "npm run lint && npm run build",
     "qa:vercel": "npm run qa",
     "smoke:vercel": "node scripts/smoke-vercel.mjs",
-    "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/firestore.rules.test.ts\""
+    "test:rules": "firebase emulators:exec --config firebase.emulators.json --project demo-biblioteca --only firestore \"vitest run tests/firestore.rules.test.ts tests/catalog.rules.test.ts\"",
+    "test:unit": "vitest run tests/catalog.test.ts tests/router.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -25,12 +26,15 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "firebase-tools": "^15.20.0",
