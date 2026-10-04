@@ -1,4 +1,4 @@
-import { BookOpen, FolderOpen, Users, Plus, ShieldCheck, ChevronDown } from 'lucide-react';
+import { BookOpen, FolderOpen, Users, Plus, ShieldCheck, ChevronDown, Sparkles, Code2 } from 'lucide-react';
 import type { AppSection } from '../typesCommunity';
 
 interface AppTopNavProps {
@@ -17,6 +17,8 @@ interface AppTopNavProps {
 
 const MAIN = [
   { id: 'explorar', label: 'Explorar', icon: BookOpen },
+  { id: 'prompts', label: 'Prompts', icon: Sparkles },
+  { id: 'skills', label: 'Skills', icon: Code2 },
   { id: 'creadores', label: 'Creadores', icon: Users },
   { id: 'mi-biblioteca', label: 'Mi Biblioteca', icon: FolderOpen },
   { id: 'publicar', label: 'Publicar', icon: Plus },
@@ -28,7 +30,7 @@ const SECONDARY: { id: AppSection; label: string }[] = [
 ];
 
 export default function AppTopNav({ currentSection, showAdmin, onSectionChange, showGuidedMode, onGuidedModeClick }: AppTopNavProps) {
-  const active = currentSection === 'inicio' || currentSection === 'prompts' ? 'explorar' : currentSection;
+  const active = currentSection === 'inicio' ? 'explorar' : currentSection;
   return (
     <nav className="biblioteca-nav" aria-label="Navegación principal">
       <div className="biblioteca-nav-inner">

@@ -3,7 +3,7 @@ import { useAppStore, type AppRouterState, type AppSectionId } from '../store/ap
 import type { CatalogKind } from '../typesCatalog';
 
 export type DeepLinkKey = keyof AppRouterState;
-const SECTIONS = new Set(['inicio', 'explorar', 'creadores', 'publicar', 'revisiones', 'prompts', 'mi-biblioteca', 'progreso', 'foro', 'hackathons', 'galeria', 'noticias', 'admin']);
+const SECTIONS = new Set(['inicio', 'explorar', 'creadores', 'publicar', 'revisiones', 'prompts', 'skills', 'mi-biblioteca', 'progreso', 'foro', 'hackathons', 'galeria', 'noticias', 'admin']);
 const safeId = (value: string | null) => value && value.length <= 200 && !/[\/#?\u0000-\u001f]/.test(value) ? value : undefined;
 
 export function parseSearchParams(search: string): AppRouterState {
@@ -16,6 +16,7 @@ export function parseSearchParams(search: string): AppRouterState {
   result.class = safeId(params.get('class'));
   const section = params.get('section');
   if (section && SECTIONS.has(section)) result.section = section === 'prompts' || section === 'inicio' ? 'explorar' : section;
+  if (result.section === 'mi-biblioteca' && params.get('tab') === 'skills') result.libraryKind = 'skill';
   return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined)) as AppRouterState;
 }
 
@@ -25,6 +26,7 @@ export function catalogResourcePath(kind: CatalogKind, id: string): string {
 
 export function parseLocation(pathname: string, search: string): AppRouterState {
   const result = parseSearchParams(search);
+  if (/^\/(prompts|skills)\/?$/.test(pathname)) return { section: pathname.startsWith('/prompts') ? 'prompts' : 'skills' };
   const match = /^\/recurso\/(prompt|skill)\/([^/]+)\/?$/.exec(pathname);
   const profileMatch = /^\/creador\/([^/]+)\/?$/.exec(pathname);
   try {
@@ -47,12 +49,14 @@ export function serializeRouterState(state: AppRouterState): string {
     if (state[key]) params.set(alias, state[key]!);
   }
   if (state.section && state.section !== 'explorar' && !state.profile) params.set('section', state.section);
+  if (state.section === 'mi-biblioteca' && state.libraryKind === 'skill') params.set('tab', 'skills');
   return params.toString();
 }
 
 export function serializeLocation(state: AppRouterState): string {
   if (state.resourceId && state.resourceKind) return catalogResourcePath(state.resourceKind, state.resourceId);
   if (state.profile && !state.share && !state.folder && !state.briefing && !state.class) return '/creador/' + encodeURIComponent(state.profile);
+  if ((state.section === 'prompts' || state.section === 'skills') && !state.share && !state.folder && !state.briefing && !state.class) return '/' + state.section;
   const qs = serializeRouterState(state);
   return qs ? '/?' + qs : '/';
 }
