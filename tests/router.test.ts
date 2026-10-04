@@ -29,4 +29,18 @@ describe('catalog navigation and legacy aliases', () => {
     expect(parseLocation(serializeLocation(state), '')).toEqual(state);
     expect(parseLocation('/', '?section=prompts')).toEqual({ section: 'explorar' });
   });
+  test('type sections use canonical paths and survive navigation independently of stale parameters', () => {
+    for (const section of ['prompts', 'skills']) {
+      expect(serializeLocation({ section })).toBe('/' + section);
+      expect(parseLocation('/' + section, '?section=publicar&share=old')).toEqual({ section });
+      expect(parseLocation('/' + section + '/', '')).toEqual({ section });
+    }
+  });
+  test('library tabs survive refresh without changing legacy prompt library URLs', () => {
+    const state = { section: 'mi-biblioteca', libraryKind: 'skill' as const };
+    expect(serializeLocation(state)).toBe('/?section=mi-biblioteca&tab=skills');
+    expect(parseLocation('/', '?section=mi-biblioteca&tab=skills')).toEqual(state);
+    expect(parseLocation('/', '?section=mi-biblioteca')).toEqual({ section: 'mi-biblioteca' });
+    expect(parseLocation('/', '?tab=skills')).toEqual({ section: 'explorar' });
+  });
 });

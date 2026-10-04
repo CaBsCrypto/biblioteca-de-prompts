@@ -30,6 +30,7 @@ export type AppSectionId =
   | "publicar"
   | "revisiones"
   | "prompts"
+  | "skills"
   | "mi-biblioteca"
   | "progreso"
   | "biblioteca"
@@ -56,6 +57,7 @@ export interface AppRouterState {
   section?: string;
   resourceId?: string;
   resourceKind?: 'prompt' | 'skill';
+  libraryKind?: 'prompt' | 'skill';
 }
 
 export interface AppState {

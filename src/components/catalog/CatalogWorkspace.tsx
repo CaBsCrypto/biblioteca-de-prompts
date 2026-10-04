@@ -15,6 +15,8 @@ export type CatalogNotification = (message: string, type: 'success' | 'info') =>
 
 interface Props {
   mode: 'explore' | 'creators' | 'publish' | 'review' | 'library';
+  browseKind: CatalogKind | 'all';
+  onBrowseKind: (kind: CatalogKind | 'all') => void;
   catalog: CatalogController;
   user: User | null;
   identity: CatalogIdentity;
@@ -32,7 +34,7 @@ interface Props {
   onCloseResource: () => void;
 }
 
-const initialFilters: CatalogFilters = { query: '', kind: 'all', category: '', compatibility: '', author: '' };
+const initialFilters: Omit<CatalogFilters, 'kind'> = { query: '', category: '', compatibility: '', author: '' };
 const PAGE_SIZE = 12;
 
 export function safeCatalogUrl(value: string): string | undefined {
@@ -65,14 +67,17 @@ function ResourceCard({ resource, onOpen, onAuthor }: { resource: CatalogResourc
 
 export default function CatalogWorkspace(props: Props) {
   const { mode, catalog, user, identity, ownPrompts, onNotify, onSignIn, onOpenResource } = props;
-  const [filters, setFilters] = useState<CatalogFilters>(initialFilters);
+  const [filters, setFilters] = useState(initialFilters);
+  const kind = props.browseKind;
+  const sectionLabel = kind === 'prompt' ? 'Prompts' : kind === 'skill' ? 'Skills' : '';
   const [page, setPage] = useState(1);
   const [selectedResource, setSelectedResource] = useState<CatalogResource | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [creatorUid, setCreatorUid] = useState('');
   const collectionResources = useMemo(() => props.legacyCollectionId ? catalog.resources.filter(resource => resource.sourceFolderId === props.legacyCollectionId) : catalog.resources, [catalog.resources, props.legacyCollectionId]);
-  const filtered = useMemo(() => filterCatalogResources(collectionResources, filters), [collectionResources, filters]);
+  const typedResources = useMemo(() => kind === 'all' ? collectionResources : collectionResources.filter(resource => resource.kind === kind), [collectionResources, kind]);
+  const filtered = useMemo(() => filterCatalogResources(typedResources, { ...filters, kind }), [typedResources, filters, kind]);
   const creatorResources = useMemo(() => creatorUid ? catalog.resources.filter(resource => resource.ownerUid === creatorUid) : [], [catalog.resources, creatorUid]);
   const creators = useMemo(() => {
     const grouped = new Map<string, { uid: string; identity: CatalogIdentity; resources: CatalogResource[] }>();
@@ -83,12 +88,12 @@ export default function CatalogWorkspace(props: Props) {
     }
     return [...grouped.values()].sort((a, b) => b.resources.length - a.resources.length);
   }, [catalog.resources]);
-  const categories = useMemo(() => [...new Set(catalog.resources.map(resource => resource.metadata.category))].filter(Boolean).sort(), [catalog.resources]);
-  const tools = useMemo(() => [...new Set(catalog.resources.flatMap(resource => resource.metadata.compatibility))].sort(), [catalog.resources]);
+  const categories = useMemo(() => [...new Set(typedResources.map(resource => resource.metadata.category))].filter(Boolean).sort(), [typedResources]);
+  const tools = useMemo(() => [...new Set(typedResources.flatMap(resource => resource.metadata.compatibility))].sort(), [typedResources]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageResources = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [filters]);
+  useEffect(() => { setPage(1); }, [filters, kind]);
   useEffect(() => { setCreatorUid(props.initialAuthorUid || ''); setFilters(previous => ({ ...previous, author: props.initialAuthorUid || '' })); }, [props.initialAuthorUid]);
   useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
   useEffect(() => {
@@ -113,14 +118,14 @@ export default function CatalogWorkspace(props: Props) {
   return <div className="catalog-workspace">
     {mode !== 'explore' && catalog.error && <div className="catalog-error" role="alert">{catalog.error}<button onClick={() => void catalog.refresh()}>Reintentar</button></div>}
     {mode === 'explore' && <>
-      <section className="catalog-explore-heading"><div><p className="catalog-eyebrow">La biblioteca de lo que puedes hacer</p><h1>Encuentra una tarea.<br /><span>Llévate cómo resolverla.</span></h1><p>Prompts y skills de la comunidad, con ejemplos para elegir antes de usar.</p></div><div className="catalog-heading-note"><BookOpen size={22} /><span>Acceso gratuito<br /><strong>Recursos revisados, resultados visibles</strong></span></div></section>
+      <section className="catalog-explore-heading"><div><p className="catalog-eyebrow">La biblioteca de lo que puedes hacer</p>{sectionLabel ? <h1>{sectionLabel}</h1> : <h1>Encuentra una tarea.<br /><span>Llévate cómo resolverla.</span></h1>}<p>{kind === 'prompt' ? 'Instrucciones para una tarea concreta. Mira el ejemplo, rellena las variables y crea tu remix.' : kind === 'skill' ? 'Capacidades para tu agente: desde un SKILL.md hasta una carpeta con scripts y referencias. Revisa los requisitos y cómo instalarla.' : 'Prompts y skills de la comunidad, con ejemplos para elegir antes de usar.'}</p></div><div className="catalog-heading-note"><BookOpen size={22} /><span>Acceso gratuito<br /><strong>Recursos revisados, resultados visibles</strong></span></div></section>
       <section className="catalog-search-panel" aria-label="Buscar y filtrar recursos">
         <label className="catalog-search"><Search size={23} aria-hidden="true" /><input aria-label="Buscar por tarea, título o palabra clave" placeholder="¿Qué quieres conseguir? Busca una tarea, un recurso o una idea…" value={filters.query} onChange={event => setFilters(previous => ({ ...previous, query: event.target.value }))} /></label>
-        <div className="catalog-filter-row"><div className="catalog-kind-filter" role="group" aria-label="Tipo de recurso">{([['all', 'Todo'], ['prompt', 'Prompts'], ['skill', 'Skills']] as const).map(([kind, label]) => <button key={kind} className={filters.kind === kind ? 'is-active' : ''} aria-pressed={filters.kind === kind} onClick={() => setFilters(previous => ({ ...previous, kind }))}>{label}</button>)}</div><SlidersHorizontal className="catalog-filter-icon" size={16} aria-hidden="true" /><label><span className="catalog-sr-only">Tarea o categoría</span><select value={filters.category} onChange={event => setFilters(previous => ({ ...previous, category: event.target.value }))}><option value="">Todas las tareas</option>{categories.map(category => <option key={category}>{category}</option>)}</select></label><label><span className="catalog-sr-only">Herramienta compatible</span><select value={filters.compatibility} onChange={event => setFilters(previous => ({ ...previous, compatibility: event.target.value }))}><option value="">Todas las herramientas</option>{tools.map(tool => <option key={tool}>{tool}</option>)}</select></label><label><span className="catalog-sr-only">Creador</span><select value={filters.author} onChange={event => setFilters(previous => ({ ...previous, author: event.target.value }))}><option value="">Todos los creadores</option>{creators.map(creator => <option key={creator.uid} value={creator.uid}>{creator.identity.name || creator.identity.handle}</option>)}</select></label></div>
+        <div className="catalog-filter-row"><div className="catalog-kind-filter" role="group" aria-label="Tipo de recurso">{([['all', 'Todo'], ['prompt', 'Prompts'], ['skill', 'Skills']] as const).map(([kind, label]) => <button key={kind} className={props.browseKind === kind ? 'is-active' : ''} aria-pressed={props.browseKind === kind} onClick={() => props.onBrowseKind(kind)}>{label}</button>)}</div><SlidersHorizontal className="catalog-filter-icon" size={16} aria-hidden="true" /><label><span className="catalog-sr-only">Tarea o categoría</span><select value={filters.category} onChange={event => setFilters(previous => ({ ...previous, category: event.target.value }))}><option value="">Todas las tareas</option>{categories.map(category => <option key={category}>{category}</option>)}</select></label><label><span className="catalog-sr-only">Herramienta compatible</span><select value={filters.compatibility} onChange={event => setFilters(previous => ({ ...previous, compatibility: event.target.value }))}><option value="">Todas las herramientas</option>{tools.map(tool => <option key={tool}>{tool}</option>)}</select></label><label><span className="catalog-sr-only">Creador</span><select value={filters.author} onChange={event => setFilters(previous => ({ ...previous, author: event.target.value }))}><option value="">Todos los creadores</option>{creators.map(creator => <option key={creator.uid} value={creator.uid}>{creator.identity.name || creator.identity.handle}</option>)}</select></label></div>
       </section>
-      <div className="catalog-results-heading"><h2>{props.legacyCollectionId ? 'Colección compartida' : 'Recursos para pasar a la acción'}</h2><span aria-live="polite">{catalog.loading ? 'Cargando catálogo…' : `${filtered.length} ${filtered.length === 1 ? 'recurso' : 'recursos'}`}</span>{Object.values(filters).some(value => value && value !== 'all') && <button className="catalog-link" onClick={() => setFilters(initialFilters)}>Limpiar filtros <X size={14} /></button>}</div>
+      <div className="catalog-results-heading"><h2>{props.legacyCollectionId ? 'Colección compartida' : sectionLabel ? `${sectionLabel} para pasar a la acción` : 'Recursos para pasar a la acción'}</h2><span aria-live="polite">{catalog.loading ? 'Cargando catálogo…' : `${filtered.length} ${filtered.length === 1 ? 'recurso' : 'recursos'}`}</span>{Object.values(filters).some(value => value && value !== 'all') && <button className="catalog-link" onClick={() => setFilters(initialFilters)}>Limpiar filtros <X size={14} /></button>}</div>
       {catalog.error && <div className="catalog-error" role="alert">{catalog.error}<button onClick={() => void catalog.refresh()}>Reintentar</button></div>}
-      {catalog.loading && !catalog.resources.length ? <div className="catalog-loading" role="status">Preparando la biblioteca…</div> : filtered.length ? <><div className="catalog-grid">{pageResources.map(resource => <ResourceCard key={resource.id} resource={resource} onOpen={() => onOpenResource(resource)} onAuthor={() => openAuthor(resource.ownerUid)} />)}</div>{pageCount > 1 && <div className="catalog-pagination" aria-label="Paginación del catálogo"><button disabled={page === 1} onClick={() => setPage(value => value - 1)} aria-label="Página anterior"><ChevronLeft size={18} /></button><span>Página {page} de {pageCount}</span><button disabled={page === pageCount} onClick={() => setPage(value => value + 1)} aria-label="Página siguiente"><ChevronRight size={18} /></button></div>}</> : <CatalogEmpty title={props.legacyCollectionId && !collectionResources.length ? 'Colección no disponible' : catalog.resources.length ? 'Todavía no hay coincidencias' : 'La próxima capacidad puede ser la tuya'}>{props.legacyCollectionId && !collectionResources.length ? 'Esta colección no tiene recursos con una versión aprobada disponible.' : catalog.resources.length ? 'Prueba otra tarea o amplía tus filtros para encontrar un recurso.' : 'Estamos preparando el catálogo. En Publicar puedes aportar un prompt o una skill con una muestra de su resultado para revisión.'}</CatalogEmpty>}
+      {catalog.loading && !catalog.resources.length ? <div className="catalog-loading" role="status">Preparando la biblioteca…</div> : filtered.length ? <><div className="catalog-grid">{pageResources.map(resource => <ResourceCard key={resource.id} resource={resource} onOpen={() => onOpenResource(resource)} onAuthor={() => openAuthor(resource.ownerUid)} />)}</div>{pageCount > 1 && <div className="catalog-pagination" aria-label="Paginación del catálogo"><button disabled={page === 1} onClick={() => setPage(value => value - 1)} aria-label="Página anterior"><ChevronLeft size={18} /></button><span>Página {page} de {pageCount}</span><button disabled={page === pageCount} onClick={() => setPage(value => value + 1)} aria-label="Página siguiente"><ChevronRight size={18} /></button></div>}</> : <CatalogEmpty title={props.legacyCollectionId && !collectionResources.length ? 'Colección no disponible' : typedResources.length ? 'Todavía no hay coincidencias' : sectionLabel ? `Aún no hay ${sectionLabel.toLowerCase()} publicados` : 'La próxima capacidad puede ser la tuya'}>{props.legacyCollectionId && !collectionResources.length ? 'Esta colección no tiene recursos con una versión aprobada disponible.' : typedResources.length ? 'Prueba otra tarea o amplía tus filtros para encontrar un recurso.' : 'Estamos preparando el catálogo. En Publicar puedes aportar un prompt o una skill con una muestra de su resultado para revisión.'}</CatalogEmpty>}
       <p className="catalog-review-note">Las muestras las aportan sus creadores. La revisión comprueba el contenido y su formato; los resultados pueden variar según el modelo y el contexto.</p>
     </>}
     {mode === 'creators' && <>

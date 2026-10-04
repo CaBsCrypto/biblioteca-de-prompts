@@ -669,10 +669,6 @@ export default function App() {
     setSharedBriefingId(null);
     closeClassroom();
 
-    if (section === "prompts") {
-      setCurrentTab("comunidad");
-    }
-
     if (section === "mi-biblioteca" || section === "inicio") {
       setCurrentTab("mi-biblioteca");
     }
@@ -684,7 +680,7 @@ export default function App() {
     url.searchParams.delete("collection");
     url.searchParams.delete("briefing");
     url.searchParams.delete("class");
-    router.setRouter({ section: section === "inicio" || section === "prompts" ? "explorar" : section });
+    router.setRouter({ section: section === "inicio" ? "explorar" : section });
   };
 
   const openGuidedBetaMode = () => {
@@ -1596,17 +1592,19 @@ export default function App() {
   const catalogMode = currentSection === "creadores" ? "creators"
     : currentSection === "publicar" ? "publish"
     : currentSection === "revisiones" ? "review" : "explore";
-  const showCatalog = ["inicio", "explorar", "prompts", "creadores", "publicar", "revisiones"].includes(currentSection);
+  const showCatalog = ["inicio", "explorar", "prompts", "skills", "creadores", "publicar", "revisiones"].includes(currentSection);
   const renderCatalog = (mode: "explore" | "creators" | "publish" | "review" | "library") => (
     <Suspense fallback={<DeferredInlineFallback label="Cargando Biblioteca..." />}>
       <CatalogWorkspace
         mode={mode} catalog={catalog} user={user} identity={catalogIdentity} ownPrompts={prompts}
+        browseKind={currentSection === 'prompts' ? 'prompt' : currentSection === 'skills' ? 'skill' : 'all'}
+        onBrowseKind={(kind) => handleSectionChange(kind === 'prompt' ? 'prompts' : kind === 'skill' ? 'skills' : 'explorar')}
         onSignIn={() => void handleSignIn()} onOpenResource={openCatalogResource}
         onUsePrompt={(prompt) => handleUsePrompt(prompt, "catalog")}
         onSavePrompt={(prompt) => { handleSectionChange('mi-biblioteca'); void handleForkPrompt(prompt); }} onNotify={triggerNotification}
         selectedResourceId={router.state.resourceId || null} selectedResourceKind={router.state.resourceKind || null}
         legacyShareId={router.state.share} legacyCollectionId={router.state.folder} initialAuthorUid={router.state.profile}
-        onCloseResource={() => router.setRouter({ section: "explorar" })}
+        onCloseResource={() => router.setRouter({ section: router.state.resourceKind === 'prompt' ? 'prompts' : router.state.resourceKind === 'skill' ? 'skills' : 'explorar' })}
       />
     </Suspense>
   );
@@ -1818,7 +1816,19 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
-          {currentSection === "mi-biblioteca" && renderCatalog("library")}
+          {currentSection === "mi-biblioteca" && <>
+            <div className="catalog-page-heading"><h1>Mi Biblioteca</h1><p>Tus prompts y skills guardados, con sus versiones y atribución.</p></div>
+            <div className="catalog-kind-filter" role="tablist" aria-label="Recursos de Mi Biblioteca">
+              {(['prompt', 'skill'] as const).map(kind => <button key={kind} role="tab" id={`library-tab-${kind}`} aria-controls={`library-panel-${kind}`} aria-selected={(router.state.libraryKind || 'prompt') === kind} tabIndex={(router.state.libraryKind || 'prompt') === kind ? 0 : -1} className={(router.state.libraryKind || 'prompt') === kind ? 'is-active' : ''} onClick={() => router.setRouter({ section: 'mi-biblioteca', libraryKind: kind })} onKeyDown={event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const next = event.key === 'Home' ? 'prompt' : event.key === 'End' ? 'skill' : kind === 'prompt' ? 'skill' : 'prompt';
+                router.setRouter({ section: 'mi-biblioteca', libraryKind: next });
+                document.getElementById(`library-tab-${next}`)?.focus();
+              }}>{kind === 'prompt' ? 'Prompts' : 'Skills'}</button>)}
+            </div>
+            {router.state.libraryKind === 'skill' && <div role="tabpanel" id="library-panel-skill" aria-labelledby="library-tab-skill">{renderCatalog('library')}</div>}
+          </>}
           {showCatalog ? renderCatalog(catalogMode) : currentSection === "progreso" ? (
             <>
             <Suspense fallback={<DeferredInlineFallback label="Cargando Mi Progreso..." />}>
@@ -1901,8 +1911,8 @@ export default function App() {
                 onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}
               />
             </Suspense>
-          ) : (
-            <>
+          ) : currentSection === 'mi-biblioteca' && router.state.libraryKind === 'skill' ? null : (
+            <div role={currentSection === 'mi-biblioteca' ? 'tabpanel' : undefined} id={currentSection === 'mi-biblioteca' ? 'library-panel-prompt' : undefined} aria-labelledby={currentSection === 'mi-biblioteca' ? 'library-tab-prompt' : undefined}>
           
           {/* Welcome Dashboard Block if offline/unauthenticated */}
           {!user && !authLoading && selectedAuthor ? (
@@ -2295,7 +2305,7 @@ export default function App() {
               )}
             </div>
           )}
-            </>
+            </div>
           )}
                 </main>
 
