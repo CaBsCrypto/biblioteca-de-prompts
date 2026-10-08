@@ -5,7 +5,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge';
 import type { WidgetState } from '../ui/bridge';
 
-const URI = 'ui://biblioteca/library-v2.html';
+const URI = 'ui://biblioteca/library-v3.html';
 const status = document.getElementById('host-status')!;
 const panel = document.getElementById('panel')!;
 const receipts = document.getElementById('receipts')!;
