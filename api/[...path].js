@@ -1,6 +1,4 @@
-import serverModule from "../dist/server.cjs";
-
-const { createApp } = serverModule;
+import { createApp } from "../dist/server.mjs";
 let appPromise = null;
 
 export default async function handler(req, res) {

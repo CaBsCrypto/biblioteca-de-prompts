@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -34,6 +34,9 @@ jobs:
         env:
           GEMINI_API_KEY: ci-placeholder
           GEMINI_MODEL: gemini-3.5-flash
+
+      - name: Verify compiled server and Vercel entrypoint
+        run: npm run verify:server-startup
 
       - name: Upload build artifacts
         if: always()
@@ -52,13 +55,15 @@ jobs:
     permissions:
       contents: read
       deployments: read
+    env:
+      SMOKE_MCP_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -78,6 +83,7 @@ jobs:
           GEMINI_API_KEY: ci-placeholder
 
       - name: MCP protocol and widget smoke
+        if: env.SMOKE_MCP_BYPASS_SECRET != ''
         run: npm run smoke:mcp -- "${{ steps.vercel.outputs.url }}/api/mcp"
 
   firestore-rules:
@@ -88,7 +94,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - uses: actions/setup-java@v4
         with:

@@ -3,8 +3,10 @@
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createVercelMcpFetch } from './vercel-mcp-fetch.mjs';
 
-const target = process.argv[2] || process.env.SMOKE_MCP_URL;
+const args = process.argv.slice(2).filter(value => value !== '--vercel-auth');
+const target = args[0] || process.env.SMOKE_MCP_URL;
 if (!target) {
   console.error('Uso: npm run smoke:mcp -- https://biblioteca.browns.studio/api/mcp [id-publicado]');
   process.exit(1);
@@ -16,7 +18,11 @@ if (endpoint.protocol !== 'https:' && !(local && endpoint.protocol === 'http:'))
 }
 const expectedTools = ['search_resources', 'get_resource', 'get_resource_content', 'open_library'];
 const client = new Client({ name: 'biblioteca-smoke', version: '0.1.0' });
-const transport = new StreamableHTTPClientTransport(endpoint);
+const vercelAuth = process.argv.includes('--vercel-auth');
+const transport = new StreamableHTTPClientTransport(endpoint, {
+  ...(vercelAuth ? { fetch: createVercelMcpFetch(endpoint) } : {}),
+  ...(!vercelAuth && process.env.SMOKE_MCP_BYPASS_SECRET ? { requestInit: { headers: { 'x-vercel-protection-bypass': process.env.SMOKE_MCP_BYPASS_SECRET } } } : {}),
+});
 const options = { timeout: 20_000 };
 
 function toolData(result) {
@@ -47,7 +53,7 @@ try {
   const ui = await client.readResource({ uri }, options);
   assert.ok(ui.contents.some(content => typeof content.text === 'string' && content.text.includes('<html')), 'La interfaz no contiene HTML.');
   console.log(`OK interfaz MCP App: ${uri}`);
-  const id = process.argv[3];
+  const id = args[1];
   if (id) {
     const detail = toolData(await client.callTool({ name: 'get_resource', arguments: { id } }, undefined, options));
     const resource = detail.resource;

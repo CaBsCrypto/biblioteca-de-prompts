@@ -29,6 +29,8 @@ Para las comprobaciones de interfaz, compilar el host con `node scripts/build-mc
 
 El smoke usa el cliente oficial MCP para inicializar Streamable HTTP, descubrir las cuatro herramientas, comprobar filtros por tipo y leer `ui://biblioteca/library-v1.html`. El argumento opcional de ID comprueba también la ficha y su entregable fijado a una postulación. No imprime entregables ni variables.
 
+Un Preview protegido requiere la sesión existente del equipo: `npm run smoke:mcp -- https://URL-DEL-PREVIEW/api/mcp --vercel-auth` utiliza Vercel CLI sin exportar sus credenciales. En Windows configurar `VERCEL_CLI_ENTRY` con el archivo JS de la instalación oficial; `VERCEL_SCOPE` selecciona el equipo si hace falta. La producción se comprueba sin esta opción. CI ejecuta el smoke remoto MCP solo si ya existe el secreto `VERCEL_AUTOMATION_BYPASS_SECRET`; sin él, la comprobación autenticada del Preview es manual. No desactivar la protección del proyecto para pasar el smoke.
+
 ## Crear el paquete
 
 La fuente portable está en `plugins/biblioteca`: manifiesto raíz `plugin.json`, `mcp.json` con transporte `streamable-http` y una skill `usar-biblioteca`. Generar una copia portable para revisar:
