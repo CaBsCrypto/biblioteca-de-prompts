@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, Check, ChevronDown, Code2, Copy, Download, ExternalLink, Maximize2, Minimize2, Search, Sparkles, X } from 'lucide-react';
 import type { CatalogContentResult, CatalogSearchResult, PublicCatalogResource } from '../contracts';
-import { EMPTY_WIDGET_STATE, extractPromptVariables, fillPromptVariables, persistWidgetState, recoverWidgetState, safeWidgetLink, type LibraryBridge, type WidgetState } from './bridge';
+import { EMPTY_WIDGET_STATE, captureWidgetRestoration, createWidgetPresentationReconciler, extractPromptVariables, fillPromptVariables, persistWidgetState, resolveCurrentSelection, safeWidgetLink, type LibraryBridge, type WidgetState } from './bridge';
 
 interface Props { bridge: LibraryBridge }
 
 export default function LibraryWidget({ bridge }: Props) {
-  const [state, setState] = useState<WidgetState>(recoverWidgetState);
+  const [restoration] = useState(captureWidgetRestoration);
+  const [state, setState] = useState<WidgetState>(restoration.state);
+  const presentationReconciler = useRef<ReturnType<typeof createWidgetPresentationReconciler>>(null);
+  if (!presentationReconciler.current) presentationReconciler.current = createWidgetPresentationReconciler(restoration.source);
   const stateRef = useRef(state);
   stateRef.current = state;
   const [result, setResult] = useState<CatalogSearchResult>({ resources: [], total: 0 });
@@ -33,17 +36,15 @@ export default function LibraryWidget({ bridge }: Props) {
       if (event.type === 'error') { setIssue(event.message); setLoading(false); }
       if (event.type !== 'data') return;
       hasInitialData.current = true;
-      setResult(event.data); setLoading(false); setIssue('');
-      // `all` is the entrypoint's default, so reopening must not erase a saved typed view.
-      if (event.arguments?.kind === 'prompt' || event.arguments?.kind === 'skill') {
-        const kind = event.arguments.kind;
-        setState(previous => ({ ...previous, kind }));
-      }
-      if (event.data.resource) {
-        setResource(event.data.resource);
-        setState(previous => ({ ...previous, selectedId: event.data.resource!.id,
-          values: previous.selectedId === event.data.resource!.id ? previous.values : {} }));
-      }
+      const presentation = presentationReconciler.current!(stateRef.current, event);
+      if (!presentation) return;
+      // A new explicit presentation supersedes any older in-flight catalog or restored-ficha request.
+      requestNumber.current += 1;
+      selectionRequest.current += 1;
+      setResult(presentation.data); setLoading(false); setIssue('');
+      setState(presentation.state);
+      setBusy(false); setPayload(null); setCopied(false); setNotice('');
+      setResource(presentation.data.resource || null);
     });
     const updateDisplay = () => { setMode(bridge.displayMode()); };
     bridge.app.addEventListener('hostcontextchanged', updateDisplay);
@@ -70,7 +71,7 @@ export default function LibraryWidget({ bridge }: Props) {
     if (!ready || initialized.current) return;
     initialized.current = true;
     const current = stateRef.current;
-    if (!hasInitialData.current || current.query || current.category || current.compatibility || current.author || current.kind !== 'all') void search(current);
+    if (restoration.restorePresentation || !hasInitialData.current || current.query || current.category || current.compatibility || current.author || current.kind !== 'all') void search(current);
     if (current.selectedId && !resource) void openResource(current.selectedId, false);
   }, [ready]);
 
@@ -101,36 +102,42 @@ export default function LibraryWidget({ bridge }: Props) {
 
   async function freshContent(): Promise<CatalogContentResult> {
     if (!resource) throw new Error('Abre una ficha antes de obtener su contenido.');
-    const data = await bridge.call<CatalogContentResult>('get_resource_content', { id: resource.id, expectedSubmissionId: resource.submissionId });
+    const request = selectionRequest.current;
+    const selectedId = resource.id;
+    const data = await resolveCurrentSelection(bridge.call<CatalogContentResult>('get_resource_content', {
+      id: selectedId, expectedSubmissionId: resource.submissionId,
+    }), () => request === selectionRequest.current && stateRef.current.selectedId === selectedId);
     setPayload(data); setCopied(false);
     return data;
   }
 
-  async function action(run: () => Promise<void>) {
+  async function action(run: (isCurrent: () => boolean) => Promise<void>) {
+    const request = selectionRequest.current;
+    const isCurrent = () => request === selectionRequest.current;
     setBusy(true); setIssue(''); setNotice('');
-    try { await run(); } catch (error) { setIssue(message(error)); }
-    finally { setBusy(false); }
+    try { await run(isCurrent); } catch (error) { if (isCurrent()) setIssue(message(error)); }
+    finally { if (isCurrent()) setBusy(false); }
   }
 
   async function copy() {
-    await action(async () => {
+    await action(async isCurrent => {
       const data = await freshContent();
       const text = data.resource.kind === 'prompt' ? fillPromptVariables(data.content.text, state.values) : data.content.text;
       try { await navigator.clipboard.writeText(text); }
       catch { throw new Error('Esta vista no permite copiar automáticamente. Selecciona el texto del recurso para copiarlo.'); }
-      setCopied(true); setNotice('Contenido copiado.');
+      if (isCurrent()) { setCopied(true); setNotice('Contenido copiado.'); }
     });
   }
 
   async function useInChat() {
-    await action(async () => {
+    await action(async isCurrent => {
       const data = await freshContent();
       if (data.resource.kind === 'prompt') {
         const missing = extractPromptVariables(data.content.text).filter(variable => !state.values[variable]?.trim());
         if (missing.length) throw new Error('Rellena las variables del prompt antes de usarlo en la conversación.');
       }
-      await bridge.useResource(data, state.values);
-      setNotice('Recurso enviado a la conversación.');
+      await bridge.useResource(data, state.values, isCurrent);
+      if (isCurrent()) setNotice('Recurso enviado a la conversación.');
     });
   }
 
@@ -204,7 +211,7 @@ export default function LibraryWidget({ bridge }: Props) {
         {payload.content.source === 'github' && <p className="library-version">Commit: {payload.content.repositoryCommit}</p>}
       </>}
       <div className="library-deliverable-actions"><button className="library-button library-primary" disabled={busy || !ready} onClick={() => void useInChat()}>{busy ? 'Preparando…' : 'Usar en esta conversación'}</button><button className="library-button" disabled={busy || !ready} onClick={() => void copy()}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'Copiado' : resource.kind === 'prompt' ? 'Copiar prompt' : 'Copiar SKILL.md'}</button>
-        {resource.kind === 'skill' && (payload?.content.source === 'github' ? <button className="library-button" disabled={busy} onClick={() => void action(async () => { const data = await freshContent(); if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); })}><ExternalLink size={15} /> Abrir carpeta revisada</button> : <button className="library-button" disabled={busy || !ready} onClick={() => void action(async () => { const data = await freshContent(); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text); setNotice('Descarga de SKILL.md solicitada.'); } })}><Download size={15} /> Descargar SKILL.md</button>)}
+        {resource.kind === 'skill' && (payload?.content.source === 'github' ? <button className="library-button" disabled={busy} onClick={() => void action(async () => { const data = await freshContent(); if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); })}><ExternalLink size={15} /> Abrir carpeta revisada</button> : <button className="library-button" disabled={busy || !ready} onClick={() => void action(async isCurrent => { const data = await freshContent(); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text); if (isCurrent()) setNotice('Descarga de SKILL.md solicitada.'); } })}><Download size={15} /> Descargar SKILL.md</button>)}
       </div></section>
       <p className="library-review-note">Muestra aportada por el creador. Revisa el contenido antes de usarlo; la publicación no certifica su ejecución en todos los modelos.</p>
       <button className="library-web-link" onClick={() => void action(() => bridge.openLink(resource.canonicalUrl))}>Abrir ficha en la web <ExternalLink size={14} /></button>
