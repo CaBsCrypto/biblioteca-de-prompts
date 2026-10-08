@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "biblioteca",
+  "version": "0.1.0",
+  "description": "Encuentra prompts y skills publicados, consulta sus ejemplos y úsalos en tu conversación.",
+  "author": {
+    "name": "CaBsCrypto",
+    "url": "https://biblioteca.browns.studio"
+  },
+  "homepage": "https://biblioteca.browns.studio",
+  "repository": "https://github.com/CaBsCrypto/biblioteca-de-prompts",
+  "keywords": ["prompts", "skills", "biblioteca"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Biblioteca",
+        "shortDescription": "Prompts y skills para usar en esta conversación",
+        "longDescription": "Explora el catálogo público de Biblioteca, entiende ejemplos y requisitos, rellena variables y utiliza los recursos publicados conservando su autoría.",
+        "developerName": "CaBsCrypto",
+        "category": "Productivity",
+        "capabilities": ["Read"],
+        "websiteURL": "https://biblioteca.browns.studio",
+        "defaultPrompt": [
+          "Abre Biblioteca y ayúdame a elegir un prompt para mi tarea.",
+          "Busca una skill en Biblioteca y explícame cómo utilizarla."
+        ],
+        "brandColor": "#d5c2a2"
+      }
+    }
+  }
+}
