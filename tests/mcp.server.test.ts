@@ -77,3 +77,124 @@ describe('MCP público Streamable HTTP sin sesión', () => {
     expect(reader.content).not.toHaveBeenCalled();
   });
 });
+
+describe('descarga pública de una skill inline revisada', () => {
+  const skillText = '---\r\nname: documentar-codigo\r\ndescription: Documenta código revisado.\r\n---\r\n# Instrucciones\r\nExplica el código sin ejecutarlo.\r\n';
+  const approvedSkill = { ...resource, kind: 'skill' as const };
+  function inlineSkill() {
+    return { resource: approvedSkill, repositoryFolderUrl: null,
+      content: { text: skillText, source: 'inline' as const, repositoryUrl: '', repositoryCommit: '', repositoryPath: '' } };
+  }
+  function downloadUrl(base: URL, id = 'approved', version = 'version-1') {
+    return new URL('/api/catalog/skills/' + encodeURIComponent(id) + '/download?expectedSubmissionId=' + encodeURIComponent(version), base);
+  }
+
+  it('entrega los bytes revisados como SKILL.md con UTF-8, sin caché y sin interpretar Markdown', async () => {
+    const { reader, url } = await fixture();
+    const hostileText = skillText + '<script>alert("no ejecutar")</script>\r\n';
+    vi.mocked(reader.content).mockResolvedValue({ ...inlineSkill(), content: { ...inlineSkill().content, text: hostileText } });
+    const response = await fetch(downloadUrl(url));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="SKILL.md"');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(Buffer.from(hostileText, 'utf8'));
+    expect(reader.content).toHaveBeenCalledWith('approved', 'version-1');
+  });
+
+  it('HEAD comprueba la misma versión y devuelve cabeceras y tamaño sin entregar el cuerpo', async () => {
+    const { reader, url } = await fixture();
+    vi.mocked(reader.content).mockResolvedValue(inlineSkill());
+    const response = await fetch(downloadUrl(url), { method: 'HEAD' });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="SKILL.md"');
+    expect(Number(response.headers.get('content-length'))).toBe(Buffer.byteLength(skillText, 'utf8'));
+    expect(await response.text()).toBe('');
+    expect(reader.content).toHaveBeenCalledWith('approved', 'version-1');
+  });
+
+  it('rechaza entradas ausentes, repetidas o inválidas antes de consultar el lector', async () => {
+    const { reader, url } = await fixture();
+    const invalid = [
+      new URL('/api/catalog/skills/approved/download', url),
+      downloadUrl(url, 'approved', ''), downloadUrl(url, 'approved', 'x'.repeat(201)),
+      downloadUrl(url, 'approved', 'version/other'), downloadUrl(url, 'approved/bad', 'version-1'),
+      new URL('/api/catalog/skills/approved/download?expectedSubmissionId=first&expectedSubmissionId=second', url),
+    ];
+    for (const endpoint of invalid) expect((await fetch(endpoint)).status).toBe(400);
+    expect(reader.content).not.toHaveBeenCalled();
+  });
+
+  it('retirada devuelve 404 y una versión antigua devuelve 409 sin archivo ni contenido', async () => {
+    const { reader, url } = await fixture();
+    vi.mocked(reader.content).mockRejectedValueOnce(new ResourceUnavailable()).mockRejectedValueOnce(new VersionChanged(approvedSkill));
+    const unavailable = await fetch(downloadUrl(url));
+    expect(unavailable.status).toBe(404);
+    expect(unavailable.headers.get('content-disposition')).toBeNull();
+    expect(await unavailable.json()).toMatchObject({ code: 'resource_unavailable' });
+    const changed = await fetch(downloadUrl(url));
+    expect(changed.status).toBe(409);
+    expect(changed.headers.get('content-disposition')).toBeNull();
+    expect(await changed.json()).toMatchObject({ code: 'version_changed' });
+  });
+
+  it('no convierte prompts ni paquetes con archivos complementarios en descargas inline', async () => {
+    const { reader, url } = await fixture();
+    vi.mocked(reader.content).mockResolvedValueOnce({ ...inlineSkill(), resource })
+      .mockResolvedValueOnce({ ...inlineSkill(), repositoryFolderUrl: 'https://github.com/author/skills/tree/' + 'a'.repeat(40),
+        content: { ...inlineSkill().content, source: 'github', repositoryUrl: 'https://github.com/author/skills', repositoryCommit: 'a'.repeat(40), repositoryPath: '.' } });
+    for (let index = 0; index < 2; index++) {
+      const response = await fetch(downloadUrl(url));
+      expect(response.status).toBe(409);
+      expect(response.headers.get('content-disposition')).toBeNull();
+      expect(await response.json()).toMatchObject({ code: 'not_inline_skill' });
+    }
+  });
+
+  it('bloquea otros métodos sin consultar el lector', async () => {
+    const { reader, url } = await fixture();
+    const response = await fetch(downloadUrl(url), { method: 'POST' });
+    expect(response.status).toBe(405);
+    expect(response.headers.get('allow')).toBe('GET, HEAD');
+    expect(reader.content).not.toHaveBeenCalled();
+  });
+
+  it('limita las descargas a sesenta por minuto independientemente del transporte MCP', async () => {
+    const { reader, url, client } = await fixture();
+    vi.mocked(reader.content).mockResolvedValue(inlineSkill());
+    for (let index = 0; index < 60; index++) expect((await fetch(downloadUrl(url))).status).toBe(200);
+    const response = await fetch(downloadUrl(url));
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get('retry-after'))).toBeGreaterThan(0);
+    expect(reader.content).toHaveBeenCalledTimes(60);
+    expect((await client.listTools()).tools).toHaveLength(4);
+  });
+
+  it('oculta errores internos en la respuesta y en los registros', async () => {
+    const { reader, url } = await fixture();
+    vi.mocked(reader.content).mockRejectedValueOnce(new Error('private-path SECRET-content'));
+    const log = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const response = await fetch(downloadUrl(url));
+      expect(response.status).toBe(503);
+      expect(await response.text()).not.toContain('SECRET-content');
+      expect(JSON.stringify(log.mock.calls)).not.toContain('SECRET-content');
+    } finally { log.mockRestore(); }
+  });
+
+  it('interrumpe una consulta que no responde tras doce segundos sin entregar un archivo', async () => {
+    const { reader, url } = await fixture();
+    vi.mocked(reader.content).mockImplementationOnce(() => new Promise(() => undefined));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const pending = fetch(downloadUrl(url));
+      await vi.waitFor(() => expect(reader.content).toHaveBeenCalledOnce());
+      await vi.advanceTimersByTimeAsync(12_000);
+      const response = await pending;
+      expect(response.status).toBe(504);
+      expect(response.headers.get('content-disposition')).toBeNull();
+      expect(await response.json()).toMatchObject({ code: 'download_timeout' });
+    } finally { vi.useRealTimers(); }
+  });
+});
