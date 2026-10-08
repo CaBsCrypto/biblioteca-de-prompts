@@ -77,6 +77,9 @@ jobs:
         env:
           GEMINI_API_KEY: ci-placeholder
 
+      - name: MCP protocol and widget smoke
+        run: npm run smoke:mcp -- "${{ steps.vercel.outputs.url }}/api/mcp"
+
   firestore-rules:
     name: Firestore isolation and catalog approval
     runs-on: ubuntu-latest

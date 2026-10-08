@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import crypto from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import firebaseConfig from "./firebase-applet-config.json";
+import { installLibraryMcp } from './src/mcp/http';
 
 // Load environment variables
 dotenv.config();
@@ -684,6 +685,7 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   const serveStatic = options.serveStatic ?? process.env.NODE_ENV === "production";
   const app = express();
   app.use(express.json({ limit: "64kb" }));
+  installLibraryMcp(app);
 
   // Check if API key is present
   const apiKey = process.env.GEMINI_API_KEY;
