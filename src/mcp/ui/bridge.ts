@@ -30,8 +30,13 @@ interface ChatGPTHost {
   openExternal?: (params: { href: string }) => void | Promise<void>;
 }
 
+export interface WidgetPresentation {
+  data: CatalogSearchResult & { resource?: PublicCatalogResource };
+  arguments?: Record<string, unknown>;
+}
+
 type WidgetEvent =
-  | { type: 'data'; data: CatalogSearchResult & { resource?: PublicCatalogResource }; arguments?: Record<string, unknown> }
+  | ({ type: 'data' } & WidgetPresentation)
   | { type: 'connected' }
   | { type: 'error'; message: string };
 
@@ -83,18 +88,71 @@ function hostWindow(): ChatGPTHost | undefined {
   return typeof window === 'undefined' ? undefined : (window as Window & { openai?: ChatGPTHost }).openai;
 }
 
-export function recoverWidgetState(): WidgetState {
+function hasWidgetPreferences(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const fields = value as Record<string, unknown>;
+  return Object.hasOwn(fields, 'kind') && (fields.kind === 'all' || fields.kind === 'prompt' || fields.kind === 'skill')
+    || ['query', 'category', 'compatibility', 'author', 'selectedId'].some(key => Object.hasOwn(fields, key)
+      && (typeof fields[key] === 'string' || key === 'selectedId' && fields[key] === null));
+}
+
+interface WidgetRestoration {
+  state: WidgetState;
+  source: 'host-private' | 'host' | 'session' | 'empty';
+  restorePresentation: boolean;
+}
+
+/** Capture scope before React writes its first snapshot; explicit host defaults or null are authoritative. */
+export function captureWidgetRestoration(): WidgetRestoration {
   const snapshot = hostWindow()?.widgetState;
-  const hasPrivateSnapshot = snapshot && typeof snapshot === 'object' && 'privateContent' in snapshot;
-  const privateSnapshot = hasPrivateSnapshot ? snapshot.privateContent : snapshot;
-  const hostState = parseWidgetState(privateSnapshot);
-  if (hostState) return hasPrivateSnapshot ? hostState : { ...hostState, values: {} };
-  try {
-    const sessionState = parseWidgetState(JSON.parse(sessionStorage.getItem(STATE_KEY) || 'null'));
-    // The fallback is origin-scoped, so variable inputs must never cross widget/conversation instances.
-    return { ...(sessionState || EMPTY_WIDGET_STATE), values: {} };
+  const hasPrivateSnapshot = !!snapshot && typeof snapshot === 'object' && Object.hasOwn(snapshot, 'privateContent');
+  const privateSnapshot = hasPrivateSnapshot ? (snapshot as Record<string, unknown>).privateContent : undefined;
+  if (hasPrivateSnapshot && (privateSnapshot === null || hasWidgetPreferences(privateSnapshot))) {
+    return { state: parseWidgetState(privateSnapshot) || { ...EMPTY_WIDGET_STATE, values: {} }, source: 'host-private', restorePresentation: true };
   }
-  catch { return { ...EMPTY_WIDGET_STATE, values: {} }; }
+  const hostState = parseWidgetState(snapshot);
+  if (hostState && hasWidgetPreferences(snapshot)) return { state: { ...hostState, values: {} }, source: 'host', restorePresentation: true };
+  try {
+    const sessionSnapshot = JSON.parse(sessionStorage.getItem(STATE_KEY) || 'null');
+    const sessionState = parseWidgetState(sessionSnapshot);
+    // The fallback is origin-scoped, so variable inputs must never cross widget/conversation instances.
+    const significantPreferences = sessionState && (sessionState.kind !== 'all' || sessionState.query || sessionState.category
+      || sessionState.compatibility || sessionState.author || sessionState.selectedId);
+    if (significantPreferences && hasWidgetPreferences(sessionSnapshot)) {
+      return { state: { ...sessionState, values: {} }, source: 'session', restorePresentation: true };
+    }
+  }
+  catch { /* Missing or blocked sandbox storage starts with the tool invocation. */ }
+  return { state: { ...EMPTY_WIDGET_STATE, values: {} }, source: 'empty', restorePresentation: false };
+}
+
+export function recoverWidgetState(): WidgetState {
+  return captureWidgetRestoration().state;
+}
+
+/** The first notification replays the original invocation; later notifications are live tool presentations. */
+export function createWidgetPresentationReconciler(source: WidgetRestoration['source']) {
+  let firstData = true;
+  return (previous: WidgetState, incoming: WidgetPresentation): (WidgetPresentation & { state: WidgetState }) | undefined => {
+    const explicitResource = !!incoming.data.resource || typeof incoming.arguments?.id === 'string' && incoming.arguments.id !== '';
+    const ignoreReplay = firstData && (source === 'host-private' || source === 'host' || source === 'session' && !explicitResource);
+    firstData = false;
+    if (ignoreReplay) return undefined;
+    const kind = incoming.arguments?.kind;
+    const resource = incoming.data.resource;
+    const state: WidgetState = { ...previous,
+      selectedId: resource?.id || '', values: resource && previous.selectedId === resource.id ? previous.values : {},
+    };
+    if (kind === 'all' || kind === 'prompt' || kind === 'skill') state.kind = kind;
+    return { ...incoming, state };
+  };
+}
+
+/** A deliverable requested for an earlier selection must not reach the view or the conversation. */
+export async function resolveCurrentSelection<T>(pending: Promise<T>, isCurrent: () => boolean): Promise<T> {
+  const result = await pending;
+  if (!isCurrent()) throw new Error('La selección cambió mientras obteníamos el contenido. Obtén el recurso de la ficha actual.');
+  return result;
 }
 
 export function persistWidgetState(state: WidgetState): void {
@@ -183,7 +241,8 @@ export function createLibraryBridge() {
     if (standardConnected) await app.updateModelContext({ structuredContent: { bibliotecaSelection: selection } });
   }
 
-  async function useResource(result: CatalogContentResult, values: Record<string, string>) {
+  async function useResource(result: CatalogContentResult, values: Record<string, string>, isCurrent: () => boolean = () => true) {
+    if (!isCurrent()) return;
     const text = result.resource.kind === 'prompt' ? fillPromptVariables(result.content.text, values) : result.content.text;
     const content = [{ type: 'text' as const, text: resourceContext(result.resource, text) }];
     const request = result.resource.kind === 'prompt'
@@ -197,6 +256,7 @@ export function createLibraryBridge() {
     const contextResult = extensions.modelContext
       ? await extensions.modelContext.update({ content })
       : (await app.updateModelContext({ content }), undefined);
+    if (!isCurrent()) return;
     const message = [{ type: 'text' as const, text: request }];
     const response = extensions.message
       ? await extensions.message.send({ role: 'user', content: message, _meta: {

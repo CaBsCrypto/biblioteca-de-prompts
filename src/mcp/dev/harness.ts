@@ -5,7 +5,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge';
 import type { WidgetState } from '../ui/bridge';
 
-const URI = 'ui://biblioteca/library-v1.html';
+const URI = 'ui://biblioteca/library-v2.html';
 const status = document.getElementById('host-status')!;
 const panel = document.getElementById('panel')!;
 const receipts = document.getElementById('receipts')!;
@@ -81,8 +81,9 @@ async function openPanel() {
       if (!shell || !('text' in shell)) throw new Error('No se recibió el recurso UI de Biblioteca.');
       html = shell.text;
     }
-    const saved = savedWidgetState();
-    const initialArguments = { kind: saved?.kind || 'all', ...(saved?.selectedId ? { id: saved.selectedId } : {}) };
+    // ChatGPT replays the original entrypoint result after reopening or reloading a widget.
+    // Keep it different from later UI selections so this host catches restoration regressions.
+    const initialArguments = { kind: 'prompt' };
     const initialResult = CallToolResultSchema.parse(await mcp.callTool({ name: 'open_library', arguments: initialArguments }));
     if (initialResult.isError) throw new Error('open_library no pudo abrir el catálogo del emulador.');
     const frame = document.createElement('iframe');
