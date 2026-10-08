@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Check, ChevronDown, Code2, Copy, Download, ExternalLink, Maximize2, Minimize2, Search, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronDown, Code2, Copy, Download, ExternalLink, Maximize2, Minimize2, Search, Sparkles, X } from 'lucide-react';
 import type { CatalogContentResult, CatalogSearchResult, PublicCatalogResource } from '../contracts';
 import { EMPTY_WIDGET_STATE, captureWidgetRestoration, createWidgetPresentationReconciler, extractPromptVariables, fillPromptVariables, persistWidgetState, resolveCurrentSelection, safeWidgetLink, type LibraryBridge, type WidgetState } from './bridge';
 
@@ -27,10 +27,25 @@ export default function LibraryWidget({ bridge }: Props) {
   const hasInitialData = useRef(false);
   const requestNumber = useRef(0);
   const detailHeading = useRef<HTMLHeadingElement>(null);
+  const detailDialog = useRef<HTMLDialogElement>(null);
+  const catalog = useRef<HTMLElement>(null);
+  const catalogPosition = useRef(0);
+  const detailOpener = useRef<HTMLElement | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const selectionRequest = useRef(0);
 
   useEffect(() => { persistWidgetState(state); }, [state]);
+  useEffect(() => {
+    const dialog = detailDialog.current;
+    if (!dialog) return;
+    if (resource) {
+      if (!dialog.open) dialog.showModal();
+      dialog.scrollTop = 0;
+      const frame = requestAnimationFrame(() => detailHeading.current?.focus({ preventScroll: true }));
+      return () => cancelAnimationFrame(frame);
+    }
+    if (dialog.open) dialog.close();
+  }, [resource?.id]);
   useEffect(() => {
     const unsubscribe = bridge.subscribe(event => {
       if (event.type === 'error') { setIssue(event.message); setLoading(false); }
@@ -76,6 +91,11 @@ export default function LibraryWidget({ bridge }: Props) {
   }, [ready]);
 
   async function openResource(id: string, clearValues = true) {
+    if (!resource) {
+      const active = document.activeElement;
+      detailOpener.current = active instanceof HTMLElement && active.matches('.library-resource') ? active : null;
+      catalogPosition.current = catalog.current?.scrollTop || 0;
+    }
     const request = ++selectionRequest.current;
     setBusy(true); setIssue(''); setNotice(''); setCopied(false); setPayload(null);
     try {
@@ -84,7 +104,6 @@ export default function LibraryWidget({ bridge }: Props) {
       setResource(data.resource);
       setState(previous => ({ ...previous, selectedId: data.resource.id, values: clearValues && previous.selectedId !== id ? {} : previous.values }));
       void bridge.selectResource(data.resource).catch(() => undefined);
-      requestAnimationFrame(() => detailHeading.current?.focus());
     } catch (error) {
       if (request === selectionRequest.current) {
         setIssue(message(error)); setResource(null); setState(previous => ({ ...previous, selectedId: '', values: {} }));
@@ -94,10 +113,17 @@ export default function LibraryWidget({ bridge }: Props) {
 
   function back() {
     selectionRequest.current += 1;
+    detailDialog.current?.close();
     setResource(null); setPayload(null); setIssue(''); setNotice(''); setCopied(false); setBusy(false);
     setState(previous => ({ ...previous, selectedId: '', values: {} }));
     void bridge.selectResource(null).catch(() => undefined);
-    requestAnimationFrame(() => searchInput.current?.focus());
+    requestAnimationFrame(() => {
+      if (catalog.current) catalog.current.scrollTop = catalogPosition.current;
+      const opener = detailOpener.current;
+      if (opener?.isConnected && !detailDialog.current?.contains(opener)) opener.focus({ preventScroll: true });
+      else searchInput.current?.focus({ preventScroll: true });
+      detailOpener.current = null;
+    });
   }
 
   async function freshContent(): Promise<CatalogContentResult> {
@@ -150,21 +176,27 @@ export default function LibraryWidget({ bridge }: Props) {
   const preview = payload ? resource?.kind === 'prompt' ? fillPromptVariables(payload.content.text, state.values) : payload.content.text : '';
   const availableModes = bridge.availableDisplayModes();
   const metadata = resource?.metadata;
+  const feedback = <>
+    {issue && <div className="library-feedback library-error" role="alert"><p>{issue}</p>{resource && <button onClick={() => void openResource(resource.id, false)} disabled={busy}>Actualizar ficha</button>}</div>}
+    {notice && <p className="library-feedback library-notice" role="status">{notice}</p>}
+  </>;
+  const displayActions = <>
+    {availableModes.includes(mode === 'fullscreen' ? 'inline' : 'fullscreen') && <button className="library-icon" aria-label={mode === 'fullscreen' ? 'Volver a vista compacta' : 'Ampliar Biblioteca'} title={mode === 'fullscreen' ? 'Vista compacta' : 'Ampliar'} onClick={() => void action(async () => { const result = await bridge.requestDisplayMode(mode === 'fullscreen' ? 'inline' : 'fullscreen'); setMode(result.mode); })}>{mode === 'fullscreen' ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button>}
+    {availableModes.includes('pip') && mode !== 'pip' && <button className="library-icon" aria-label="Minimizar Biblioteca" title="Minimizar" onClick={() => void action(async () => { const result = await bridge.requestDisplayMode('pip'); setMode(result.mode); })}><Minimize2 size={17} /></button>}
+  </>;
 
-  return <main className={`library-widget library-mode-${mode}`}>
+  return <main className={`library-widget library-mode-${mode}${resource ? ' library-has-detail' : ''}`}>
     <header className="library-header">
       <div className="library-brand"><BookOpen size={23} aria-hidden="true" /><div><h1>Biblioteca</h1><p>Capacidades para esta conversación</p></div></div>
       <div className="library-host-actions">
-        {availableModes.includes(mode === 'fullscreen' ? 'inline' : 'fullscreen') && <button className="library-icon" aria-label={mode === 'fullscreen' ? 'Volver a vista compacta' : 'Ampliar Biblioteca'} title={mode === 'fullscreen' ? 'Vista compacta' : 'Ampliar'} onClick={() => void action(async () => { const result = await bridge.requestDisplayMode(mode === 'fullscreen' ? 'inline' : 'fullscreen'); setMode(result.mode); })}>{mode === 'fullscreen' ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button>}
-        {availableModes.includes('pip') && mode !== 'pip' && <button className="library-icon" aria-label="Minimizar Biblioteca" title="Minimizar" onClick={() => void action(async () => { const result = await bridge.requestDisplayMode('pip'); setMode(result.mode); })}><Minimize2 size={17} /></button>}
+        {displayActions}
         <button className="library-icon" aria-label="Cerrar Biblioteca" title="Cerrar" disabled={!ready} onClick={() => void action(async () => { persistWidgetState(state); await bridge.close(); })}><X size={18} /></button>
       </div>
     </header>
 
-    {issue && <div className="library-feedback library-error" role="alert"><p>{issue}</p>{resource && <button onClick={() => void openResource(resource.id, false)} disabled={busy}>Actualizar ficha</button>}</div>}
-    {notice && <p className="library-feedback library-notice" role="status">{notice}</p>}
+    {!resource && feedback}
 
-    {!resource ? <section className="library-catalog" aria-label="Catálogo de recursos">
+    <section className="library-catalog" ref={catalog} aria-label="Catálogo de recursos">
       <div className="library-tabs" role="tablist" aria-label="Tipo de recurso">
         {(['all', 'prompt', 'skill'] as const).map(kind => <button key={kind} role="tab" id={`library-tab-${kind}`} aria-controls="library-resources" aria-selected={state.kind === kind} tabIndex={state.kind === kind ? 0 : -1} className={state.kind === kind ? 'is-selected' : ''} disabled={!ready || busy} onClick={() => applyFilters({ ...state, kind })} onKeyDown={event => {
           const kinds: WidgetState['kind'][] = ['all', 'prompt', 'skill'];
@@ -189,23 +221,37 @@ export default function LibraryWidget({ bridge }: Props) {
         {loading && <p className="library-loading" role="status">{ready ? 'Buscando recursos…' : 'Conectando Biblioteca…'}</p>}
         {(!loading || result.resources.length > 0) && <p className="library-results-label">{result.total} {result.total === 1 ? 'recurso disponible' : 'recursos disponibles'}</p>}
         {!loading && !visibleResources.length && !issue && <div className="library-empty"><BookOpen size={32} aria-hidden="true" /><h2>{state.query || state.category || state.compatibility || state.author ? 'No encontramos esa capacidad' : `Aún no hay ${state.kind === 'skill' ? 'skills' : state.kind === 'prompt' ? 'prompts' : 'recursos'} disponibles`}</h2><p>{state.query || state.category || state.compatibility || state.author ? 'Prueba otra tarea o quita un filtro.' : 'Aquí aparecerán los recursos cuando tengan una versión revisada y publicada.'}</p>{state.query || state.category || state.compatibility || state.author ? <button className="library-button" onClick={() => applyFilters({ ...EMPTY_WIDGET_STATE, kind: state.kind, values: {} })}>Ver todos</button> : null}</div>}
-        <ul className="library-resource-list">{visibleResources.map(item => <li key={item.id}><button className={`library-resource library-resource-${item.kind}`} disabled={busy} onClick={() => void openResource(item.id)}>
+        <ul className="library-resource-list">{visibleResources.map(item => <li key={item.id}><button className={`library-resource library-resource-${item.kind}`} disabled={busy} aria-label={`Ver ficha: ${item.metadata.title}`} aria-describedby={`library-summary-${item.id}`} onClick={() => void openResource(item.id)}>
           <span className="library-resource-type">{item.kind === 'prompt' ? <Sparkles size={15} /> : <Code2 size={15} />}{item.kind === 'prompt' ? 'Prompt' : 'Skill'}<span>{item.metadata.category}</span></span>
-          <h2>{item.metadata.title}</h2><p>{item.metadata.summary}</p><span className="library-resource-author">{item.metadata.authorName}{item.metadata.compatibility.length > 0 && <span>{item.metadata.compatibility.slice(0, 3).join(', ')}</span>}</span>
+          <h2>{item.metadata.title}</h2><p className="library-card-summary" id={`library-summary-${item.id}`}>{item.metadata.summary}</p>
+          <span className="library-card-outcome"><span>Qué consigues</span><span>{item.metadata.outcome}</span></span>
+          <span className="library-card-sample"><span>Muestra del resultado</span><span>{item.metadata.exampleOutput}</span></span>
+          <span className="library-card-footer"><span className="library-resource-author">Por {item.metadata.authorName}{item.metadata.compatibility.length > 0 && <span>{item.metadata.compatibility.slice(0, 3).join(' · ')}</span>}</span><span className="library-card-open">Abrir ficha <ArrowUpRight size={16} aria-hidden="true" /></span></span>
         </button></li>)}</ul>
         {result.nextCursor && <button className="library-button library-more" disabled={loading} onClick={() => void search(state, true)}>Ver más recursos</button>}
       </div>
-    </section> : metadata && <article className="library-detail">
-      <button className="library-back" disabled={busy} onClick={back}><ArrowLeft size={16} /> Volver al catálogo</button>
+    </section>
+    <dialog ref={detailDialog} className="library-dialog" aria-labelledby="library-detail-title" aria-describedby="library-detail-summary" onCancel={event => { event.preventDefault(); back(); }} onClick={event => {
+      if (event.target !== event.currentTarget) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) back();
+    }}>
+    {resource && metadata && <article className="library-detail">
+      <header className="library-dialog-header"><button className="library-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> Catálogo</button><div className="library-host-actions">{displayActions}<button className="library-icon" onClick={back} aria-label="Cerrar ficha" title="Cerrar ficha"><X size={19} /></button></div></header>
+      {feedback}
+      <div className="library-detail-grid"><div className="library-detail-reading">
       <div className="library-detail-type">{resource.kind === 'prompt' ? <Sparkles size={16} /> : <Code2 size={16} />}{resource.kind === 'prompt' ? 'Prompt' : 'Skill'}<span>{metadata.category}</span></div>
-      <h2 className="library-detail-title" ref={detailHeading} tabIndex={-1}>{metadata.title}</h2><p className="library-detail-summary">{metadata.summary}</p><p className="library-byline">Por <strong>{metadata.authorName}</strong>{metadata.authorHandle && ` (@${metadata.authorHandle.replace(/^@/, '')})`}</p>
+      <h2 className="library-detail-title" id="library-detail-title" ref={detailHeading} tabIndex={-1}>{metadata.title}</h2><p className="library-detail-summary" id="library-detail-summary">{metadata.summary}</p><p className="library-byline">Por <strong>{metadata.authorName}</strong>{metadata.authorHandle && ` (@${metadata.authorHandle.replace(/^@/, '')})`}</p>
       <section className="library-detail-section"><h3>Lo que puedes conseguir</h3><p>{metadata.outcome}</p></section>
       <section className="library-detail-section"><h3>Ejemplo del creador</h3><div className="library-samples"><div><h4>Entrada</h4><pre tabIndex={0}>{metadata.exampleInput}</pre></div><div><h4>Resultado</h4><pre tabIndex={0}>{metadata.exampleOutput}</pre></div></div>
         <div className="library-links">{safeWidgetLink(metadata.imageUrl) && <button onClick={() => void action(() => bridge.openLink(metadata.imageUrl))}>Ver imagen del resultado <ExternalLink size={14} /></button>}{safeWidgetLink(metadata.demoUrl) && <button onClick={() => void action(() => bridge.openLink(metadata.demoUrl))}>Ver demo <ExternalLink size={14} /></button>}</div>
       </section>
       <section className="library-detail-section"><h3>{resource.kind === 'skill' ? 'Instalación y uso' : 'Cómo usarlo'}</h3><p className="library-preserve">{metadata.usage}</p></section>
       <dl className="library-details"><div><dt>Compatible con</dt><dd>{metadata.compatibility.join(', ')}</dd></div><div><dt>Requisitos</dt><dd>{metadata.requirements}</dd></div><div><dt>Condiciones de uso</dt><dd>{metadata.license}</dd></div><div><dt>Versión aprobada</dt><dd className="library-version">{resource.submissionId}</dd></div></dl>
-      <section className="library-deliverable"><h3>{resource.kind === 'skill' ? 'SKILL.md' : 'Prepara el prompt'}</h3>{!payload ? <><p>{resource.kind === 'prompt' ? 'Obtén el texto revisado para leerlo y rellenar sus variables.' : 'Obtén el archivo revisado antes de descargarlo o usarlo en el chat.'}</p><button className="library-button" disabled={busy || !ready} onClick={() => void action(async () => { await freshContent(); })}>{busy ? 'Obteniendo…' : 'Obtener contenido'}</button></> : <>
+      <p className="library-review-note">Muestra aportada por el creador. Revisa el contenido antes de usarlo; la publicación no certifica su ejecución en todos los modelos.</p>
+      <button className="library-web-link" onClick={() => void action(() => bridge.openLink(resource.canonicalUrl))}>Abrir ficha en la web <ExternalLink size={14} /></button>
+      </div>
+      <section className="library-deliverable" aria-labelledby="library-deliverable-title"><div className="library-deliverable-label">{resource.kind === 'skill' ? <Code2 size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}{resource.kind === 'skill' ? 'Tu siguiente capacidad' : 'Llévalo a la conversación'}</div><h3 id="library-deliverable-title">{resource.kind === 'skill' ? 'SKILL.md' : 'Prepara el prompt'}</h3>{!payload ? <><p>{resource.kind === 'prompt' ? 'Obtén el texto revisado para leerlo y rellenar sus variables.' : 'Obtén el archivo revisado antes de descargarlo o usarlo en el chat.'}</p><button className="library-button" disabled={busy || !ready} onClick={() => void action(async () => { await freshContent(); })}>{busy ? 'Obteniendo…' : 'Obtener contenido'}</button></> : <>
         {variables.length > 0 && <fieldset className="library-variables"><legend>Variables del prompt</legend>{variables.map(variable => <label key={variable}>{variable}<textarea rows={2} value={state.values[variable] || ''} maxLength={10000} placeholder={`Valor para ${variable}`} onChange={event => { setCopied(false); setState(previous => ({ ...previous, values: { ...previous.values, [variable]: event.target.value } })); }} /></label>)}</fieldset>}
         <details className="library-content" open><summary>{resource.kind === 'prompt' ? 'Texto preparado' : 'Contenido del archivo'}</summary><pre tabIndex={0}>{preview}</pre></details>
         {payload.content.source === 'github' && <p className="library-version">Commit: {payload.content.repositoryCommit}</p>}
@@ -213,9 +259,9 @@ export default function LibraryWidget({ bridge }: Props) {
       <div className="library-deliverable-actions"><button className="library-button library-primary" disabled={busy || !ready} onClick={() => void useInChat()}>{busy ? 'Preparando…' : 'Usar en esta conversación'}</button><button className="library-button" disabled={busy || !ready} onClick={() => void copy()}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'Copiado' : resource.kind === 'prompt' ? 'Copiar prompt' : 'Copiar SKILL.md'}</button>
         {resource.kind === 'skill' && (payload?.content.source === 'github' ? <button className="library-button" disabled={busy} onClick={() => void action(async () => { const data = await freshContent(); if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); })}><ExternalLink size={15} /> Abrir carpeta revisada</button> : <button className="library-button" disabled={busy || !ready} onClick={() => void action(async isCurrent => { const data = await freshContent(); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text); if (isCurrent()) setNotice('Descarga de SKILL.md solicitada.'); } })}><Download size={15} /> Descargar SKILL.md</button>)}
       </div></section>
-      <p className="library-review-note">Muestra aportada por el creador. Revisa el contenido antes de usarlo; la publicación no certifica su ejecución en todos los modelos.</p>
-      <button className="library-web-link" onClick={() => void action(() => bridge.openLink(resource.canonicalUrl))}>Abrir ficha en la web <ExternalLink size={14} /></button>
+      </div>
     </article>}
+    </dialog>
   </main>;
 }
 
