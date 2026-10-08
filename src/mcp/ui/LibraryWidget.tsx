@@ -28,6 +28,7 @@ export default function LibraryWidget({ bridge }: Props) {
   const requestNumber = useRef(0);
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const detailDialog = useRef<HTMLDialogElement>(null);
+  const preparedText = useRef<HTMLPreElement>(null);
   const catalog = useRef<HTMLElement>(null);
   const catalogPosition = useRef(0);
   const detailOpener = useRef<HTMLElement | null>(null);
@@ -148,10 +149,26 @@ export default function LibraryWidget({ bridge }: Props) {
   async function copy() {
     await action(async isCurrent => {
       const data = await freshContent();
-      const text = data.resource.kind === 'prompt' ? fillPromptVariables(data.content.text, state.values) : data.content.text;
-      try { await navigator.clipboard.writeText(text); }
-      catch { throw new Error('Esta vista no permite copiar automáticamente. Selecciona el texto del recurso para copiarlo.'); }
-      if (isCurrent()) { setCopied(true); setNotice('Contenido copiado.'); }
+      const text = data.resource.kind === 'prompt' ? fillPromptVariables(data.content.text, stateRef.current.values) : data.content.text;
+      const success = await copyReviewedText(text, detailDialog.current, isCurrent);
+      if (!isCurrent()) return;
+      if (success) { setCopied(true); setNotice('Contenido copiado.'); return; }
+      setCopied(false);
+      setNotice('La copia automática está bloqueada. Selecciona el texto y pulsa Ctrl+C o ⌘+C para copiarlo.');
+      requestAnimationFrame(() => {
+        if (!isCurrent()) return;
+        const element = preparedText.current;
+        const selection = document.getSelection();
+        if (!element || !selection) return;
+        const details = element.closest('details');
+        if (details) details.open = true;
+        element.focus({ preventScroll: true });
+        element.scrollIntoView({ block: 'nearest' });
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        selection.removeAllRanges(); selection.addRange(range);
+        setNotice('La copia automática está bloqueada. El texto está seleccionado: pulsa Ctrl+C (Windows/Linux) o ⌘+C (Mac) para copiarlo.');
+      });
     });
   }
 
@@ -253,16 +270,59 @@ export default function LibraryWidget({ bridge }: Props) {
       </div>
       <section className="library-deliverable" aria-labelledby="library-deliverable-title"><div className="library-deliverable-label">{resource.kind === 'skill' ? <Code2 size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}{resource.kind === 'skill' ? 'Tu siguiente capacidad' : 'Llévalo a la conversación'}</div><h3 id="library-deliverable-title">{resource.kind === 'skill' ? 'SKILL.md' : 'Prepara el prompt'}</h3>{!payload ? <><p>{resource.kind === 'prompt' ? 'Obtén el texto revisado para leerlo y rellenar sus variables.' : 'Obtén el archivo revisado antes de descargarlo o usarlo en el chat.'}</p><button className="library-button" disabled={busy || !ready} onClick={() => void action(async () => { await freshContent(); })}>{busy ? 'Obteniendo…' : 'Obtener contenido'}</button></> : <>
         {variables.length > 0 && <fieldset className="library-variables"><legend>Variables del prompt</legend>{variables.map(variable => <label key={variable}>{variable}<textarea rows={2} value={state.values[variable] || ''} maxLength={10000} placeholder={`Valor para ${variable}`} onChange={event => { setCopied(false); setState(previous => ({ ...previous, values: { ...previous.values, [variable]: event.target.value } })); }} /></label>)}</fieldset>}
-        <details className="library-content" open><summary>{resource.kind === 'prompt' ? 'Texto preparado' : 'Contenido del archivo'}</summary><pre tabIndex={0}>{preview}</pre></details>
+        <details className="library-content" open><summary>{resource.kind === 'prompt' ? 'Texto preparado' : 'Contenido del archivo'}</summary><pre ref={preparedText} tabIndex={0}>{preview}</pre></details>
         {payload.content.source === 'github' && <p className="library-version">Commit: {payload.content.repositoryCommit}</p>}
       </>}
       <div className="library-deliverable-actions"><button className="library-button library-primary" disabled={busy || !ready} onClick={() => void useInChat()}>{busy ? 'Preparando…' : 'Usar en esta conversación'}</button><button className="library-button" disabled={busy || !ready} onClick={() => void copy()}>{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'Copiado' : resource.kind === 'prompt' ? 'Copiar prompt' : 'Copiar SKILL.md'}</button>
-        {resource.kind === 'skill' && (payload?.content.source === 'github' ? <button className="library-button" disabled={busy} onClick={() => void action(async () => { const data = await freshContent(); if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); })}><ExternalLink size={15} /> Abrir carpeta revisada</button> : <button className="library-button" disabled={busy || !ready} onClick={() => void action(async isCurrent => { const data = await freshContent(); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text); if (isCurrent()) setNotice('Descarga de SKILL.md solicitada.'); } })}><Download size={15} /> Descargar SKILL.md</button>)}
+        {resource.kind === 'skill' && (payload?.content.source === 'github' ? <button className="library-button" disabled={busy} onClick={() => void action(async () => { const data = await freshContent(); if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); })}><ExternalLink size={15} /> Abrir carpeta revisada</button> : <button className="library-button" disabled={busy || !ready} onClick={() => void action(async isCurrent => { const data = await freshContent(); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text, data.resource); if (isCurrent()) setNotice('Descarga de SKILL.md solicitada.'); } })}><Download size={15} /> Descargar SKILL.md</button>)}
       </div></section>
       </div>
     </article>}
     </dialog>
   </main>;
+}
+
+async function copyReviewedText(text: string, container: HTMLElement | null, isCurrent: () => boolean): Promise<boolean> {
+  if (!isCurrent()) return false;
+  if (navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch { /* Embedded hosts can deny clipboard access after the version check. */ }
+  }
+  if (!isCurrent() || !container?.isConnected) return false;
+  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const input = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ? active : null;
+  const inputSelection = input && input.selectionStart !== null && input.selectionEnd !== null
+    ? { start: input.selectionStart, end: input.selectionEnd, direction: input.selectionDirection }
+    : null;
+  const selection = document.getSelection();
+  const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange()) : [];
+  const scrollTop = container.scrollTop;
+  const scrollLeft = container.scrollLeft;
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.readOnly = true;
+  textarea.tabIndex = -1;
+  textarea.setAttribute('aria-label', 'Texto temporal para copiar');
+  textarea.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none;font-size:16px;';
+  try {
+    // Keep the temporary control inside the modal; elements outside it are inert.
+    container.appendChild(textarea);
+    textarea.focus({ preventScroll: true });
+    textarea.select(); textarea.setSelectionRange(0, text.length);
+    return document.execCommand('copy') === true;
+  } catch { return false; }
+  finally {
+    textarea.remove();
+    if (active?.isConnected) active.focus({ preventScroll: true });
+    if (selection) {
+      selection.removeAllRanges();
+      for (const range of ranges) {
+        if (range.startContainer.isConnected && range.endContainer.isConnected) selection.addRange(range);
+      }
+    }
+    if (input?.isConnected && inputSelection) input.setSelectionRange(inputSelection.start, inputSelection.end, inputSelection.direction || undefined);
+    container.scrollTop = scrollTop; container.scrollLeft = scrollLeft;
+  }
 }
 
 function message(error: unknown): string { return error instanceof Error ? error.message : 'No pudimos completar la acción. Vuelve a intentarlo.'; }

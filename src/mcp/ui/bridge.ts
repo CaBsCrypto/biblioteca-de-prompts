@@ -267,8 +267,21 @@ export function createLibraryBridge() {
     if (response.isError) throw new Error('ChatGPT no recibió la solicitud. Puedes copiar el contenido y volver a intentarlo.');
   }
 
-  async function downloadSkill(text: string) {
-    if (!app.getHostCapabilities()?.downloadFile) throw new Error('Esta vista no permite descargar archivos. Copia SKILL.md o abre su ficha en la web.');
+  async function downloadSkill(text: string, resource?: Pick<PublicCatalogResource, 'id' | 'kind' | 'submissionId'>) {
+    if (!app.getHostCapabilities()?.downloadFile) {
+      // ChatGPT does not offer the standard download capability on every host.
+      // A normal attachment URL rechecks the approved version on the server;
+      // no file upload, blob download or cached payload bypass is needed.
+      const validId = (value: unknown): value is string => typeof value === 'string'
+        && value.length > 0 && value.length <= 200 && !/[\/#?\u0000-\u001f]/.test(value);
+      if (resource?.kind !== 'skill' || !validId(resource.id) || !validId(resource.submissionId)) {
+        throw new Error('Actualiza la ficha antes de descargar su versión aprobada.');
+      }
+      const url = new URL('/api/catalog/skills/' + encodeURIComponent(resource.id) + '/download', 'https://biblioteca.browns.studio');
+      url.searchParams.set('expectedSubmissionId', resource.submissionId);
+      await openLink(url.href);
+      return;
+    }
     const result = await app.downloadFile({ contents: [{ type: 'resource', resource: {
       uri: 'file:///SKILL.md', mimeType: 'text/markdown;charset=utf-8', text,
     } }] });

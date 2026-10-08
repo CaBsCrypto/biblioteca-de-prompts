@@ -7,7 +7,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import config from '../../firebase-applet-config.json';
 import { createCatalogReader } from './catalogReader';
 import { createLibraryMcpServer } from './server';
-import type { CatalogReader } from './contracts';
+import { InvalidCatalogRequest, ResourceUnavailable, VersionChanged, type CatalogReader } from './contracts';
 
 let defaultReader: CatalogReader | undefined;
 function publicReader() {
@@ -30,6 +30,60 @@ export function installLibraryMcp(app: Express, reader?: CatalogReader, widgetHt
       res.type('html').send(readFileSync(path.resolve('dist/mcp-harness.html'), 'utf8'));
     });
   }
+  // A reviewed inline skill can be downloaded outside hosts that block iframe downloads.
+  // This uses the same anonymous reader and version/withdrawal checks as its MCP deliverable.
+  const downloadBuckets = new Map<string, { count: number; until: number }>();
+  app.all('/api/catalog/skills/:id/download', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.setHeader('Allow', 'GET, HEAD');
+      res.status(405).json({ code: 'method_not_allowed', message: 'Usa GET o HEAD para descargar SKILL.md.' });
+      return;
+    }
+    const now = Date.now();
+    for (const [key, bucket] of downloadBuckets) if (bucket.until <= now) downloadBuckets.delete(key);
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const bucket = downloadBuckets.get(key) ?? { count: 0, until: now + 60_000 };
+    downloadBuckets.set(key, bucket);
+    if (++bucket.count > 60) {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil((bucket.until - now) / 1000))));
+      res.status(429).json({ code: 'rate_limited', message: 'Demasiadas descargas. Intenta de nuevo en un minuto.' });
+      return;
+    }
+    const validId = (value: unknown): value is string => typeof value === 'string'
+      && value.length > 0 && value.length <= 200 && !/[\/#?\u0000-\u001f]/.test(value);
+    const id = req.params.id;
+    const expectedSubmissionId = req.query.expectedSubmissionId;
+    if (!validId(id) || !validId(expectedSubmissionId)) {
+      res.status(400).json({ code: 'invalid_catalog_request', message: 'Indica un recurso y una versión aprobada válidos.' });
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        (reader ?? publicReader()).content(id, expectedSubmissionId),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(Object.assign(new Error('download_timeout'), { code: 'download_timeout' })), 12_000);
+        }),
+      ]);
+      if (result.resource.kind !== 'skill' || result.content.source !== 'inline') {
+        res.status(409).json({ code: 'not_inline_skill', message: 'Esta descarga admite únicamente skills de texto. Los paquetes se obtienen desde su carpeta revisada.' });
+        return;
+      }
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="SKILL.md"');
+      res.status(200).send(Buffer.from(result.content.text, 'utf8'));
+    } catch (error) {
+      const timeout = typeof error === 'object' && error !== null && 'code' in error && error.code === 'download_timeout';
+      const known = error instanceof InvalidCatalogRequest || error instanceof ResourceUnavailable || error instanceof VersionChanged;
+      const code = known ? error.code : timeout ? 'download_timeout' : 'temporarily_unavailable';
+      const status = error instanceof InvalidCatalogRequest ? 400 : error instanceof ResourceUnavailable ? 404
+        : error instanceof VersionChanged ? 409 : timeout ? 504 : 503;
+      console.warn('[MCP]', JSON.stringify({ operation: 'skill_download', code, elapsedMs: Date.now() - now }));
+      res.status(status).json({ code, message: known ? error.message : 'No pudimos descargar la skill. Intenta de nuevo.' });
+    } finally { clearTimeout(timer); }
+  });
   // Best-effort per-instance throttling supplements request/schema limits on serverless.
   const buckets = new Map<string, { count: number; until: number }>();
   app.all('/api/mcp', async (req, res) => {
