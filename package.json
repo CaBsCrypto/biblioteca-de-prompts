@@ -16,7 +16,7 @@
     "qa:vercel": "npm run qa",
     "smoke:vercel": "node scripts/smoke-vercel.mjs",
     "test:rules": "firebase emulators:exec --config firebase.emulators.json --project demo-biblioteca --only firestore \"vitest run tests/firestore.rules.test.ts tests/catalog.rules.test.ts\"",
-    "test:unit": "vitest run tests/catalog.test.ts tests/router.test.ts tests/mcp.catalog.test.ts tests/mcp.server.test.ts tests/mcp.widget.test.ts tests/plugin-package.test.ts",
+    "test:unit": "vitest run tests/catalog.test.ts tests/router.test.ts tests/mcp.catalog.test.ts tests/mcp.server.test.ts tests/mcp.widget.test.ts tests/plugin-package.test.ts tests/web.delivery.test.ts tests/web.remix.test.ts tests/web.private.test.tsx tests/web.account.test.ts",
     "smoke:mcp": "node scripts/smoke-mcp.mjs",
     "package:plugin": "node scripts/package-plugin.mjs",
     "verify:server-startup": "node scripts/verify-server-startup.mjs"

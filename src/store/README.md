@@ -25,6 +25,12 @@ La adopcion puede ser parcial: el store y el router conviven con el estado
 actual mientras se migra componente por componente. La regla es no duplicar
 estado: si algo entra al store, deja de leerse del `useState` local.
 
+`catalogBrowse` centraliza los filtros públicos, la página y la sección de
+origen de una ficha. `CatalogWorkspace` consume este estado directamente;
+cerrar una ficha conserva la búsqueda y el tipo. Los valores preparados de
+prompts permanecen en la ficha durante su apertura y no se persisten en
+almacenamiento compartido.
+
 ## Estado posterior
 
 - Migracion gradual de los 2718 lineas de `App.tsx` al store+router. No

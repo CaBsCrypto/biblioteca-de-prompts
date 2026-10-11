@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -43,12 +43,18 @@ export function usePromptLibrary({
   getAuthorIdentity,
   onNotification
 }: UsePromptLibraryOptions) {
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [loadedPrompts, setPrompts] = useState<Prompt[]>([]);
+  // A render with a new account must never expose the previous account's rows.
+  const prompts = user ? loadedPrompts.filter(prompt => prompt.userId === user.uid) : [];
   const [loadingPrompts, setLoadingPrompts] = useState(false);
+  const accountUid = useRef(user?.uid);
+  accountUid.current = user?.uid;
 
   useEffect(() => {
+    let active = true;
+    setPrompts([]);
     if (!user) {
-      setPrompts([]);
+      setLoadingPrompts(false);
       return;
     }
 
@@ -61,17 +67,19 @@ export function usePromptLibrary({
     const unsubscribe = onSnapshot(
       userPromptsQuery,
       (snapshot) => {
+        if (!active || accountUid.current !== user.uid) return;
         setPrompts(sortOwnPrompts(snapshot.docs.map(mapPromptDoc)));
         setLoadingPrompts(false);
       },
       (error) => {
+        if (!active || accountUid.current !== user.uid) return;
         setLoadingPrompts(false);
         handleFirestoreError(error, OperationType.LIST, PROMPTS_COLLECTION);
       }
     );
 
-    return unsubscribe;
-  }, [user]);
+    return () => { active = false; unsubscribe(); };
+  }, [user?.uid]);
 
   const handleSeedDefaults = async (selectedPrompts: PromptSeed[] = DEFAULT_PROMPTS) => {
     if (!user) return;
@@ -104,11 +112,13 @@ export function usePromptLibrary({
   ) => {
     if (!user) return;
     const identity = getAuthorIdentity();
+    const activeAccount = () => accountUid.current === user.uid;
 
     try {
       if (editingPrompt) {
         if (editingPrompt.promptText !== promptData.promptText) {
           await archivePromptVersion(db, editingPrompt.id, editingPrompt.promptText);
+          if (!activeAccount()) return;
         }
 
         const forkMetadata = stripUndefined({
@@ -136,7 +146,7 @@ export function usePromptLibrary({
           ...identity,
           folderId: promptData.folderId || null,
         });
-        onNotification("Prompt actualizado correctamente.");
+        if (activeAccount()) onNotification("Prompt actualizado correctamente.");
       } else {
         const data: PromptSeed = {
           ...stripUndefined({
@@ -161,13 +171,12 @@ export function usePromptLibrary({
           }),
         } as PromptSeed;
         await createPrompt(db, user.uid, data, identity);
-        onNotification("Nuevo prompt añadido a la biblioteca.");
+        if (activeAccount()) onNotification("Nuevo prompt añadido a la biblioteca.");
       }
     } catch (error) {
-      handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, PROMPTS_COLLECTION);
+      if (activeAccount()) handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, PROMPTS_COLLECTION);
     } finally {
-      setShowFormModal(false);
-      setEditingPrompt(null);
+      if (activeAccount()) { setShowFormModal(false); setEditingPrompt(null); }
     }
   };
 

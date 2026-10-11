@@ -45,6 +45,7 @@ import type {
 import PromptCard from "./PromptCard";
 import FolderTreeView from "./FolderTreeView";
 import CategoryPromptsModal from "./CategoryPromptsModal";
+import "../catalog.css";
 
 interface LibraryWorkspaceViewProps {
   user: User | null;
@@ -322,7 +323,7 @@ export function LibraryWorkspaceView({
   const [selectedCategoryPopup, setSelectedCategoryPopup] = useState<
     string | null
   >(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -390,24 +391,26 @@ export function LibraryWorkspaceView({
 
   return (
     <div
-      className="w-full max-w-7xl mx-auto"
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+      className="library-compact w-full max-w-7xl mx-auto"
     >
       {/* ── TOP HEADER BAR ─────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between gap-3 mb-4 px-1"
+        className="flex flex-wrap items-center justify-between gap-3 mb-4 px-1"
       >
         {/* Left: title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="p-2 rounded-xl border transition-all cursor-pointer flex-shrink-0"
+            className="min-h-11 min-w-11 p-2 rounded-lg border transition-all cursor-pointer flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
             style={{
               background: "rgba(255,255,255,0.04)",
               borderColor: "rgba(255,255,255,0.08)",
               color: "#94a3b8",
             }}
-            title="Toggle sidebar"
+            title={sidebarOpen ? "Ocultar filtros y carpetas" : "Mostrar filtros y carpetas"}
+            aria-label={sidebarOpen ? "Ocultar filtros y carpetas" : "Mostrar filtros y carpetas"}
+            aria-expanded={sidebarOpen}
+            aria-controls="library-filters-panel"
           >
             <SlidersHorizontal size={15} />
           </button>
@@ -427,120 +430,39 @@ export function LibraryWorkspaceView({
           </div>
         </div>
 
-        {/* Right: actions */}
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-          {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
-            <button
-              id="btn-seed-defaults"
-              onClick={() => setShowSeedPackModal(true)}
-              disabled={loadingPrompts}
-              className="hidden sm:flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer animate-pulse transition-all"
-              style={{
-                background: "rgba(99,102,241,0.1)",
-                borderColor: "rgba(99,102,241,0.25)",
-                color: "#a5b4fc",
-              }}
-            >
-              <BookOpen size={13} />
-              {prompts.length === 0 ? "Pack inicial" : "Sumar pack"}
-            </button>
-          )}
-
-          {currentTab === "mi-biblioteca" && (
-            <button
-              id="btn-open-recommender"
-              onClick={() => {
-                trackUserEvent("recommendation_open", undefined, {
-                  promptsCount: prompts.length,
-                  selectedCategory,
-                  selectedTags,
-                });
+        <div className="flex items-center gap-2 flex-wrap">
+          <button id="btn-new-prompt" onClick={handleOpenAdd} className="ui-button-primary min-h-11 px-3 rounded-lg bg-indigo-600 text-white text-xs font-semibold inline-flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400">
+            <Plus size={14} />Nuevo prompt
+          </button>
+          <details className="relative" onKeyDown={event => {
+            if (event.key === "Escape") {
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector("summary")?.focus();
+            }
+          }}>
+            <summary className="ui-action-secondary min-h-11 px-3 border border-slate-700 rounded-lg text-xs font-medium text-slate-300 flex items-center cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400">Más opciones</summary>
+            <div className="ui-muted-panel absolute right-0 top-full mt-2 z-30 min-w-56 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl space-y-1">
+              {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && <button id="btn-seed-defaults" onClick={() => setShowSeedPackModal(true)} disabled={loadingPrompts} className="w-full min-h-11 px-3 text-xs text-slate-300 text-left rounded-lg hover:bg-slate-800 flex items-center gap-2"><BookOpen size={14} />{prompts.length === 0 ? "Elegir pack inicial" : "Sumar pack"}</button>}
+              {currentTab === "mi-biblioteca" && <button id="btn-open-recommender" onClick={() => {
+                trackUserEvent("recommendation_open", undefined, { promptsCount: prompts.length, selectedCategory, selectedTags });
                 setGeminiRecommendation(null);
                 setGeminiRecommendationError("");
                 setShowRecommendationModal(true);
-              }}
-              className="hidden md:flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
-              style={{
-                background: "rgba(16,185,129,0.08)",
-                borderColor: "rgba(16,185,129,0.2)",
-                color: "#6ee7b7",
-              }}
-            >
-              <Sparkles size={13} />
-              Recomendar
-            </button>
-          )}
-
-          <button
-            id="btn-open-assistant"
-            onClick={() => {
-              setPresetAItext("");
-              setShowAIAssistant(!showAIAssistant);
-            }}
-            className="flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
-            style={
-              showAIAssistant
-                ? {
-                    background: "rgba(244,63,94,0.1)",
-                    borderColor: "rgba(244,63,94,0.3)",
-                    color: "#fda4af",
-                  }
-                : {
-                    background: "rgba(255,255,255,0.04)",
-                    borderColor: "rgba(255,255,255,0.1)",
-                    color: "#94a3b8",
-                  }
-            }
-            title="Ctrl+K"
-          >
-            <Zap size={13} />
-            <span className="hidden sm:inline">IA</span>
-            <kbd className="hidden lg:inline text-[9px] font-mono opacity-60">
-              ⌘K
-            </kbd>
-          </button>
-
-          <button
-            id="btn-open-switcher"
-            onClick={() => setShowQuickSwitcher(true)}
-            className="flex px-3 py-2 text-xs font-bold rounded-xl border items-center gap-1.5 cursor-pointer transition-all"
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              borderColor: "rgba(255,255,255,0.1)",
-              color: "#94a3b8",
-            }}
-            title="Ctrl+J"
-          >
-            <Search size={13} />
-            <kbd className="hidden lg:inline text-[9px] font-mono opacity-60">
-              ⌘J
-            </kbd>
-          </button>
-
-          <button
-            id="btn-new-prompt"
-            onClick={handleOpenAdd}
-            className="flex px-4 py-2 text-xs font-extrabold rounded-xl items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97]"
-            style={{
-              background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-              color: "white",
-              boxShadow: "0 0 16px rgba(99,102,241,0.3)",
-            }}
-          >
-            <Plus size={14} />
-            Nuevo Prompt
-          </button>
+              }} className="w-full min-h-11 px-3 text-xs text-slate-300 text-left rounded-lg hover:bg-slate-800 flex items-center gap-2"><Sparkles size={14} />Recomendar un prompt</button>}
+              <button id="btn-open-assistant" onClick={() => { setPresetAItext(""); setShowAIAssistant(!showAIAssistant); }} className="w-full min-h-11 px-3 text-xs text-slate-300 text-left rounded-lg hover:bg-slate-800 flex items-center gap-2"><Zap size={14} />{showAIAssistant ? "Cerrar asistente" : "Abrir asistente"}</button>
+              <button id="btn-open-switcher" onClick={() => setShowQuickSwitcher(true)} className="w-full min-h-11 px-3 text-xs text-slate-300 text-left rounded-lg hover:bg-slate-800 flex items-center gap-2"><Search size={14} />Buscador rápido</button>
+            </div>
+          </details>
         </div>
       </div>
-
       {/* ── MAIN LAYOUT: SIDEBAR + CONTENT ─────────────────────── */}
-      <div className="flex gap-4 items-start">
+      <div className="flex flex-col md:flex-row gap-4 items-start">
 
         {/* ── LEFT SIDEBAR ─────────────────────────────────────── */}
         {sidebarOpen && (
           <aside
-            className="hidden md:flex flex-col gap-2 flex-shrink-0 w-52"
-            style={{ minWidth: "13rem" }}
+            id="library-filters-panel"
+            className="flex flex-col gap-2 flex-shrink-0 w-full md:w-52"
           >
             {/* Category navigation */}
             <div
@@ -570,7 +492,7 @@ export function LibraryWorkspaceView({
                         if (isPrimary) setSelectedCategoryPopup(cat.name);
                         setSelectedCategory(cat.name as CategoryFilter);
                       }}
-                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group"
+                      className="w-full min-h-11 flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group focus-visible:outline-2 focus-visible:outline-indigo-400"
                       style={{
                         background: isActive
                           ? `${cat.color}18`
@@ -758,7 +680,7 @@ export function LibraryWorkspaceView({
         )}
 
         {/* ── MAIN CONTENT AREA ──────────────────────────────────── */}
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-w-0 w-full space-y-3">
 
           {/* ── SEARCH + FILTER STRIP ──────────────────────────── */}
           <div
@@ -792,14 +714,14 @@ export function LibraryWorkspaceView({
                     }
                   }}
                   onFocus={(e) => {
-                    setIsTagDropdownOpen(true);
                     e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)";
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
                   }}
                   placeholder="Buscar por título, texto o etiqueta (ej: #ia)..."
-                  className="w-full text-xs rounded-xl border py-2.5 pl-9.5 pr-20 outline-none transition-all text-white placeholder-slate-650"
+                  aria-label={currentTab === "mi-biblioteca" ? "Buscar en mis prompts" : "Buscar prompts de la comunidad"}
+                  className="ui-input w-full min-h-11 text-sm rounded-lg border py-2.5 pl-9.5 pr-36 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 transition-all text-white placeholder-slate-500"
                   style={{
                     background: "rgba(0,0,0,0.3)",
                     borderColor: "rgba(255,255,255,0.08)",
@@ -810,10 +732,12 @@ export function LibraryWorkspaceView({
                 <button
                   type="button"
                   onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-pink-400 hover:text-pink-300 font-extrabold border border-pink-500/20 bg-pink-500/5 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 min-h-11 px-2 text-xs text-slate-400 hover:text-white font-medium rounded-lg flex items-center gap-1 cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-indigo-400"
+                  aria-expanded={isTagDropdownOpen}
+                  aria-label="Filtrar por etiquetas"
                 >
                   <Tag size={10} />
-                  <span>Tags</span>
+                  <span>Etiquetas</span>
                 </button>
 
                 {searchQuery && (
@@ -822,7 +746,8 @@ export function LibraryWorkspaceView({
                       setSearchQuery("");
                       setIsTagDropdownOpen(false);
                     }}
-                    className="absolute right-20 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer mr-2"
+                    className="absolute right-24 top-1/2 -translate-y-1/2 min-w-11 min-h-11 flex items-center justify-center text-slate-500 hover:text-white cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-400"
+                    aria-label="Limpiar búsqueda"
                   >
                     <X size={13} />
                   </button>
@@ -959,7 +884,8 @@ export function LibraryWorkspaceView({
                   <button
                     key={f.id}
                     onClick={() => setLibraryViewFilter(f.id)}
-                    className="flex-shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all"
+                    className="flex-shrink-0 min-h-11 flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-indigo-400"
+                    aria-pressed={isActive}
                     style={{
                       background: isActive
                         ? "rgba(99,102,241,0.15)"
@@ -1006,57 +932,6 @@ export function LibraryWorkspaceView({
                   </span>
                 </button>
               )}
-            </div>
-          )}
-
-          {/* ── STATS STRIP ────────────────────────────────────── */}
-          {user && currentTab === "mi-biblioteca" && (
-            <div
-              className="grid grid-cols-2 sm:grid-cols-4 gap-2"
-            >
-              {[
-                {
-                  label: "Privados",
-                  value: prompts.filter((p) => !p.isShared).length,
-                  color: "#94a3b8",
-                },
-                {
-                  label: "Publicados",
-                  value: prompts.filter((p) => p.isShared).length,
-                  color: "#6ee7b7",
-                },
-                {
-                  label: "Remixes",
-                  value: prompts.filter(
-                    (p) => p.forkedFromPromptId || p.forkedFrom
-                  ).length,
-                  color: "#f472b6",
-                },
-                {
-                  label: "Favoritos propios",
-                  value: prompts.filter((p) => p.isFavorite).length,
-                  color: "#fbbf24",
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="flex items-center gap-3 rounded-2xl border px-3.5 py-3"
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    borderColor: "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  <p
-                    className="text-xl font-black"
-                    style={{ color: stat.color }}
-                  >
-                    {stat.value}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider leading-tight">
-                    {stat.label}
-                  </p>
-                </div>
-              ))}
             </div>
           )}
 
@@ -1152,63 +1027,16 @@ export function LibraryWorkspaceView({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Sección de Usados Recientemente (solo en Mi Biblioteca y cuando no hay búsqueda activa) */}
               {currentTab === "mi-biblioteca" && recentPrompts.length > 0 && !searchQuery && selectedTags.length === 0 && selectedCategory === "Todas" && !selectedFolderId && (
-                <div className="space-y-2.5 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <History size={14} className="text-indigo-400" />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Usados Recientemente</span>
+                <details className="ui-muted-panel border border-slate-700 rounded-lg px-3">
+                  <summary className="min-h-11 flex items-center gap-2 text-xs text-slate-400 font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-400"><History size={14} />Usados recientemente</summary>
+                  <div className="pb-2 space-y-1">
+                    {recentPrompts.map(prompt => <button key={`recent-${prompt.id}`} onClick={() => handleUsePrompt(prompt, currentTab)} className="ui-action-secondary min-h-11 w-full flex items-center justify-between gap-3 px-3 rounded-lg text-left text-xs text-slate-300 focus-visible:outline-2 focus-visible:outline-indigo-400"><span className="min-w-0 truncate">{prompt.title}</span><span className="shrink-0 text-slate-400">Preparar</span></button>)}
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {recentPrompts.map((p) => (
-                      <div
-                        key={`recent-${p.id}`}
-                        className="bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 p-3.5 rounded-2xl flex flex-col justify-between h-[105px] transition-all group relative overflow-hidden"
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <p className="text-[9px] text-slate-500 font-bold truncate uppercase tracking-wider">{p.category}</p>
-                          <p className="text-[11px] font-extrabold text-slate-200 leading-tight truncate group-hover:text-white transition-colors">{p.title}</p>
-                        </div>
-                        <div className="flex items-center justify-between gap-2 mt-2">
-                          <span className="flex items-center gap-1 text-[8px] text-slate-500 font-medium">
-                            <Clock size={8} />
-                            <span>Reciente</span>
-                          </span>
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopyFilledPrompt(p);
-                              }}
-                              className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
-                              title="Copiar rápido"
-                            >
-                              <Share2 size={10.5} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUsePrompt(p, currentTab);
-                              }}
-                              className="p-1.5 bg-indigo-600/10 hover:bg-indigo-650 text-indigo-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-                              title="Rellenar variables"
-                            >
-                              <Zap size={10.5} />
-                            </button>
-                          </div>
-                        </div>
-                        {/* Decorative background flare */}
-                        <div className="absolute top-0 right-0 w-8 h-8 bg-indigo-500/5 rounded-full blur-xl group-hover:bg-indigo-500/10 transition-colors pointer-events-none" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                </details>
               )}
-
               {/* Grilla principal de Prompts */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 <AnimatePresence mode="popLayout">
                   {filteredPrompts.map((p) => (
 
@@ -1228,6 +1056,7 @@ export function LibraryWorkspaceView({
                   >
                     <PromptCard
                       prompt={p}
+                      compact={currentTab === "mi-biblioteca"}
                       folders={folders}
                       onFavoriteToggle={handleFavoriteToggle}
                       onEdit={handleOpenEdit}
