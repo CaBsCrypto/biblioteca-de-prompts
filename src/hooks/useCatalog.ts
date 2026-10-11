@@ -30,6 +30,7 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
   const [myResources, setMyResources] = useState<CatalogResource[]>([]);
   const [pending, setPending] = useState<CatalogSubmission[]>([]);
   const [savedSkills, setSavedSkills] = useState<SavedCatalogSkill[]>([]);
+  const [privateSnapshotUid, setPrivateSnapshotUid] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadingPrivate, setLoadingPrivate] = useState(false);
   const [mutationBusy, setMutationBusy] = useState(false);
@@ -56,12 +57,13 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
       fetchSavedCatalogSkills(db, uid), isFounder ? fetchPendingCatalogSubmissions(db) : Promise.resolve([] as CatalogSubmission[]),
     ]) : Promise.resolve([[], [], [], [], []] as [CatalogDraft[], CatalogSubmission[], CatalogResource[], SavedCatalogSkill[], CatalogSubmission[]]);
     const [publicResult, privateResult] = await Promise.allSettled([fetchPublishedCatalogResources(db), privateReads]);
-    if (!mounted.current || currentRequest !== requestId.current) return;
+    if (!mounted.current || currentRequest !== requestId.current || accountUid.current !== uid) return;
     const failures: string[] = [];
     if (publicResult.status === 'fulfilled') setResources(publicResult.value);
     else failures.push('Catálogo: ' + errorMessage(publicResult.reason));
     if (privateResult.status === 'fulfilled') {
       const [nextDrafts, nextSubmissions, nextResources, nextSaved, nextPending] = privateResult.value;
+      setPrivateSnapshotUid(uid);
       setDrafts(nextDrafts); setSubmissions(nextSubmissions); setMyResources(nextResources); setSavedSkills(nextSaved); setPending(nextPending);
     } else failures.push('Tu biblioteca de catálogo: ' + errorMessage(privateResult.reason));
     setError(failures.length ? failures.join('\n') : null);
@@ -124,7 +126,13 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
     fetchPublishedResourceForSource(db, { folderId }), []);
 
   return {
-    resources, loading, error, drafts, submissions, myResources, pending, savedSkills, loadingPrivate, mutationBusy,
+    resources, loading, error,
+    drafts: uid && privateSnapshotUid === uid ? drafts : [],
+    submissions: uid && privateSnapshotUid === uid ? submissions : [],
+    myResources: uid && privateSnapshotUid === uid ? myResources : [],
+    pending: uid && privateSnapshotUid === uid ? pending : [],
+    savedSkills: uid && privateSnapshotUid === uid ? savedSkills : [],
+    loadingPrivate, mutationBusy,
     isFounder, identity, refresh, saveDraft, deleteDraft, submitDraft, approve, reject, withdraw, saveSkill,
     fetchPayload, fetchResource, resolveLegacyShare, resolveLegacyCollection,
   };

@@ -1,5 +1,5 @@
 import {
-  collection, deleteDoc, doc, documentId, getDoc, getDocs, limit, orderBy, query, runTransaction,
+  collection, deleteDoc, doc, documentId, getDoc, getDocFromServer, getDocs, limit, orderBy, query, runTransaction,
   serverTimestamp, setDoc, startAfter, updateDoc, where,
   type Firestore, type QueryDocumentSnapshot, type DocumentData,
 } from 'firebase/firestore';
@@ -53,7 +53,7 @@ export async function fetchPublishedCatalogResources(db: Firestore): Promise<Cat
 export async function fetchCatalogResource(db: Firestore, id: string): Promise<CatalogResource | null> {
   if (!id || id.includes('/')) return null;
   try {
-    const snapshot = await getDoc(doc(db, RESOURCES, id));
+    const snapshot = await getDocFromServer(doc(db, RESOURCES, id));
     if (!snapshot.exists() || snapshot.data().state !== 'published') return null;
     return { ...snapshot.data(), id: snapshot.id } as CatalogResource;
   } catch (error) {
@@ -66,7 +66,7 @@ export async function fetchCatalogResource(db: Firestore, id: string): Promise<C
 export async function fetchCatalogPayload(db: Firestore, resourceId: string): Promise<CatalogPayload | null> {
   const resource = await fetchCatalogResource(db, resourceId);
   if (!resource) return null;
-  const snapshot = await getDoc(doc(db, PAYLOADS, resourceId));
+  const snapshot = await getDocFromServer(doc(db, PAYLOADS, resourceId));
   if (!snapshot.exists()) return null;
   const payload = { ...snapshot.data(), id: snapshot.id } as CatalogPayload;
   if (payload.submissionId !== resource.submissionId) throw new Error('La publicación cambió. Actualiza la ficha para obtener su nueva versión.');

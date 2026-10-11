@@ -141,7 +141,7 @@ import type { CatalogResource } from "./typesCatalog";
 const CatalogWorkspace = lazy(() => import("./components/catalog/CatalogWorkspace"));
 
 export default function App() {
-  const { state: appStoreState, goSection } = useAppStore();
+  const { state: appStoreState, goSection, setCatalogBrowse } = useAppStore();
   const currentSection = appStoreState.section as AppSection;
   const setCurrentSection = (sect: AppSection) => goSection(sect);
   const router = useAppRouter();
@@ -292,6 +292,14 @@ export default function App() {
       router.navigateUrl(url);
     }
   });
+  const privateAccountRef = useRef(user?.uid);
+  useEffect(() => {
+    if (privateAccountRef.current === user?.uid) return;
+    privateAccountRef.current = user?.uid;
+    setEditingPrompt(null); setUsingPrompt(null); setCopyingFilledPrompt(null);
+    mod.closeAll();
+  }, [user?.uid]);
+
   const isFounder = Boolean(user && currentUserProfile?.uid === user.uid && currentUserProfile.role === "founder");
   const catalogIdentity = useMemo(() => ({
     name: currentUserProfile?.displayName || user?.displayName || "Creador",
@@ -653,6 +661,9 @@ export default function App() {
   };
 
   const handleSectionChange = (section: AppSection) => {
+    if (['inicio', 'explorar', 'prompts', 'skills', 'creadores'].includes(section)) {
+      setCatalogBrowse({ returnSection: section === 'inicio' ? 'explorar' : section as 'explorar' | 'prompts' | 'skills' | 'creadores' });
+    }
     setCurrentSection(section);
     setSelectedCategory("Todas");
     setSearchQuery("");
@@ -1587,6 +1598,9 @@ export default function App() {
   const openCatalogResource = (resource: CatalogResource) => {
     setSharedBriefing(null);
     closeClassroom();
+    if (!router.state.resourceId && ['explorar', 'prompts', 'skills', 'creadores', 'inicio'].includes(currentSection)) {
+      setCatalogBrowse({ returnSection: currentSection === 'inicio' ? 'explorar' : currentSection as 'explorar' | 'prompts' | 'skills' | 'creadores' });
+    }
     router.setRouter({ section: "explorar", resourceId: resource.id, resourceKind: resource.kind });
   };
   const catalogMode = currentSection === "creadores" ? "creators"
@@ -1597,14 +1611,17 @@ export default function App() {
     <Suspense fallback={<DeferredInlineFallback label="Cargando Biblioteca..." />}>
       <CatalogWorkspace
         mode={mode} catalog={catalog} user={user} identity={catalogIdentity} ownPrompts={prompts}
-        browseKind={currentSection === 'prompts' ? 'prompt' : currentSection === 'skills' ? 'skill' : 'all'}
+        browseKind={(router.state.resourceId ? appStoreState.catalogBrowse.returnSection : currentSection) === 'prompts' ? 'prompt' : (router.state.resourceId ? appStoreState.catalogBrowse.returnSection : currentSection) === 'skills' ? 'skill' : 'all'}
         onBrowseKind={(kind) => handleSectionChange(kind === 'prompt' ? 'prompts' : kind === 'skill' ? 'skills' : 'explorar')}
         onSignIn={() => void handleSignIn()} onOpenResource={openCatalogResource}
         onUsePrompt={(prompt) => handleUsePrompt(prompt, "catalog")}
-        onSavePrompt={(prompt) => { handleSectionChange('mi-biblioteca'); void handleForkPrompt(prompt); }} onNotify={triggerNotification}
+        onSavePrompt={async (prompt) => {
+          const saved = await handleForkPrompt(prompt, { beforeOpen: () => handleSectionChange('mi-biblioteca') });
+          if (!saved) throw new Error('No pudimos guardar el remix. Inténtalo de nuevo.');
+        }} onNotify={triggerNotification}
         selectedResourceId={router.state.resourceId || null} selectedResourceKind={router.state.resourceKind || null}
         legacyShareId={router.state.share} legacyCollectionId={router.state.folder} initialAuthorUid={router.state.profile}
-        onCloseResource={() => router.setRouter({ section: router.state.resourceKind === 'prompt' ? 'prompts' : router.state.resourceKind === 'skill' ? 'skills' : 'explorar' })}
+        onCloseResource={() => router.setRouter({ section: appStoreState.catalogBrowse.returnSection })}
       />
     </Suspense>
   );
@@ -1815,7 +1832,7 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
-        <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-12 space-y-5 sm:space-y-6 md:space-y-8">
+        <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 space-y-5 sm:space-y-6">
           {currentSection === "mi-biblioteca" && <>
             <div className="catalog-page-heading"><h1>Mi Biblioteca</h1><p>Tus prompts y skills guardados, con sus versiones y atribución.</p></div>
             <div className="catalog-kind-filter" role="tablist" aria-label="Recursos de Mi Biblioteca">
@@ -2325,7 +2342,7 @@ export default function App() {
       )}
 
       <AppModalLayer
-        showFormModal={showFormModal}
+        showFormModal={showFormModal && privateAccountRef.current === user?.uid && (!editingPrompt || editingPrompt.userId === user?.uid)}
         editingPrompt={editingPrompt}
         folders={folders}
         onSavePrompt={handleSavePrompt}
@@ -2335,9 +2352,9 @@ export default function App() {
         }}
         onOptimizeWithAI={handleOptimizeWithAIDirect}
         onNotification={triggerNotification}
-        usingPrompt={usingPrompt}
+        usingPrompt={privateAccountRef.current === user?.uid ? usingPrompt : null}
         onCloseUsingPrompt={() => setUsingPrompt(null)}
-        copyingFilledPrompt={copyingFilledPrompt}
+        copyingFilledPrompt={privateAccountRef.current === user?.uid ? copyingFilledPrompt : null}
         onCloseCopyingFilledPrompt={() => setCopyingFilledPrompt(null)}
         showQuickSwitcher={showQuickSwitcher}
         allSearchablePrompts={allSearchablePrompts}

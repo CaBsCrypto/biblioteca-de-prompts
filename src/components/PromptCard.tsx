@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork, CheckCircle2, RotateCcw } from "lucide-react";
+import { Copy, Edit2, EyeOff, Flag, Play, Star, Trash2, Check, Folder, StickyNote, Globe, Share2, Download, Printer, Sparkles, Heart, MessageSquare, GitFork, CheckCircle2, RotateCcw, FileText } from "lucide-react";
 import { Prompt, Folder as FolderType } from "../types";
 import { User } from "firebase/auth";
 import CommentsSection from "./CommentsSection";
 import { escapeHtml } from "../utils/sanitize";
 import { fetchPublishedResourceForSource } from "../services/firestore/catalogService";
 import { catalogResourcePath } from "../router/useAppRouter";
+import { copyText, selectCopyText } from "../utils/clipboard";
 
 interface PromptCardProps {
   key?: React.Key;
@@ -30,6 +31,7 @@ interface PromptCardProps {
   onReportPrompt?: (prompt: Prompt) => void;
   isSocialFavorite?: boolean;
   knownRemixCount?: number;
+  compact?: boolean;
 }
 
 export default function PromptCard({
@@ -51,16 +53,49 @@ export default function PromptCard({
   onHidePrompt,
   onReportPrompt,
   isSocialFavorite = false,
-  knownRemixCount = 0
+  knownRemixCount = 0,
+  compact = false,
 }: PromptCardProps) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentCount, setCommentCount] = useState<number | null>(null);
+  const [copying, setCopying] = useState(false);
+  const [manualText, setManualText] = useState<string | null>(null);
+  const manualRef = useRef<HTMLTextAreaElement>(null);
+  const copyBusyRef = useRef(false);
+  const shareBusyRef = useRef(false);
+  const shareEpochRef = useRef(0);
+  const copyEpochRef = useRef(0);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFounderPackPrompt = prompt.userId === "founder-pack" || prompt.id.startsWith("founder-pack-");
   const forkSourceTitle = prompt.forkedFromTitle || prompt.forkedFrom;
   const forkSourceAuthor = prompt.forkedFromAuthorName || "";
+
+  useEffect(() => {
+    copyEpochRef.current += 1;
+    shareEpochRef.current += 1;
+    copyBusyRef.current = false;
+    shareBusyRef.current = false;
+    setCopying(false);
+    setShareLoading(false);
+    setCopied(false);
+    setLinkCopied(false);
+    setManualText(null);
+    return () => {
+      copyEpochRef.current += 1;
+      shareEpochRef.current += 1;
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, [prompt.id, prompt.promptText]);
+
+  useEffect(() => {
+    if (manualText !== null) {
+      selectCopyText(manualRef.current);
+      manualRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [manualText]);
 
   useEffect(() => {
     if (prompt.isShared && !isFounderPackPrompt) {
@@ -114,22 +149,44 @@ export default function PromptCard({
     }
   };
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(prompt.promptText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    if (onNotification) {
-      onNotification("Contenido del prompt copiado con éxito.", "success");
+    if (copyBusyRef.current || shareBusyRef.current) return;
+    copyBusyRef.current = true;
+    const epoch = ++copyEpochRef.current;
+    const original = prompt.promptText;
+    setCopying(true);
+    setCopied(false);
+    setManualText(null);
+    try {
+      const confirmed = await copyText(original);
+      if (epoch !== copyEpochRef.current) return;
+      if (confirmed) {
+        setCopied(true);
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
+        onNotification?.("Original copiado.", "success");
+      } else {
+        setManualText(original);
+        onNotification?.("El navegador bloqueó la copia automática. Copia el texto seleccionado con Ctrl+C o ⌘C.", "info");
+      }
+    } finally {
+      if (epoch === copyEpochRef.current) {
+        copyBusyRef.current = false;
+        setCopying(false);
+      }
     }
   };
 
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (shareLoading) return;
+    if (shareBusyRef.current || copyBusyRef.current) return;
+    shareBusyRef.current = true;
+    const epoch = shareEpochRef.current;
     setShareLoading(true);
     try {
       const publications = await fetchPublishedResourceForSource(db, { promptId: prompt.id });
+      if (epoch !== shareEpochRef.current) return;
       const resource = publications[0];
       if (!resource) {
         onNotification?.("Postula este prompt desde Publicar. Podrás compartir su ficha cuando tenga una versión aprobada.", "info");
@@ -137,17 +194,26 @@ export default function PromptCard({
       }
       const shareUrl = new URL(catalogResourcePath(resource.kind, resource.id), window.location.origin).href;
       try {
-        await navigator.clipboard.writeText(shareUrl);
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 2000);
-        onNotification?.("Enlace de la ficha aprobada copiado.", "success");
+        const confirmed = await copyText(shareUrl);
+        if (epoch !== shareEpochRef.current) return;
+        if (confirmed) {
+          setLinkCopied(true);
+          setTimeout(() => setLinkCopied(false), 2000);
+          onNotification?.("Enlace de la ficha aprobada copiado.", "success");
+        } else {
+          setManualText(shareUrl);
+          onNotification?.("Copia el enlace seleccionado con Ctrl+C o ⌘C.", "info");
+        }
       } catch {
         onNotification?.("No pudimos copiar el enlace. Inténtalo de nuevo.", "info");
       }
     } catch {
       onNotification?.("No pudimos comprobar la publicación del catálogo. Inténtalo de nuevo.", "info");
     } finally {
-      setShareLoading(false);
+      if (epoch === shareEpochRef.current) {
+        shareBusyRef.current = false;
+        setShareLoading(false);
+      }
     }
   };
 
@@ -155,10 +221,12 @@ export default function PromptCard({
     e.stopPropagation();
     const tagsStr = prompt.tags && prompt.tags.length > 0 ? prompt.tags.map(t => `#${t}`).join(" ") : "Ninguna";
     const notesStr = prompt.notas ? `\n## Notas de Ejecución\n${prompt.notas}\n` : "";
+    const attribution = forkSourceTitle ? `\n**Remix de:** ${forkSourceTitle}${forkSourceAuthor ? ` por ${forkSourceAuthor}` : ""}\n` : "";
     const markdownContent = `# ${prompt.title}
 
 **Categoría:** ${prompt.category}
 **Etiquetas:** ${tagsStr}
+${attribution}
 
 ## Descripción
 ${prompt.description || "Sin descripción proporcionada."}
@@ -279,6 +347,7 @@ ${notesStr}
       <div class="print-section-title">Notas de Ejecución / Instrucciones</div>
       <div class="print-box">${escapeHtml(prompt.notas)}</div>
     ` : "";
+    const attributionHtml = forkSourceTitle ? `<p><strong>Remix de:</strong> ${escapeHtml(forkSourceTitle)}${forkSourceAuthor ? ` por ${escapeHtml(forkSourceAuthor)}` : ""}</p>` : "";
 
     printContainer.innerHTML = `
       <div class="print-title">${escapeHtml(prompt.title)}</div>
@@ -286,6 +355,7 @@ ${notesStr}
         <strong>Categoría:</strong> ${escapeHtml(prompt.category)} &nbsp;|&nbsp;
         <strong>Etiquetas:</strong> ${tagsStr || "Ninguna"} &nbsp;|&nbsp;
         <strong>Fecha de Exportación:</strong> ${new Date().toLocaleDateString()}
+        ${attributionHtml}
       </div>
       
       <div class="print-section-title">Descripción</div>
@@ -320,6 +390,48 @@ ${notesStr}
       onNotification("Preparado diálogo de impresión / guardado PDF.", "success");
     }
   };
+
+  if (compact && !isCommunityView) {
+    const compactAction = "ui-action-secondary min-h-11 px-3 rounded-lg border border-slate-700 text-xs font-medium flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:opacity-50 disabled:cursor-wait";
+    return (
+      <article id={`prompt-card-${prompt.id}`} className="surface-card prompt-surface bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-col gap-3 h-full" draggable onDragStart={event => {
+        if ((event.target as HTMLElement).closest("button, textarea, summary")) { event.preventDefault(); return; }
+        event.dataTransfer.setData("text/plain", prompt.id);
+        event.dataTransfer.effectAllowed = "move";
+      }}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-slate-400 inline-flex items-center gap-1.5"><FileText size={13} />Prompt guardado{forkSourceTitle ? " · Remix" : ""}</p>
+          <button id={`btn-fav-${prompt.id}`} disabled={copying || shareLoading} onClick={() => { if (!copyBusyRef.current && !shareBusyRef.current) onFavoriteToggle(prompt); }} aria-label={prompt.isFavorite ? `Quitar ${prompt.title} de favoritos` : `Marcar ${prompt.title} como favorito`} aria-pressed={prompt.isFavorite} className={`${compactAction} min-w-11 p-0 border-transparent ${prompt.isFavorite ? "text-amber-300" : "text-slate-400"}`}><Star size={16} fill={prompt.isFavorite ? "currentColor" : "none"} /></button>
+        </div>
+        <div className="space-y-1.5">
+          <h3 id={`prompt-title-${prompt.id}`} className="text-base font-semibold leading-snug text-white break-words">{prompt.title}</h3>
+          <p id={`prompt-desc-${prompt.id}`} className="text-sm text-slate-400 leading-relaxed line-clamp-2">{prompt.description || "Abre la ficha para preparar y copiar este prompt."}</p>
+          {forkSourceTitle && <p className="text-xs text-slate-400 flex items-start gap-1.5"><GitFork size={13} className="shrink-0 mt-0.5" /><span>Basado en {forkSourceTitle}{forkSourceAuthor ? ` por ${forkSourceAuthor}` : ""}</span></p>}
+          <p className="text-xs text-slate-500">{prompt.category}{prompt.folderId && folders.find(folder => folder.id === prompt.folderId) ? ` · ${folders.find(folder => folder.id === prompt.folderId)?.name}` : ""}</p>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 mt-auto">
+          <button id={`btn-use-${prompt.id}`} onClick={() => { if (!copyBusyRef.current && !shareBusyRef.current) onUse(prompt); }} disabled={copying || shareLoading} className={`${compactAction} text-indigo-300 border-indigo-500/30`}><FileText size={14} /><span>Ver y preparar</span></button>
+          <button id={`btn-copy-${prompt.id}`} onClick={event => void handleCopy(event)} disabled={copying || shareLoading} className={`${compactAction} text-slate-300`} aria-label={`Copiar original de ${prompt.title}`}>{copied ? <Check size={14} /> : <Copy size={14} />}<span>{copying ? "Copiando…" : copied ? "Copiado" : "Copiar"}</span></button>
+        </div>
+        <details className="border-t border-slate-700/60 pt-1">
+          <summary className="min-h-11 flex items-center text-xs font-medium text-slate-400 cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400">Más acciones</summary>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button id={`btn-edit-${prompt.id}`} disabled={copying || shareLoading} onClick={() => { if (!copyBusyRef.current && !shareBusyRef.current) onEdit(prompt); }} className={`${compactAction} text-slate-300`}><Edit2 size={14} />Editar</button>
+            {!isFounderPackPrompt && <button id={`btn-share-${prompt.id}`} onClick={event => void handleShareClick(event)} disabled={copying || shareLoading} className={`${compactAction} text-slate-300`}><Share2 size={14} />{shareLoading ? "Comprobando…" : linkCopied ? "Copiado" : "Copiar enlace público"}</button>}
+            <button id={`btn-export-md-${prompt.id}`} disabled={copying || shareLoading} onClick={handleExportMarkdown} className={`${compactAction} text-slate-300`}><Download size={14} />Markdown</button>
+            <button id={`btn-print-${prompt.id}`} disabled={copying || shareLoading} onClick={handleExportPDF} className={`${compactAction} text-slate-300`}><Printer size={14} />Imprimir</button>
+            <button id={`btn-delete-${prompt.id}`} disabled={copying || shareLoading} onClick={() => { if (!copyBusyRef.current && !shareBusyRef.current) onDelete(prompt); }} className={`${compactAction} text-rose-300`}><Trash2 size={14} />Eliminar</button>
+          </div>
+          {prompt.tags?.length > 0 && <p className="text-xs text-slate-400 pt-3">{prompt.tags.map(tag => `#${tag}`).join(" · ")}</p>}
+          {knownRemixCount > 0 && <p className="text-xs text-slate-400 pt-2">{knownRemixCount} remix{knownRemixCount === 1 ? " conocido" : "es conocidos"}</p>}
+          {prompt.feedbackStatus && prompt.feedbackStatus !== "pending" && <div className="pt-3 text-xs text-slate-400"><p>{prompt.feedbackStatus === "approved" ? "Aprobado por el profesor" : "Revisión requerida por el profesor"}</p>{prompt.feedbackComments?.map((comment, index) => <p key={index} className="mt-1">{comment.authorName}: {comment.text}</p>)}</div>}
+          {!isFounderPackPrompt && <button onClick={() => setShowComments(previous => !previous)} aria-expanded={showComments} className={`${compactAction} text-slate-300 mt-2 w-full`}><MessageSquare size={14} />Sugerencias{commentCount ? ` (${commentCount})` : ""}</button>}
+        </details>
+        {manualText !== null && <div role="status" className="space-y-2"><p className="text-xs text-slate-400">Copia el texto seleccionado con Ctrl+C o ⌘C.</p><textarea ref={manualRef} aria-label={`Texto de ${prompt.title} para copiar manualmente`} readOnly value={manualText} rows={4} className="ui-input w-full bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-2 text-xs font-mono focus-visible:outline-2 focus-visible:outline-indigo-400" onFocus={event => event.currentTarget.select()} /></div>}
+        {showComments && <CommentsSection promptId={prompt.id} currentUser={currentUser} promptOwnerId={prompt.userId} onNotification={onNotification} />}
+      </article>
+    );
+  }
 
   return (
     <div
@@ -532,6 +644,7 @@ ${notesStr}
         )}
       </div>
 
+      {manualText !== null && <div role="status" className="space-y-2 mb-3"><p className="text-xs text-slate-400">Copia el texto seleccionado con Ctrl+C o ⌘C.</p><textarea ref={manualRef} aria-label={`Texto de ${prompt.title} para copiar manualmente`} readOnly value={manualText} rows={4} className="ui-input w-full bg-slate-950 text-slate-300 border border-slate-700 rounded-lg p-2 text-xs font-mono" onFocus={event => event.currentTarget.select()} /></div>}
       {/* Actions segment */}
       <div className="border-t border-slate-700/50 pt-4 flex flex-col gap-4 mt-auto">
         <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
@@ -694,6 +807,7 @@ ${notesStr}
             <button
               id={`btn-copy-${prompt.id}`}
               onClick={handleCopy}
+              disabled={copying}
               className={`ui-action-secondary px-3 py-2.5 sm:py-1.5 min-h-11 sm:min-h-0 rounded-xl sm:rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 copied
                   ? "bg-slate-800 text-slate-200 border-indigo-500/40"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
@@ -31,6 +31,10 @@ export function useCommunity({
   getAuthorIdentity,
   onNotification
 }: UseCommunityOptions) {
+  const accountUid = useRef(user?.uid);
+  accountUid.current = user?.uid;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [communityPrompts, setCommunityPrompts] = useState<Prompt[]>([]);
   const [communityFolders, setCommunityFolders] = useState<Folder[]>([]);
   const [loadingCommunityPrompts, setLoadingCommunityPrompts] = useState(false);
@@ -87,13 +91,14 @@ export function useCommunity({
     }
   };
 
-  const handleForkPrompt = async (prompt: Prompt) => {
+  const handleForkPrompt = async (prompt: Prompt, options: { beforeOpen?: () => void } = {}): Promise<boolean> => {
     if (!user) {
       onNotification("Debes iniciar sesion para clonar prompts de la comunidad.", "info");
-      return;
+      return false;
     }
 
     setLoadingPrompts(true);
+    const activeAccount = () => mounted.current && accountUid.current === user.uid;
     try {
       const sourcePromptId = prompt.forkedFromPromptId || prompt.id;
       let existingFork = prompts.find((candidate) =>
@@ -103,6 +108,7 @@ export function useCommunity({
 
       if (!existingFork) {
         const ownPromptsSnapshot = await getDocs(query(collection(db, "prompts"), where("userId", "==", user.uid)));
+        if (!activeAccount()) return false;
         existingFork = ownPromptsSnapshot.docs
           .map(mapPromptDoc)
           .find((candidate) =>
@@ -113,9 +119,10 @@ export function useCommunity({
 
       if (existingFork) {
         setCurrentTab("mi-biblioteca");
+        options.beforeOpen?.();
         onOpenEdit(existingFork);
         onNotification("Ya tenias este prompt en tu biblioteca. Abrimos tu copia: editala, usala o publicala cuando este lista.", "info");
-        return;
+        return true;
       }
 
       const forkData = {
@@ -143,6 +150,7 @@ export function useCommunity({
       };
 
       const docRef = await addDoc(collection(db, "prompts"), forkData);
+      if (!activeAccount()) return false;
       const editableFork = {
         id: docRef.id,
         ...forkData,
@@ -151,13 +159,16 @@ export function useCommunity({
       } as Prompt;
 
       setCurrentTab("mi-biblioteca");
+      options.beforeOpen?.();
       onOpenEdit(editableFork);
       onNotification(`Remix guardado. Editalo ahora, usalo en tu flujo o publicalo cuando este listo.`, "success");
+      return true;
     } catch (err) {
       console.error("Error forking prompt:", err);
-      onNotification("No se pudo clonar el prompt de la comunidad.", "info");
+      if (activeAccount()) onNotification("No se pudo clonar el prompt de la comunidad.", "info");
+      return false;
     } finally {
-      setLoadingPrompts(false);
+      if (activeAccount()) setLoadingPrompts(false);
     }
   };
 

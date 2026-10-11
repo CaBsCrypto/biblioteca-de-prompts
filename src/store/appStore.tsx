@@ -1,5 +1,12 @@
 import { createContext, useContext, useMemo, useReducer, useCallback, type ReactNode, useEffect, type Dispatch } from "react";
 import type { Prompt } from "../types";
+import type { CatalogFilters } from "../typesCatalog";
+
+export interface CatalogBrowseState {
+  filters: Omit<CatalogFilters, 'kind'>;
+  page: number;
+  returnSection: 'explorar' | 'prompts' | 'skills' | 'creadores';
+}
 
 export type ModalId =
   | "none"
@@ -70,6 +77,7 @@ export interface AppState {
   selectedCommunityScope: "todos" | "siguiendo" | "favoritos" | "remixeados";
   libraryFilter: "todos" | "privados" | "publicados" | "remixes" | "favoritos";
   router: AppRouterState;
+  catalogBrowse: CatalogBrowseState;
 }
 
 export type AppAction =
@@ -81,6 +89,7 @@ export type AppAction =
   | { type: "select-community-scope"; scope: AppState["selectedCommunityScope"] }
   | { type: "set-library-filter"; filter: AppState["libraryFilter"] }
   | { type: "router"; router: AppRouterState }
+  | { type: "catalog-browse"; patch: Partial<CatalogBrowseState> }
   | { type: "notify"; message: string; notifType?: "success" | "info" | "error" }
   | { type: "dismiss-notification"; id: string };
 
@@ -94,6 +103,7 @@ const initialState: AppState = {
   selectedCommunityScope: "todos",
   libraryFilter: "todos",
   router: {},
+  catalogBrowse: { filters: { query: '', category: '', compatibility: '', author: '' }, page: 1, returnSection: 'explorar' },
 };
 
 function reducer(state: AppState, action: AppAction): AppState {
@@ -114,6 +124,8 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, libraryFilter: action.filter };
     case "router":
       return { ...state, router: action.router };
+    case "catalog-browse":
+      return { ...state, catalogBrowse: { ...state.catalogBrowse, ...action.patch } };
     case "notify": {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return {
@@ -143,6 +155,7 @@ interface AppStoreApi {
   closeModal: () => void;
   goSection: (section: AppSectionId) => void;
   setEditingPrompt: (prompt: Prompt | null) => void;
+  setCatalogBrowse: (patch: Partial<CatalogBrowseState>) => void;
 }
 
 const StoreContext = createContext<AppStoreApi | null>(null);
@@ -176,6 +189,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "edit-prompt", prompt });
   }, []);
 
+  const setCatalogBrowse = useCallback((patch: Partial<CatalogBrowseState>) => {
+    dispatch({ type: 'catalog-browse', patch });
+  }, []);
+
   useEffect(() => {
     if (state.notifications.length === 0) return;
     const timers = state.notifications.map((n) =>
@@ -196,8 +213,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       closeModal,
       goSection,
       setEditingPrompt,
+      setCatalogBrowse,
     }),
-    [state, notify, dismiss, openModal, closeModal, goSection, setEditingPrompt]
+    [state, notify, dismiss, openModal, closeModal, goSection, setEditingPrompt, setCatalogBrowse]
   );
 
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>;
