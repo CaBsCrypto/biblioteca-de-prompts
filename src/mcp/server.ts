@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { CatalogReader } from './contracts';
 import { InvalidCatalogRequest, ResourceUnavailable, VersionChanged } from './contracts';
 
-export const LIBRARY_URI = 'ui://biblioteca/library-v4.html';
+export const LIBRARY_URI = 'ui://biblioteca/library-v5.html';
 const text = z.string();
 const metadata = z.object({
   title: text, summary: text, outcome: text, category: text, tags: z.array(text), compatibility: z.array(text),

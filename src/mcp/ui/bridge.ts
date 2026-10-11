@@ -10,18 +10,31 @@ export interface WidgetState {
   author: string;
   selectedId: string;
   values: Record<string, string>;
+  collapsed: boolean;
+  catalogExpanded: boolean;
 }
 
 export const EMPTY_WIDGET_STATE: WidgetState = {
-  kind: 'all', query: '', category: '', compatibility: '', author: '', selectedId: '', values: {},
+  kind: 'all', query: '', category: '', compatibility: '', author: '', selectedId: '', values: {}, collapsed: false, catalogExpanded: false,
 };
+
+export type WidgetDisplayMode = 'inline' | 'fullscreen' | 'pip';
+
+export interface WidgetLayoutContext {
+  maxHeight?: number;
+  safeAreaInsets: { top: number; right: number; bottom: number; left: number };
+}
 
 interface ChatGPTHost {
   widgetState?: unknown;
   toolOutput?: unknown;
   toolInput?: Record<string, unknown>;
   theme?: 'light' | 'dark';
-  displayMode?: 'inline' | 'fullscreen' | 'pip';
+  displayMode?: WidgetDisplayMode;
+  availableDisplayModes?: unknown;
+  containerDimensions?: unknown;
+  maxHeight?: unknown;
+  safeAreaInsets?: unknown;
   setWidgetState?: (state: { modelContent: unknown; privateContent: WidgetState }) => void;
   requestClose?: () => void | Promise<void>;
   callTool?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -38,6 +51,7 @@ export interface WidgetPresentation {
 type WidgetEvent =
   | ({ type: 'data' } & WidgetPresentation)
   | { type: 'connected' }
+  | { type: 'context' }
   | { type: 'error'; message: string };
 
 const STATE_KEY = 'biblioteca.widget.v1';
@@ -67,6 +81,8 @@ export function parseWidgetState(value: unknown): WidgetState | undefined {
   const input = value as Record<string, unknown>;
   const state = { ...EMPTY_WIDGET_STATE, values: {} as Record<string, string> };
   if (input.kind === 'prompt' || input.kind === 'skill' || input.kind === 'all') state.kind = input.kind;
+  if (typeof input.collapsed === 'boolean') state.collapsed = input.collapsed;
+  if (typeof input.catalogExpanded === 'boolean') state.catalogExpanded = input.catalogExpanded;
   for (const key of ['query', 'category', 'compatibility', 'author', 'selectedId'] as const) {
     if (typeof input[key] === 'string') state[key] = input[key].slice(0, key === 'query' ? 500 : 128);
   }
@@ -88,12 +104,48 @@ function hostWindow(): ChatGPTHost | undefined {
   return typeof window === 'undefined' ? undefined : (window as Window & { openai?: ChatGPTHost }).openai;
 }
 
+function objectFields(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function boundedDimension(value: unknown, minimum: number, maximum: number): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum ? value : undefined;
+}
+
+/** Malformed host dimensions never become unbounded CSS or obscure the conversation. */
+export function parseWidgetLayoutContext(primary: unknown, legacy?: unknown): WidgetLayoutContext {
+  const context = objectFields(primary);
+  const fallback = objectFields(legacy);
+  const dimensions = objectFields(context?.containerDimensions);
+  const legacyDimensions = objectFields(fallback?.containerDimensions);
+  const maxHeight = boundedDimension(dimensions?.maxHeight, 1, 10_000)
+    ?? boundedDimension(dimensions?.height, 1, 10_000)
+    ?? boundedDimension(fallback?.maxHeight, 1, 10_000)
+    ?? boundedDimension(legacyDimensions?.maxHeight, 1, 10_000)
+    ?? boundedDimension(legacyDimensions?.height, 1, 10_000);
+  const insets = objectFields(context?.safeAreaInsets);
+  const legacyInsets = objectFields(fallback?.safeAreaInsets);
+  const safeAreaInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+  for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+    safeAreaInsets[side] = boundedDimension(insets?.[side], 0, 1_000)
+      ?? boundedDimension(legacyInsets?.[side], 0, 1_000) ?? 0;
+  }
+  return { ...(maxHeight === undefined ? {} : { maxHeight }), safeAreaInsets };
+}
+
+/** An advertised empty array is authoritative. Never infer picture-in-picture support. */
+export function parseWidgetDisplayModes(value: unknown): WidgetDisplayMode[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return [...new Set(value.filter((mode): mode is WidgetDisplayMode => mode === 'inline' || mode === 'fullscreen' || mode === 'pip'))];
+}
+
 function hasWidgetPreferences(value: unknown): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const fields = value as Record<string, unknown>;
   return Object.hasOwn(fields, 'kind') && (fields.kind === 'all' || fields.kind === 'prompt' || fields.kind === 'skill')
     || ['query', 'category', 'compatibility', 'author', 'selectedId'].some(key => Object.hasOwn(fields, key)
-      && (typeof fields[key] === 'string' || key === 'selectedId' && fields[key] === null));
+      && (typeof fields[key] === 'string' || key === 'selectedId' && fields[key] === null))
+    || ['collapsed', 'catalogExpanded'].some(key => typeof fields[key] === 'boolean');
 }
 
 interface WidgetRestoration {
@@ -117,7 +169,7 @@ export function captureWidgetRestoration(): WidgetRestoration {
     const sessionState = parseWidgetState(sessionSnapshot);
     // The fallback is origin-scoped, so variable inputs must never cross widget/conversation instances.
     const significantPreferences = sessionState && (sessionState.kind !== 'all' || sessionState.query || sessionState.category
-      || sessionState.compatibility || sessionState.author || sessionState.selectedId);
+      || sessionState.compatibility || sessionState.author || sessionState.selectedId || sessionState.collapsed || sessionState.catalogExpanded);
     if (significantPreferences && hasWidgetPreferences(sessionSnapshot)) {
       return { state: { ...sessionState, values: {} }, source: 'session', restorePresentation: true };
     }
@@ -142,6 +194,7 @@ export function createWidgetPresentationReconciler(source: WidgetRestoration['so
     const resource = incoming.data.resource;
     const state: WidgetState = { ...previous,
       selectedId: resource?.id || '', values: resource && previous.selectedId === resource.id ? previous.values : {},
+      collapsed: false,
     };
     if (kind === 'all' || kind === 'prompt' || kind === 'skill') state.kind = kind;
     return { ...incoming, state };
@@ -179,13 +232,38 @@ export function createLibraryBridge() {
   let connection: Promise<void> | undefined;
   let connected = false;
   let standardConnected = false;
-  const emit = (event: WidgetEvent) => { latest = event; for (const listener of listeners) listener(event); };
+  let legacyContext: Partial<ChatGPTHost> = {};
+  let legacyListening = false;
+  const emit = (event: WidgetEvent) => {
+    // Context updates must not replace the first tool result awaiting React's subscription.
+    if (event.type !== 'context') latest = event;
+    for (const listener of listeners) listener(event);
+  };
+
+  function compatibilityContext(): ChatGPTHost {
+    return { ...hostWindow(), ...legacyContext };
+  }
 
   function applyContext() {
     const context = app.getHostContext();
-    const theme = context?.theme || hostWindow()?.theme;
+    const theme = context?.theme || compatibilityContext().theme;
     if (theme) applyDocumentTheme(theme);
     if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
+    emit({ type: 'context' });
+  }
+
+  function onLegacyGlobals(event: Event) {
+    const globals = objectFields(objectFields((event as CustomEvent<unknown>).detail)?.globals);
+    if (globals) {
+      if (globals.theme === 'light' || globals.theme === 'dark') legacyContext.theme = globals.theme;
+      if (globals.displayMode === 'inline' || globals.displayMode === 'fullscreen' || globals.displayMode === 'pip') {
+        legacyContext.displayMode = globals.displayMode;
+      }
+      for (const key of ['availableDisplayModes', 'containerDimensions', 'maxHeight', 'safeAreaInsets'] as const) {
+        if (Object.hasOwn(globals, key)) legacyContext[key] = globals[key];
+      }
+    }
+    applyContext();
   }
   app.ontoolinput = params => { toolArguments = params.arguments; };
   app.ontoolresult = params => {
@@ -194,9 +272,17 @@ export function createLibraryBridge() {
     if (data && Array.isArray(data.resources)) emit({ type: 'data', data, arguments: toolArguments });
   };
   app.onhostcontextchanged = applyContext;
-  app.onteardown = async () => ({}); // React persists each change before any host teardown.
+  app.onteardown = async () => {
+    if (legacyListening && typeof window !== 'undefined') window.removeEventListener('openai:set_globals', onLegacyGlobals);
+    legacyListening = false;
+    return {};
+  }; // React persists each change before any host teardown.
 
   async function connect() {
+    if (!legacyListening && typeof window !== 'undefined') {
+      window.addEventListener('openai:set_globals', onLegacyGlobals);
+      legacyListening = true;
+    }
     connection ??= app.connect(undefined, { timeout: 15_000 }).then(() => {
       connected = true; standardConnected = true; applyContext();
       // Keep the initial tool result available when React subscribes after the handshake.
@@ -242,8 +328,9 @@ export function createLibraryBridge() {
   }
 
   async function useResource(result: CatalogContentResult, values: Record<string, string>, isCurrent: () => boolean = () => true) {
-    if (!isCurrent()) return;
-    const text = result.resource.kind === 'prompt' ? fillPromptVariables(result.content.text, values) : result.content.text;
+    if (!isCurrent()) throw new Error('La selección cambió. Prepara el recurso de la ficha actual antes de enviarlo.');
+    const snapshot = { ...values };
+    const text = result.resource.kind === 'prompt' ? fillPromptVariables(result.content.text, snapshot) : result.content.text;
     const content = [{ type: 'text' as const, text: resourceContext(result.resource, text) }];
     const request = result.resource.kind === 'prompt'
       ? 'Usa el prompt de Biblioteca que seleccioné como material de trabajo para ayudarme con su tarea. Si falta información, pregúntame antes de completar el resultado. Conserva su atribución.'
@@ -256,7 +343,7 @@ export function createLibraryBridge() {
     const contextResult = extensions.modelContext
       ? await extensions.modelContext.update({ content })
       : (await app.updateModelContext({ content }), undefined);
-    if (!isCurrent()) return;
+    if (!isCurrent()) throw new Error('La selección cambió. Prepara el recurso de la ficha actual antes de enviarlo.');
     const message = [{ type: 'text' as const, text: request }];
     const response = extensions.message
       ? await extensions.message.send({ role: 'user', content: message, _meta: {
@@ -301,16 +388,38 @@ export function createLibraryBridge() {
     else await app.requestTeardown();
   }
 
-  function displayMode() { return app.getHostContext()?.displayMode || hostWindow()?.displayMode || 'inline'; }
-  function availableDisplayModes(): ('inline' | 'fullscreen' | 'pip')[] {
-    return app.getHostContext()?.availableDisplayModes || (hostWindow()?.requestDisplayMode ? ['inline', 'fullscreen', 'pip'] : []);
+  function displayMode(): WidgetDisplayMode {
+    const mode = app.getHostContext()?.displayMode || compatibilityContext().displayMode;
+    return mode === 'fullscreen' || mode === 'pip' ? mode : 'inline';
   }
-  async function requestDisplayMode(mode: 'inline' | 'fullscreen' | 'pip') {
-    return standardConnected ? app.requestDisplayMode({ mode }) : hostWindow()!.requestDisplayMode!({ mode });
+  function availableDisplayModes(): WidgetDisplayMode[] {
+    const advertised = parseWidgetDisplayModes(app.getHostContext()?.availableDisplayModes);
+    if (advertised) return advertised;
+    if (standardConnected) return [];
+    const host = compatibilityContext();
+    if (!host.requestDisplayMode) return [];
+    return parseWidgetDisplayModes(host.availableDisplayModes) || ['inline', 'fullscreen'];
+  }
+  function layoutContext(): WidgetLayoutContext {
+    return parseWidgetLayoutContext(app.getHostContext(), compatibilityContext());
+  }
+  async function requestDisplayMode(mode: WidgetDisplayMode) {
+    if (!connected || !availableDisplayModes().includes(mode)) {
+      throw new Error('Esta vista de ChatGPT no permite ese tamaño. Puedes seguir usando Biblioteca aquí.');
+    }
+    const response = standardConnected
+      ? await app.requestDisplayMode({ mode })
+      : await hostWindow()!.requestDisplayMode!({ mode });
+    if (response.mode !== mode) throw new Error('ChatGPT conservó la vista actual. Puedes seguir usando Biblioteca aquí.');
+    if (!standardConnected) {
+      legacyContext.displayMode = response.mode;
+      applyContext();
+    }
+    return response;
   }
 
   return {
-    app, connect, call, selectResource, useResource, downloadSkill, openLink, close, displayMode, availableDisplayModes, requestDisplayMode, isConnected: () => connected,
+    app, connect, call, selectResource, useResource, downloadSkill, openLink, close, displayMode, availableDisplayModes, requestDisplayMode, layoutContext, isConnected: () => connected,
     subscribe(listener: (event: WidgetEvent) => void) { listeners.add(listener); if (latest) listener(latest); return () => { listeners.delete(listener); }; },
   };
 }
