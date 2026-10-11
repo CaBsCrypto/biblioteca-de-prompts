@@ -10,13 +10,13 @@ El agente principal actúa como coordinador: ordena el backlog, reparte archivos
 
 | Ticket | Responsable | Estado | Criterios |
 |---|---|---|---|
-| UI-01: presentación compacta | Interfaz | en curso | Inicio inline con buscador, tabs y dos cartas; Ver todos indica el total; artículos con botones hermanos; muestras en ficha; controles de 44 px y temas del host. |
-| UI-02: ficha y reducción | Interfaz | en curso | Inline sustituye catálogo; ampliado tiene dos columnas adaptables; una zona principal de scroll; reducir y reabrir preservan selección; compositor no tapa acciones. |
-| INT-01: estado y capacidades | Interacción | en curso | Snapshots antiguos compatibles; flags privados de reducción; variables fuera de session fallback; dimensiones y zona segura del host; ningún PiP supuesto. |
-| INT-02: copiar y usar | Interfaz + interacción | en curso | Original, preparado y enlace exactos; copia rápida desde carta; revisión de versión; instantánea y bloqueo durante acciones; foco en variables pendientes; envío confirmado reduce; errores preservan preparación. |
-| INT-03: navegación consistente | Interfaz | en curso | Una ficha directa no sustituye los resultados; volver conserva filtros/conteo/preparación del mismo recurso; respuestas atrasadas y doble clic no cambian otra selección ni duplican mensajes. |
-| QA-01: regresión | QA | en curso | Unitarias relevantes y host local cubren restauración, privacidad, faltantes, errores, límites, foco, móvil y acciones asíncronas. |
-| REL-01: integración y lanzamiento | Coordinador | pendiente | Lint, build, qa, unitarias, reglas en CI, Preview y ChatGPT; PR revisada; producción con smokes y evidencia. |
+| UI-01: presentación compacta | Interfaz | revisión | Inicio inline con buscador, tabs y dos cartas; Ver todos indica el total; artículos con botones hermanos; muestras en ficha; controles de 44 px y temas del host. |
+| UI-02: ficha y reducción | Interfaz | revisión | Inline sustituye catálogo; ampliado tiene dos columnas adaptables; una zona principal de scroll; reducir y reabrir preservan selección; compositor no tapa acciones. |
+| INT-01: estado y capacidades | Interacción | revisión | Snapshots antiguos compatibles; flags privados de reducción; variables fuera de session fallback; dimensiones y zona segura del host; ningún PiP supuesto. |
+| INT-02: copiar y usar | Interfaz + interacción | revisión | Original, preparado y enlace exactos; copia rápida desde carta; revisión de versión; instantánea y bloqueo durante acciones; foco en variables pendientes; envío confirmado reduce; errores preservan preparación. |
+| INT-03: navegación consistente | Interfaz | revisión | Una ficha directa no sustituye los resultados; volver conserva filtros/conteo/preparación del mismo recurso; respuestas atrasadas y doble clic no cambian otra selección ni duplican mensajes. |
+| QA-01: regresión | QA | terminado | Unitarias relevantes y host local cubren restauración, privacidad, faltantes, errores, límites, foco, móvil y acciones asíncronas. |
+| REL-01: integración y lanzamiento | Coordinador | en curso | Lint, build, qa, unitarias, reglas en CI, Preview y ChatGPT; PR revisada; producción con smokes y evidencia. |
 
 ## Entrega y aceptación
 
@@ -34,7 +34,13 @@ Validación local del 11 de octubre de 2026: lint, build, qa y 138 pruebas unita
 
 El host local comprobó variables pendientes con foco, copia preparada y enlace con recibos de éxito del navegador, copia manual al bloquear ambas vías, envío rechazado conservando campos, envío confirmado con reducción, cierre/reapertura con preparación, ficha directa → catálogo con conteo correcto y respuesta antigua descartada al cambiar de selección. Skill de prueba copiada y descargada con el mismo texto. A 375 px: sin overflow horizontal, todos los botones de 44 px, tema oscuro y ningún scroll interno en las muestras. La zona reservada al compositor se conserva en todos los estados.
 
-Pendientes de aceptación: CI de reglas, Preview, ChatGPT real y lanzamiento. Los recursos del emulador son ficticios; la oferta publicada se comprobará en el candidato y en producción.
+Entrega de código: `a07c02f`, [PR #8](https://github.com/CaBsCrypto/biblioteca-de-prompts/pull/8). [CI de PR](https://github.com/CaBsCrypto/biblioteca-de-prompts/actions/runs/38113061946) aprobó QA, unitarias, reglas en emulador y smoke web. Smoke MCP manual autenticado aprobado en [Preview inmutable](https://biblioteca-de-prompts-r262e8l9j.vercel.app/api/mcp): cinco prompts, una skill, URI v5 y entregable aprobado de `documentar-codigo`. El alias de rama no se usa para MCP porque no está en la lista de hosts del servidor.
+
+Se preparó un candidato del mismo código sin promocionar los dominios: `dpl_G5jFQzqqpvSVhGp2NvNuUtuwDWiU`, [hostname inmutable](https://biblioteca-de-prompts-1q0g56eph.vercel.app). Vercel también lo protege con autenticación; ChatGPT no puede consultar su MCP anónimamente. Se solicitó autorización para una excepción temporal solo de ese hostname y su retirada posterior. La revisión automática rechazó avanzar en esa configuración mientras la autorización esté pendiente. No se aplicó la excepción, no se fusionó la PR y el plugin sigue conectado al dominio vigente.
+
+Lectura anónima de producción: las seis versiones aprobadas coinciden con sus entregables y se rechazaron seis solicitudes con versiones antiguas. Producción continúa ofreciendo URI v4; no se confunde esta verificación de datos con el lanzamiento de la interfaz nueva.
+
+Pendientes de aceptación: ChatGPT real, fusión y smokes de producción. Los recursos del emulador son ficticios y permanecen separados de la oferta pública. La identidad del plugin personal (`Plugin_c2ac96c4d8c88191aa032001aeefecd6`), su conexión (`asdk_app_6ac7206812a4819186b6ecbb15afbafe`) y permisos se conservan.
 
 ## Continuidad
 
