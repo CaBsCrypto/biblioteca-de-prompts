@@ -85,8 +85,8 @@ export default function CatalogWorkspace(props: Props) {
     }
     return [...grouped.values()].sort((a, b) => b.resources.length - a.resources.length);
   }, [catalog.resources]);
-  const categories = useMemo(() => [...new Set(typedResources.map(resource => resource.metadata.category))].filter(Boolean).sort(), [typedResources]);
-  const tools = useMemo(() => [...new Set(typedResources.flatMap(resource => resource.metadata.compatibility))].sort(), [typedResources]);
+  const categories = useMemo(() => [...new Set([...collectionResources.map(resource => resource.metadata.category), filters.category])].filter(Boolean).sort(), [collectionResources, filters.category]);
+  const tools = useMemo(() => [...new Set([...collectionResources.flatMap(resource => resource.metadata.compatibility), filters.compatibility])].filter(Boolean).sort(), [collectionResources, filters.compatibility]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageResources = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
