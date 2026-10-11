@@ -35,15 +35,18 @@ body { margin: 0; background: transparent; }
 .library-results-label { color: var(--library-muted); font-size: 12px; margin: 7px 0 9px; }
 .library-resource-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; list-style: none; padding: 0; margin: 0; }
 .library-resource-list li { display: flex; min-width: 0; }
-.library-resource { --card-accent: var(--library-blue); display: flex; flex-direction: column; width: 100%; min-width: 0; text-align: left; background: var(--library-paper); border: 1px solid var(--library-rule); border-radius: 9px; padding: 12px; color: var(--library-ink); }
+.library-resource { --card-accent: var(--library-blue); position: relative; display: flex; flex-direction: column; width: 100%; min-width: 0; text-align: left; background: var(--library-paper); border: 1px solid var(--library-rule); border-radius: 9px; padding: 12px; color: var(--library-ink); }
 .library-resource-skill { --card-accent: var(--library-skill); }
 .library-resource-type, .library-detail-type { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; color: var(--library-blue); font-size: 11px; font-weight: 600; }
 .library-resource-type { color: var(--card-accent); }
 .library-detail-type span { border-left: 1px solid var(--library-rule); padding-left: 8px; margin-left: 3px; color: var(--library-muted); font-weight: 400; }
 .library-resource h2 { font-size: 16px; letter-spacing: -.02em; margin: 6px 0; overflow-wrap: anywhere; }
+.library-card-open { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; border-radius: inherit; background: transparent; color: inherit; }
+.library-resource:has(.library-card-open:not(:disabled):hover) { border-color: var(--card-accent); }
 .library-card-summary { color: var(--library-muted); font-size: 12px; }
 .library-resource h2, .library-card-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.library-card-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 10px; }
+.library-card-actions { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 10px; pointer-events: none; }
+.library-card-actions > button { pointer-events: auto; }
 .library-card-actions .library-button { font-size: 12px; padding: 7px 9px; }
 .library-card-actions .library-copy-quick { border-color: transparent; background: transparent; color: var(--library-muted); }
 .library-button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; background: var(--library-paper); border: 1px solid var(--library-rule); border-radius: 6px; padding: 9px 12px; color: var(--library-ink); font-size: 13px; font-weight: 550; min-height: 44px; }

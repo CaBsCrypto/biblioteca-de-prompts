@@ -35,6 +35,7 @@ try {
   await client.connect(transport, options);
   console.log('OK inicialización MCP con cliente oficial');
   const { tools } = await client.listTools({}, options);
+  assert.equal(tools.find(tool => tool.name === 'open_library')?._meta?.['openai/ui']?.preferredModelDisplayMode, 'inline', 'La apertura desde el modelo debe preferir cartas inline.');
   assert.deepEqual(tools.map(tool => tool.name).sort(), [...expectedTools].sort());
   for (const tool of tools) assert.equal(tool.annotations?.readOnlyHint, true, `${tool.name} debe ser de lectura.`);
   console.log(`OK herramientas de lectura: ${expectedTools.join(', ')}`);
@@ -47,11 +48,12 @@ try {
   }
   const opened = toolData(await client.callTool({ name: 'open_library', arguments: { kind: 'all' } }, undefined, options));
   assert.ok(Array.isArray(opened.resources));
-  const uri = 'ui://biblioteca/library-v5.html';
+  const uri = 'ui://biblioteca/library-v6.html';
   const listed = await client.listResources({}, options);
   assert.ok(listed.resources.some(resource => resource.uri === uri), 'La interfaz no está registrada.');
   const ui = await client.readResource({ uri }, options);
   assert.ok(ui.contents.some(content => typeof content.text === 'string' && content.text.includes('<html')), 'La interfaz no contiene HTML.');
+  assert.equal(ui.contents[0]?._meta?.['openai/ui']?.preferredDisplayMode, 'inline', 'La interfaz debe preferir inline.');
   console.log(`OK interfaz MCP App: ${uri}`);
   const id = args[1];
   if (id) {

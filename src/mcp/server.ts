@@ -1,11 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
-import { OpenAIExtensions, type OpenAIUiToolMetadata } from '@openai/mcp-extensions/server';
+import { OpenAIExtensions, type OpenAIUiResourceMetadata, type OpenAIUiToolMetadata } from '@openai/mcp-extensions/server';
 import { z } from 'zod';
 import type { CatalogReader } from './contracts';
 import { InvalidCatalogRequest, ResourceUnavailable, VersionChanged } from './contracts';
 
-export const LIBRARY_URI = 'ui://biblioteca/library-v5.html';
+export const LIBRARY_URI = 'ui://biblioteca/library-v6.html';
 const text = z.string();
 const metadata = z.object({
   title: text, summary: text, outcome: text, category: text, tags: z.array(text), compatibility: z.array(text),
@@ -69,19 +69,21 @@ export function createLibraryMcpServer(reader: CatalogReader, widgetHtml: () => 
       repositoryFolderUrl: text.nullable() }, annotations, _meta: { securitySchemes },
   }, ({ id, expectedSubmissionId }) => result('get_resource_content', () => reader.content(id, expectedSubmissionId)));
   registerAppTool(server, 'open_library', {
-    title: 'Abrir Biblioteca', description: 'Abre el catálogo de prompts y skills junto a la conversación. Opcionalmente muestra una ficha por id. Usa las herramientas de datos para analizar recursos antes de mostrar la interfaz.',
+    title: 'Abrir Biblioteca', description: 'Muestra cartas de prompts y skills dentro de la conversación. Pulsa una carta para abrir su ficha completa. Opcionalmente muestra una ficha por id. Usa las herramientas de datos para analizar recursos antes de mostrar la interfaz.',
     inputSchema: { id: id.optional(), kind: z.enum(['all', 'prompt', 'skill']).default('all') },
     outputSchema: { ...searchOutput, resource: resource.optional() }, annotations,
     _meta: { securitySchemes, ui: { resourceUri: LIBRARY_URI, visibility: ['model', 'app'] },
-      'openai/ui': { entrypoints: [{ type: 'thread' }] } satisfies OpenAIUiToolMetadata },
+      // A model invocation opens inline; the optional thread shortcut remains available.
+      'openai/ui': { entrypoints: [{ type: 'thread' }], preferredModelDisplayMode: 'inline' } satisfies OpenAIUiToolMetadata },
   }, ({ id, kind }) => result('open_library', async () => ({
     ...await reader.search({ query: '', kind, category: '', compatibility: '', author: '' }),
     ...(id ? { resource: await reader.get(id) } : {}),
   })));
-  registerAppResource(server, 'Biblioteca', LIBRARY_URI, {}, async () => ({ contents: [{
-    uri: LIBRARY_URI, mimeType: RESOURCE_MIME_TYPE, text: widgetHtml(),
+  // Cached tool definitions and older messages may still reference the previous template.
+  for (const uri of [LIBRARY_URI, 'ui://biblioteca/library-v5.html']) registerAppResource(server, uri === LIBRARY_URI ? 'Biblioteca' : 'Biblioteca compatible v5', uri, {}, async () => ({ contents: [{
+    uri, mimeType: RESOURCE_MIME_TYPE, text: widgetHtml(),
     _meta: { ui: { prefersBorder: true, permissions: { clipboardWrite: {} }, csp: { connectDomains: [], resourceDomains: [] } },
-      'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] },
+      'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'], preferredDisplayMode: 'inline' } satisfies OpenAIUiResourceMetadata,
       'openai/widgetDescription': 'Biblioteca de prompts y skills aprobados: buscar, ver muestras, rellenar variables y usar el recurso seleccionado en el chat.' },
   }] }));
   return server;

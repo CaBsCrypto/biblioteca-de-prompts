@@ -45,14 +45,22 @@ describe('MCP público Streamable HTTP sin sesión', () => {
     expect(reader.search).toHaveBeenCalledWith({ query: '', kind: 'prompt', category: '', compatibility: '', author: '' }, undefined, 20);
     expect((await client.callTool({ name: 'get_resource', arguments: { id: 'approved' } })).structuredContent).toMatchObject({ resource });
   });
-  it('registra entrada de conversación y un recurso UI autónomo con CSP acotada', async () => {
+  it('prefiere cartas inline al invocar el modelo y conserva el acceso manual al panel', async () => {
     const { client } = await fixture(); const tools = await client.listTools();
-    expect(tools.tools.find(tool => tool.name === 'open_library')?._meta?.['openai/ui']).toMatchObject({ entrypoints: [{ type: 'thread' }] });
+    const entrypoint = tools.tools.find(tool => tool.name === 'open_library');
+    expect(entrypoint?._meta?.['openai/ui']).toMatchObject({ entrypoints: [{ type: 'thread' }], preferredModelDisplayMode: 'inline' });
+    expect(entrypoint?._meta?.ui).toMatchObject({ resourceUri: LIBRARY_URI });
     const result = await client.callTool({ name: 'open_library', arguments: { id: 'approved', kind: 'prompt' } });
     expect(result.structuredContent).toMatchObject({ resource, total: 1 });
     const ui = await client.readResource({ uri: LIBRARY_URI });
     expect(ui.contents[0].mimeType).toBe('text/html;profile=mcp-app');
-    expect(ui.contents[0]._meta).toMatchObject({ ui: { permissions: { clipboardWrite: {} }, csp: { connectDomains: [], resourceDomains: [] } } });
+    expect(ui.contents[0]._meta).toMatchObject({
+      ui: { permissions: { clipboardWrite: {} }, csp: { connectDomains: [], resourceDomains: [] } },
+      'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'], preferredDisplayMode: 'inline' },
+    });
+    const previous = await client.readResource({ uri: 'ui://biblioteca/library-v5.html' });
+    expect(previous.contents[0]).toEqual({ ...ui.contents[0], uri: 'ui://biblioteca/library-v5.html' });
+    expect(previous.contents[0]._meta?.['openai/ui']).toMatchObject({ preferredDisplayMode: 'inline' });
   });
   it('rechaza entrada inválida sin consultar Firestore', async () => {
     const { reader, client } = await fixture();
