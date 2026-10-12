@@ -1,0 +1,6 @@
+participante,estado_sesion,perfil_general,dispositivo,navegador,fecha_hora_santiago,duracion_min,url,version_sha,consentimiento,t1_resultado,t1_ayuda,t1_min,t2_resultado,t2_ayuda,t2_min,asistente_utilizado,t3_resultado,t3_ayuda,t3_min,t4_resultado,t4_ayuda,t4_min,recorrido_principal,creador_asignado,creador_resultado,submission_id,decision_founder,motivo_rechazo_observado,plugin_extension,incidencias,severidad_maxima,observacion_breve,version_correccion,repeticion_resultado
+P01,pendiente,,,,,,https://biblioteca.browns.studio/,,,pendiente,,,pendiente,,,,pendiente,,,pendiente,,,pendiente,por_confirmar,pendiente,,,,no_planificada,,,,,
+P02,pendiente,,,,,,https://biblioteca.browns.studio/,,,pendiente,,,pendiente,,,,pendiente,,,pendiente,,,pendiente,por_confirmar,pendiente,,,,no_planificada,,,,,
+P03,pendiente,,,,,,https://biblioteca.browns.studio/,,,pendiente,,,pendiente,,,,pendiente,,,pendiente,,,pendiente,por_confirmar,pendiente,,,,no_planificada,,,,,
+P04,opcional_pendiente,,,,,,https://biblioteca.browns.studio/,,,pendiente,,,pendiente,,,,pendiente,,,pendiente,,,pendiente,por_confirmar,pendiente,,,,no_planificada,,,,,
+P05,opcional_pendiente,,,,,,https://biblioteca.browns.studio/,,,pendiente,,,pendiente,,,,pendiente,,,pendiente,,,pendiente,por_confirmar,pendiente,,,,no_planificada,,,,,

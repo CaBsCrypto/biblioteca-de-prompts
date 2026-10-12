@@ -1,5 +1,7 @@
 # Pre-Beta Final Check
 
+> Checklist histórico. El cierre actual del catálogo de prompts y skills se sigue en [Sprint 04](sprints/04-cierre-beta.md) y [prueba de usuarios](beta-cierre/prueba-usuarios.md). No se exige crear noticias, foro, hackathons o galería para este sprint.
+
 Usar antes de enviar el link a testers reales.
 
 ## 1. Contenido Founder Minimo

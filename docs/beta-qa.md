@@ -1,5 +1,7 @@
 # Beta QA - Comunidad Invitable
 
+> Guía histórica de la etapa social. Para la beta actual de prompts y skills, usar [el guion de cierre](beta-cierre/prueba-usuarios.md) y [la invitación preparada](beta-cierre/invitacion.md). Las tareas de foro, noticias y conexiones de este documento no son criterios del sprint actual.
+
 Dominio de prueba: https://biblioteca.browns.studio
 
 ## Objetivo
