@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { CatalogReader } from './contracts';
 import { InvalidCatalogRequest, ResourceUnavailable, VersionChanged } from './contracts';
 
-export const LIBRARY_URI = 'ui://biblioteca/library-v6.html';
+export const LIBRARY_URI = 'ui://biblioteca/library-v7.html';
 const text = z.string();
 const metadata = z.object({
   title: text, summary: text, outcome: text, category: text, tags: z.array(text), compatibility: z.array(text),
@@ -80,7 +80,7 @@ export function createLibraryMcpServer(reader: CatalogReader, widgetHtml: () => 
     ...(id ? { resource: await reader.get(id) } : {}),
   })));
   // Cached tool definitions and older messages may still reference the previous template.
-  for (const uri of [LIBRARY_URI, 'ui://biblioteca/library-v5.html']) registerAppResource(server, uri === LIBRARY_URI ? 'Biblioteca' : 'Biblioteca compatible v5', uri, {}, async () => ({ contents: [{
+  for (const uri of [LIBRARY_URI, 'ui://biblioteca/library-v6.html', 'ui://biblioteca/library-v5.html']) registerAppResource(server, uri === LIBRARY_URI ? 'Biblioteca' : 'Biblioteca compatible', uri, {}, async () => ({ contents: [{
     uri, mimeType: RESOURCE_MIME_TYPE, text: widgetHtml(),
     _meta: { ui: { prefersBorder: true, permissions: { clipboardWrite: {} }, csp: { connectDomains: [], resourceDomains: [] } },
       'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'], preferredDisplayMode: 'inline' } satisfies OpenAIUiResourceMetadata,

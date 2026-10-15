@@ -58,9 +58,11 @@ describe('MCP público Streamable HTTP sin sesión', () => {
       ui: { permissions: { clipboardWrite: {} }, csp: { connectDomains: [], resourceDomains: [] } },
       'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'], preferredDisplayMode: 'inline' },
     });
-    const previous = await client.readResource({ uri: 'ui://biblioteca/library-v5.html' });
-    expect(previous.contents[0]).toEqual({ ...ui.contents[0], uri: 'ui://biblioteca/library-v5.html' });
-    expect(previous.contents[0]._meta?.['openai/ui']).toMatchObject({ preferredDisplayMode: 'inline' });
+    for (const uri of ['ui://biblioteca/library-v6.html', 'ui://biblioteca/library-v5.html']) {
+      const previous = await client.readResource({ uri });
+      expect(previous.contents[0]).toEqual({ ...ui.contents[0], uri });
+      expect(previous.contents[0]._meta?.['openai/ui']).toMatchObject({ preferredDisplayMode: 'inline' });
+    }
   });
   it('rechaza entrada inválida sin consultar Firestore', async () => {
     const { reader, client } = await fixture();
