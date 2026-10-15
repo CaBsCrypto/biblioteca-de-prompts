@@ -118,4 +118,31 @@ body { margin: 0; background: transparent; }
 @media (min-width: 560px) { .library-resource-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 760px) { .library-mode-fullscreen .library-detail-grid, .library-is-expanded .library-detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; } .library-mode-fullscreen .library-deliverable, .library-is-expanded .library-deliverable { grid-column: 2; grid-row: 1; } .library-mode-fullscreen .library-detail-reading, .library-is-expanded .library-detail-reading { grid-column: 1; grid-row: 1; } .library-details { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 400px) { .library-widget { padding-left: max(10px, var(--library-safe-left, 0px)); padding-right: max(10px, var(--library-safe-right, 0px)); } .library-brand h1 { font-size: 15px; } .library-tabs button { padding: 8px 9px; } .library-filters { grid-template-columns: minmax(0, 1fr); } .library-collapsed { gap: 5px; } .library-collapsed > svg { display: none; } .library-collapsed .library-button { padding: 8px; } }
+.library-settings { padding: 12px; margin-bottom: 12px; border: 1px solid var(--library-rule); border-radius: 8px; background: var(--library-surface); }
+.library-settings h2 { font-size: 16px; }
+.library-settings p { font-size: 12px; color: var(--library-muted); margin: 4px 0 10px; }
+.library-settings fieldset { border: 0; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.library-settings label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; min-width: 0; }
+.library-settings select { width: 100%; min-width: 0; padding: 8px; border-radius: 6px; border: 1px solid var(--library-rule); background: var(--library-paper); color: var(--library-ink); }
+.library-settings .library-setting-check { flex-direction: row; align-items: center; }
+.library-setting-check input { width: 22px; min-width: 22px; margin: 0 8px 0 0; }
+.library-view-list .library-resource-list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.library-view-list .library-resource { padding: 9px 12px; }
+.library-view-list .library-card-actions { padding-top: 6px; }
+.library-example summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 10px 0; }
+.library-widget.library-text-large :where(p, label, select, textarea, pre, dd, .library-card-summary, .library-button) { font-size: 16px; }
+.library-text-large .library-resource h2 { font-size: 18px; }
+.library-variables textarea { scroll-margin-top: 170px; }
+@media (max-width: 559px) {
+  .library-settings fieldset { grid-template-columns: minmax(0, 1fr); }
+  .library-widget :is(input, select, textarea) { font-size: 16px; }
+  .library-brand > svg { display: none; }
+  .library-deliverable-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .library-deliverable-actions > .library-primary { grid-column: 1 / -1; }
+  .library-copy-actions { display: contents; }
+  .library-deliverable-actions:has(.library-copy-actions > button:only-child) > .library-primary { grid-column: auto; }
+  .library-copy-actions .library-button { min-width: 0; padding: 8px 5px; }
+  .library-secondary-actions > .library-button { width: 100%; }
+  .library-header { min-height: 44px; }
+}
 @media (prefers-reduced-motion: reduce) { .library-widget * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

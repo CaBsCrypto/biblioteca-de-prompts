@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Check, ChevronDown, Code2, Copy, Download, ExternalLink, Link, Maximize2, Minimize2, Search, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, Code2, Copy, Download, ExternalLink, Link, Maximize2, Minimize2, Search, Settings2, Sparkles, X } from 'lucide-react';
 import type { CatalogContentResult, CatalogSearchResult, PublicCatalogResource } from '../contracts';
 import { EMPTY_WIDGET_STATE, captureWidgetRestoration, createWidgetPresentationReconciler, extractPromptVariables, fillPromptVariables, persistWidgetState, resolveCurrentSelection, safeWidgetLink, type LibraryBridge, type WidgetState } from './bridge';
 
@@ -27,6 +27,8 @@ export default function LibraryWidget({ bridge }: Props) {
   const [mode, setMode] = useState(bridge.displayMode());
   const [layout, setLayout] = useState(bridge.layoutContext());
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsButton = useRef<HTMLButtonElement>(null);
   const [hostSelectionRevision, setHostSelectionRevision] = useState(0);
   const root = useRef<HTMLElement>(null);
   const detailHeading = useRef<HTMLHeadingElement>(null);
@@ -217,7 +219,7 @@ export default function LibraryWidget({ bridge }: Props) {
 
   function selectManualText(text: string, label: string, isCurrent: () => boolean) {
     setManualCopy({ text, label }); setCopiedAction('');
-    setNotice('La copia automática está bloqueada. Pulsa Ctrl+C (Windows/Linux) o ⌘+C (Mac) con el texto seleccionado.');
+    setNotice('La copia automática está bloqueada. Mantén pulsado el texto y elige Copiar; en ordenador usa Ctrl+C o ⌘+C.');
     requestAnimationFrame(() => {
       if (!isCurrent()) return;
       const element = manualText.current; const selection = document.getSelection();
@@ -245,6 +247,7 @@ export default function LibraryWidget({ bridge }: Props) {
   async function useInChat() {
     const selected = resourceRef.current; if (!selected) return;
     const values = { ...stateRef.current.values };
+    const autoReduce = stateRef.current.autoReduce;
     setMissingVariables([]);
     await action(async isCurrent => {
       const data = await freshContent(selected, isCurrent);
@@ -258,7 +261,7 @@ export default function LibraryWidget({ bridge }: Props) {
       }
       await bridge.useResource(data, values, isCurrent);
       if (!isCurrent()) return;
-      setNotice('Recurso enviado a este chat.'); await reduce(isCurrent);
+      setNotice('Recurso enviado a este chat.'); if (autoReduce) await reduce(isCurrent);
     });
   }
 
@@ -272,7 +275,7 @@ export default function LibraryWidget({ bridge }: Props) {
   const authors = useMemo(() => [...new Set(result.resources.map(item => item.metadata.authorHandle).filter(Boolean))].sort(), [result.resources]);
   const matchingResources = state.kind === 'all' ? result.resources : result.resources.filter(item => item.kind === state.kind);
   const expanded = state.catalogExpanded;
-  const visibleResources = expanded ? matchingResources : matchingResources.slice(0, 2);
+  const visibleResources = expanded ? matchingResources : matchingResources.slice(0, state.initialCount);
   const variables = payload && resource?.kind === 'prompt' ? extractPromptVariables(payload.content.text) : [];
   const preview = payload ? resource?.kind === 'prompt' ? fillPromptVariables(payload.content.text, state.values) : payload.content.text : '';
   const metadata = resource?.metadata;
@@ -292,9 +295,10 @@ export default function LibraryWidget({ bridge }: Props) {
     {copiedAction === selected.id + ':' + kind ? 'Copiado' : label}
   </>;
 
-  return <main ref={root} style={style} className={`library-widget library-mode-${mode}${resource ? ' library-has-detail' : ''}${state.collapsed ? ' library-is-collapsed' : ''}${expanded ? ' library-is-expanded' : ''}`} onKeyDown={event => {
+  return <main ref={root} style={style} className={`library-widget library-mode-${mode} library-view-${state.view} library-text-${state.textSize}${resource ? ' library-has-detail' : ''}${state.collapsed ? ' library-is-collapsed' : ''}${expanded ? ' library-is-expanded' : ''}`} onKeyDown={event => {
     if (event.key !== 'Escape' || busyRef.current) return;
-    if (state.collapsed) { setState(previous => ({ ...previous, collapsed: false })); event.preventDefault(); }
+    if (settingsOpen) { setSettingsOpen(false); settingsButton.current?.focus(); event.preventDefault(); }
+    else if (state.collapsed) { setState(previous => ({ ...previous, collapsed: false })); event.preventDefault(); }
     else if (resource) { back(); event.preventDefault(); }
   }}>
     {state.collapsed ? <section className="library-collapsed" aria-label="Biblioteca reducida">
@@ -306,11 +310,22 @@ export default function LibraryWidget({ bridge }: Props) {
     <header className="library-header">
       <div className="library-brand"><BookOpen size={20} aria-hidden="true" /><h1>Biblioteca</h1></div>
       <div className="library-host-actions">
+        <button ref={settingsButton} className="library-icon" aria-label="Ajustes de Biblioteca" title="Ajustes" aria-expanded={settingsOpen} aria-controls="library-settings" disabled={busy} onClick={() => setSettingsOpen(previous => !previous)}><Settings2 size={18} /></button>
         {resource && bridge.availableDisplayModes().includes(mode === 'fullscreen' ? 'inline' : 'fullscreen') && <button className="library-icon" aria-label={mode === 'fullscreen' ? 'Volver a vista compacta' : 'Ampliar Biblioteca'} title={mode === 'fullscreen' ? 'Vista compacta' : 'Ampliar'} disabled={busy || !ready} onClick={() => void action(async isCurrent => { const response = await bridge.requestDisplayMode(mode === 'fullscreen' ? 'inline' : 'fullscreen'); if (isCurrent()) setMode(response.mode); })}>{mode === 'fullscreen' ? <Minimize2 size={17} /> : <Maximize2 size={17} />}</button>}
         <button className="library-icon" aria-label="Reducir Biblioteca" title="Reducir Biblioteca" disabled={busy} onClick={() => void action(isCurrent => reduce(isCurrent))}><Minimize2 size={18} /></button>
         <button className="library-icon" aria-label="Cerrar Biblioteca" title="Cerrar Biblioteca" disabled={!ready || busy} onClick={() => void action(async () => { persistWidgetState(stateRef.current); await bridge.close(); })}><X size={18} /></button>
       </div>
     </header>
+    {settingsOpen && <section id="library-settings" className="library-settings" aria-label="Ajustes de Biblioteca">
+      <h2>A tu manera</h2><p>Estas preferencias se recuerdan al reabrir Biblioteca.</p>
+      <fieldset disabled={busy}><legend className="library-sr-only">Presentación y uso</legend>
+        <label>Vista<select value={state.view} onChange={event => setState(previous => ({ ...previous, view: event.target.value as WidgetState['view'] }))}><option value="cards">Cartas</option><option value="list">Lista compacta</option></select></label>
+        <label>Recursos al abrir<select value={state.initialCount} onChange={event => setState(previous => ({ ...previous, initialCount: Number(event.target.value) as WidgetState['initialCount'] }))}>{[2, 4, 6].map(count => <option key={count} value={count}>{count} recursos</option>)}</select></label>
+        <label>Tamaño del texto<select value={state.textSize} onChange={event => setState(previous => ({ ...previous, textSize: event.target.value as WidgetState['textSize'] }))}><option value="normal">Normal</option><option value="large">Grande</option></select></label>
+        <label className="library-setting-check"><input type="checkbox" checked={state.autoReduce} onChange={event => setState(previous => ({ ...previous, autoReduce: event.target.checked }))} />Reducir después de usar en el chat</label>
+      </fieldset>
+      <button className="library-button" disabled={busy} onClick={() => { setSettingsOpen(false); settingsButton.current?.focus(); }}>Listo</button>
+    </section>}
     {!resource ? <section className="library-catalog" aria-label="Catálogo de recursos">
       {feedback}
       <form className="library-search" onSubmit={event => { event.preventDefault(); if (!busyRef.current) void search(stateRef.current); }}>
@@ -354,15 +369,15 @@ export default function LibraryWidget({ bridge }: Props) {
         <div className="library-deliverable-actions"><button className="library-button library-primary" disabled={busy || !ready} onClick={() => void useInChat()}>{busy ? 'Preparando…' : 'Usar en este chat'}</button><div className="library-copy-actions"><button className="library-button" disabled={busy || !ready} onClick={() => void copy(resource, 'original')}>{copyLabel(resource, 'original', resource.kind === 'skill' ? 'Copiar SKILL.md' : 'Copiar original')}</button>{resource.kind === 'prompt' && <button className="library-button" disabled={busy || !ready || !payload} onClick={() => void copy(resource, 'prepared')}>{copyLabel(resource, 'prepared', 'Copiar preparado')}</button>}</div></div>
         {!payload ? <p className="library-loading" role="status">{busy ? 'Obteniendo el contenido revisado…' : 'Actualiza la ficha para obtener su contenido revisado.'}</p> : <>
           {variables.length > 0 && <fieldset className="library-variables" disabled={busy}><legend>Completa los campos</legend>{variables.map(variable => <label key={variable}>{variable}<textarea ref={element => { if (element) variableInputs.current.set(variable, element); else variableInputs.current.delete(variable); }} rows={2} value={state.values[variable] || ''} maxLength={10000} placeholder={`Valor para ${variable}`} aria-invalid={missingVariables.includes(variable)} aria-describedby={missingVariables.includes(variable) ? `library-missing-${variable}` : undefined} onChange={event => { if (busyRef.current) return; setCopiedAction(''); setMissingVariables(previous => previous.filter(key => key !== variable)); setState(previous => ({ ...previous, values: { ...previous.values, [variable]: event.target.value } })); }} />{missingVariables.includes(variable) && <span className="library-field-error" id={`library-missing-${variable}`}>Completa este campo.</span>}</label>)}</fieldset>}
-          <details className="library-content" open><summary>{resource.kind === 'prompt' ? 'Vista previa' : 'Contenido del archivo'}</summary><pre ref={preparedText} tabIndex={0}>{preview}</pre></details>
+          <details className="library-content"><summary>{resource.kind === 'prompt' ? 'Vista previa' : 'Contenido del archivo'}</summary><pre ref={preparedText} tabIndex={0}>{preview}</pre></details>
           {payload.content.source === 'github' && <p className="library-version">Commit: {payload.content.repositoryCommit}</p>}
         </>}
         <div className="library-secondary-actions">{resource.kind === 'skill' && <button className="library-button" disabled={busy || !ready} onClick={() => void action(async isCurrent => { const data = await freshContent(resource, isCurrent); if (data.content.source === 'github') { if (!data.repositoryFolderUrl) throw new Error('La carpeta de esta versión no está disponible.'); await bridge.openLink(data.repositoryFolderUrl); } else { await bridge.downloadSkill(data.content.text, data.resource); if (isCurrent()) setNotice('Descarga de SKILL.md solicitada.'); } })}>{payload?.content.source === 'github' ? <ExternalLink size={15} /> : <Download size={15} />}{payload?.content.source === 'github' ? 'Abrir carpeta revisada' : 'Descargar SKILL.md'}</button>}<button className="library-text-button" disabled={busy || !ready} onClick={() => void copy(resource, 'link')}>{copyLabel(resource, 'link', 'Copiar enlace')}</button></div>
       </section><div className="library-detail-reading">
         <section className="library-detail-section"><h3>Qué consigues</h3><p>{metadata.outcome}</p></section>
-        <section className="library-detail-section"><h3>Ejemplo del creador</h3><div className="library-samples"><div><h4>Entrada</h4><pre tabIndex={0}>{metadata.exampleInput}</pre></div><div><h4>Resultado</h4><pre tabIndex={0}>{metadata.exampleOutput}</pre></div></div>
+        <details className="library-detail-section library-example"><summary>Ejemplo del creador</summary><div className="library-samples"><div><h4>Entrada</h4><pre tabIndex={0}>{metadata.exampleInput}</pre></div><div><h4>Resultado</h4><pre tabIndex={0}>{metadata.exampleOutput}</pre></div></div>
           <div className="library-links">{safeWidgetLink(metadata.imageUrl) && <button disabled={busy} onClick={() => void action(() => bridge.openLink(metadata.imageUrl))}>Ver imagen <ExternalLink size={14} /></button>}{safeWidgetLink(metadata.demoUrl) && <button disabled={busy} onClick={() => void action(() => bridge.openLink(metadata.demoUrl))}>Ver demo <ExternalLink size={14} /></button>}</div>
-        </section>
+        </details>
         <section className="library-detail-section"><h3>{resource.kind === 'skill' ? 'Instalación y uso' : 'Cómo usarlo'}</h3><p className="library-preserve">{metadata.usage}</p></section>
         <dl className="library-details"><div><dt>Compatible con</dt><dd>{metadata.compatibility.join(', ')}</dd></div><div><dt>Requisitos</dt><dd>{metadata.requirements}</dd></div><div><dt>Condiciones de uso</dt><dd>{metadata.license}</dd></div><div><dt>Versión aprobada</dt><dd className="library-version">{resource.submissionId}</dd></div></dl>
         <p className="library-review-note">Muestra del creador. Revisa el contenido antes de usarlo; la publicación no certifica su ejecución en todos los modelos.</p>
