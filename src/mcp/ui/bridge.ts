@@ -12,10 +12,15 @@ export interface WidgetState {
   values: Record<string, string>;
   collapsed: boolean;
   catalogExpanded: boolean;
+  view: 'cards' | 'list';
+  initialCount: 2 | 4 | 6;
+  textSize: 'normal' | 'large';
+  autoReduce: boolean;
 }
 
 export const EMPTY_WIDGET_STATE: WidgetState = {
   kind: 'all', query: '', category: '', compatibility: '', author: '', selectedId: '', values: {}, collapsed: false, catalogExpanded: false,
+  view: 'cards', initialCount: 2, textSize: 'normal', autoReduce: true,
 };
 
 export type WidgetDisplayMode = 'inline' | 'fullscreen' | 'pip';
@@ -83,6 +88,10 @@ export function parseWidgetState(value: unknown): WidgetState | undefined {
   if (input.kind === 'prompt' || input.kind === 'skill' || input.kind === 'all') state.kind = input.kind;
   if (typeof input.collapsed === 'boolean') state.collapsed = input.collapsed;
   if (typeof input.catalogExpanded === 'boolean') state.catalogExpanded = input.catalogExpanded;
+  if (input.view === 'cards' || input.view === 'list') state.view = input.view;
+  if (input.initialCount === 2 || input.initialCount === 4 || input.initialCount === 6) state.initialCount = input.initialCount;
+  if (input.textSize === 'normal' || input.textSize === 'large') state.textSize = input.textSize;
+  if (typeof input.autoReduce === 'boolean') state.autoReduce = input.autoReduce;
   for (const key of ['query', 'category', 'compatibility', 'author', 'selectedId'] as const) {
     if (typeof input[key] === 'string') state[key] = input[key].slice(0, key === 'query' ? 500 : 128);
   }
@@ -145,7 +154,9 @@ function hasWidgetPreferences(value: unknown): boolean {
   return Object.hasOwn(fields, 'kind') && (fields.kind === 'all' || fields.kind === 'prompt' || fields.kind === 'skill')
     || ['query', 'category', 'compatibility', 'author', 'selectedId'].some(key => Object.hasOwn(fields, key)
       && (typeof fields[key] === 'string' || key === 'selectedId' && fields[key] === null))
-    || ['collapsed', 'catalogExpanded'].some(key => typeof fields[key] === 'boolean');
+    || ['collapsed', 'catalogExpanded', 'autoReduce'].some(key => typeof fields[key] === 'boolean')
+    || fields.view === 'cards' || fields.view === 'list' || fields.textSize === 'normal' || fields.textSize === 'large'
+    || fields.initialCount === 2 || fields.initialCount === 4 || fields.initialCount === 6;
 }
 
 interface WidgetRestoration {
@@ -169,7 +180,8 @@ export function captureWidgetRestoration(): WidgetRestoration {
     const sessionState = parseWidgetState(sessionSnapshot);
     // The fallback is origin-scoped, so variable inputs must never cross widget/conversation instances.
     const significantPreferences = sessionState && (sessionState.kind !== 'all' || sessionState.query || sessionState.category
-      || sessionState.compatibility || sessionState.author || sessionState.selectedId || sessionState.collapsed || sessionState.catalogExpanded);
+      || sessionState.compatibility || sessionState.author || sessionState.selectedId || sessionState.collapsed || sessionState.catalogExpanded
+      || sessionState.view !== 'cards' || sessionState.initialCount !== 2 || sessionState.textSize !== 'normal' || !sessionState.autoReduce);
     if (significantPreferences && hasWidgetPreferences(sessionSnapshot)) {
       return { state: { ...sessionState, values: {} }, source: 'session', restorePresentation: true };
     }

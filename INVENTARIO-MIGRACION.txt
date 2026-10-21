@@ -1,0 +1,36 @@
+Inventario original 2026-10-21 (refs locales pueden estar atrasadas)
+
+* codex/beta-cierre-sprint        ba65785 [origin/main: ahead 1] docs: prepare beta sessions and module skill for founder review
+  codex/biblioteca-resource-cards 8947e53 [origin/codex/biblioteca-resource-cards] Show Biblioteca resource cards with expanded detail dialog
+  codex/catalogo-prompts-skills   d2e703b [origin/codex/catalogo-prompts-skills] fix: protect legacy folders and validate community identities
+  codex/fix-plugin-copy           16e05bf [origin/codex/fix-plugin-copy] Support restricted ChatGPT clipboard and skill downloads
+  codex/fix-widget-restore        5b02a24 [origin/codex/fix-widget-restore] fix: preserve Biblioteca widget selection across reloads
++ codex/plugin-ajustes-movil      d78e078 (C:/Users/MGC/Documents/ChatGPT/Biblioteca/build/ajustes-preview) [origin/codex/plugin-ajustes-movil] feat: configurable inline widget and mobile resource details
+  codex/plugin-biblioteca         9be6b14 [origin/codex/plugin-biblioteca] fix: run MCP backend as ESM and validate protected previews
+  codex/plugin-compact-sprint     5ea4a24 [origin/codex/plugin-compact-sprint] docs: record ChatGPT validation and temporary access revocation
+  codex/plugin-inline-cards       f68006c [origin/codex/plugin-inline-cards] fix: prefer inline Biblioteca cards and open details on card click
+  codex/secciones-prompts-skills  9ed2304 [origin/codex/secciones-prompts-skills] feat: add dedicated prompt and skill sections and library tabs
+  codex/web-compact-sprint        a5d354c [origin/codex/web-compact-sprint] docs: record web compact sprint acceptance
+  main                            0f7f8fe [origin/main: behind 3] Merge pull request #7 from CaBsCrypto/codex/fix-plugin-copy
+
+worktree C:/Users/MGC/Documents/ChatGPT/Biblioteca
+HEAD ba65785fc5f7ebc687c161952a55376f36dc00b7
+branch refs/heads/codex/beta-cierre-sprint
+
+worktree C:/Users/MGC/Documents/ChatGPT/Biblioteca/build/ajustes-preview
+HEAD d78e078feb7ab1068b657ede128c480b5a57a8b9
+branch refs/heads/codex/plugin-ajustes-movil
+
+
+Stashes: ninguno. Índice: sin staged. Estado:
+1 .M N... 100644 100644 100644 1b9037db958c8c452840ed42019f815d81fdd06d 1b9037db958c8c452840ed42019f815d81fdd06d scripts/smoke-mcp.mjs
+1 .M N... 100644 100644 100644 2a4c51577b0831a77c22076136f677cb5c1104b6 2a4c51577b0831a77c22076136f677cb5c1104b6 src/mcp/dev/harness.ts
+1 .M N... 100644 100644 100644 79c319bd22aa8687b5a9c5eee20575a51b545d16 79c319bd22aa8687b5a9c5eee20575a51b545d16 src/mcp/server.ts
+1 .M N... 100644 100644 100644 e1c0a0bfa9c813a20f17586ba6b997537b65f500 e1c0a0bfa9c813a20f17586ba6b997537b65f500 src/mcp/ui/LibraryWidget.tsx
+1 .M N... 100644 100644 100644 c0650691aa589e33e847db26ca46e950556f91e0 c0650691aa589e33e847db26ca46e950556f91e0 src/mcp/ui/bridge.ts
+1 .M N... 100644 100644 100644 f8323d2881ed934e803b5608810165b7bfea2770 f8323d2881ed934e803b5608810165b7bfea2770 src/mcp/ui/widget.css
+1 .M N... 100644 100644 100644 a950291abafa0ad52e6759a4f143563bbdb58fcb a950291abafa0ad52e6759a4f143563bbdb58fcb tests/mcp.server.test.ts
+1 .M N... 100644 100644 100644 6ecb010ff00c95e6d2c390efec72cbc94907f29c 6ecb010ff00c95e6d2c390efec72cbc94907f29c tests/mcp.widget.test.ts
+? docs/beta/
+? docs/sprints/05-ajustes-plugin-movil.md
+? scripts/prepare-beta-resources.ts
