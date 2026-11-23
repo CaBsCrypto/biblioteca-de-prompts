@@ -1,0 +1,98 @@
+.chatgpt-page {
+  --chatgpt-canvas: #f5f8fc;
+  --chatgpt-paper: #fff;
+  --chatgpt-ink: #12233d;
+  --chatgpt-muted: #4c5d75;
+  --chatgpt-blue: #285de5;
+  --chatgpt-border: #d7e1f0;
+  --chatgpt-accent: #eaf0ff;
+  min-height: 100vh;
+  color: var(--chatgpt-ink);
+  background: var(--chatgpt-canvas);
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+.chatgpt-page :where(a, button, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--chatgpt-blue);
+  outline-offset: 4px;
+}
+
+.chatgpt-page a { text-decoration: none; }
+.chatgpt-page :where(h1, h2, p) { margin: 0; }
+.chatgpt-boundary { width: min(100% - 3rem, 1150px); margin-inline: auto; }
+.chatgpt-site-header { border-bottom: 1px solid var(--chatgpt-border); background: var(--chatgpt-paper); }
+.chatgpt-header-inner, .chatgpt-header-inner nav { display: flex; align-items: center; }
+.chatgpt-header-inner { min-height: 71px; justify-content: space-between; gap: 1rem; }
+.chatgpt-header-inner nav { gap: clamp(.5rem, 3vw, 1.5rem); }
+.chatgpt-header-inner nav a, .chatgpt-footer a { min-height: 44px; display: inline-flex; align-items: center; color: var(--chatgpt-muted); font-weight: 500; }
+.chatgpt-header-inner nav a:hover, .chatgpt-footer a:hover { text-decoration: underline; }
+.chatgpt-wordmark { min-height: 44px; display: inline-flex; align-items: center; gap: .65rem; font-weight: 650; font-size: 1.15rem; }
+.chatgpt-brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--chatgpt-paper); background: var(--chatgpt-blue); }
+
+.chatgpt-hero {
+  display: grid;
+  grid-template-columns: minmax(0, .93fr) minmax(0, 1.07fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6.25rem);
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+.chatgpt-intro h1 { max-width: 12ch; font-weight: 650; font-size: clamp(2.7rem, 7vw, 5.15rem); line-height: .99; letter-spacing: -.062em; }
+.chatgpt-intro p { max-width: 34ch; margin-block: 1.35rem 1.65rem; color: var(--chatgpt-muted); font-size: clamp(1.08rem, 2.2vw, 1.33rem); }
+.chatgpt-hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+.chatgpt-button { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: .5rem; border: 1px solid transparent; border-radius: 9px; padding: .55rem .95rem; font-size: .96rem; font-weight: 570; text-align: center; cursor: pointer; }
+.chatgpt-primary { background: var(--chatgpt-blue); color: var(--chatgpt-paper); }
+.chatgpt-primary:hover:not(:disabled) { background: #1e4cc7; }
+.chatgpt-primary:disabled { background: var(--chatgpt-accent); color: var(--chatgpt-ink); cursor: default; }
+.chatgpt-secondary { border-color: var(--chatgpt-border); background: var(--chatgpt-paper); color: var(--chatgpt-ink); }
+.chatgpt-secondary:hover { border-color: var(--chatgpt-blue); color: var(--chatgpt-blue); }
+
+.chatgpt-example {
+  min-width: 0;
+  overflow: hidden;
+  scroll-margin-block-start: 1rem;
+  border: 1px solid var(--chatgpt-border);
+  border-radius: 15px;
+  background: var(--chatgpt-paper);
+  box-shadow: 0 16px 48px -39px #12233d88;
+}
+.chatgpt-example-header { display: flex; align-items: center; gap: .9rem; padding: 1rem 1.3rem; border-bottom: 1px solid var(--chatgpt-border); background: var(--chatgpt-accent); }
+.chatgpt-example-header svg { flex-shrink: 0; color: var(--chatgpt-blue); }
+.chatgpt-example-header p { color: var(--chatgpt-muted); font-size: .85rem; }
+.chatgpt-example-header h2 { font-size: clamp(1.15rem, 2.5vw, 1.4rem); line-height: 1.2; font-weight: 630; }
+.chatgpt-example-body { display: grid; justify-items: start; gap: .55rem; padding: 1.25rem; }
+.chatgpt-example-body label, .chatgpt-example-result p { font-weight: 570; font-size: .88rem; }
+.chatgpt-example-body textarea, .chatgpt-example-body pre { width: 100%; min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chatgpt-example-body textarea { resize: vertical; padding: .7rem .8rem; color: var(--chatgpt-ink); background: var(--chatgpt-canvas); border: 1px solid var(--chatgpt-border); border-radius: 7px; font: .95rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.chatgpt-example-result { width: 100%; min-width: 0; margin-block-start: .48rem; padding: .75rem .9rem; border-inline-start: 3px solid var(--chatgpt-blue); background: var(--chatgpt-canvas); }
+.chatgpt-example-result p { color: var(--chatgpt-muted); }
+.chatgpt-example-result pre { min-height: 6.8em; margin-block-start: .35rem; font-family: inherit; font-size: .94rem; line-height: 1.5; }
+
+.chatgpt-guide {
+  display: grid;
+  grid-template-columns: minmax(0, .72fr) minmax(0, 1fr);
+  gap: clamp(1rem, 6vw, 6.25rem);
+  padding-block: 2rem 2.35rem;
+  border-top: 1px solid var(--chatgpt-border);
+}
+.chatgpt-guide h2, .chatgpt-create h2 { font-size: clamp(1.4rem, 3.4vw, 2rem); line-height: 1.17; font-weight: 630; letter-spacing: -.028em; }
+.chatgpt-guide p, .chatgpt-create p { margin-top: .45rem; color: var(--chatgpt-muted); }
+.chatgpt-guide ol { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: .65rem; list-style-type: decimal; }
+.chatgpt-guide li { padding-inline-start: .3rem; color: var(--chatgpt-muted); }
+.chatgpt-guide li::marker { color: var(--chatgpt-blue); font-weight: 650; }
+.chatgpt-guide li strong { color: var(--chatgpt-ink); font-weight: 620; }
+.chatgpt-create { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: clamp(1rem, 4vw, 1.65rem); border-radius: 11px; background: var(--chatgpt-accent); }
+.chatgpt-create .chatgpt-button { flex-shrink: 0; }
+.chatgpt-footer { padding-block: 1.55rem; font-size: .9rem; }
+
+@media (max-width: 720px) {
+  .chatgpt-boundary { width: calc(100% - 2rem); }
+  .chatgpt-header-inner { min-height: 64px; }
+  .chatgpt-header-inner nav { font-size: .84rem; }
+  .chatgpt-header-inner nav a:last-child { display: none; }
+  .chatgpt-hero, .chatgpt-guide { grid-template-columns: 1fr; }
+  .chatgpt-hero { padding-block: 2.8rem 2.2rem; }
+  .chatgpt-intro p { max-width: 38ch; margin-block: 1rem 1.25rem; }
+  .chatgpt-example-body textarea { font-size: 1rem; }
+  .chatgpt-create { flex-direction: column; align-items: flex-start; }
+}

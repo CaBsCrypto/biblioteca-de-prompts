@@ -4,10 +4,12 @@ import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc,
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import type { Folder, Prompt } from "../types";
 import { mapFolderDoc } from "../utils/firestoreMappers";
+import { libraryBetaEnabled } from "../services/libraryClient";
 
 interface UseFoldersOptions {
   user: User | null;
   prompts: Prompt[];
+  canOrganize?: boolean;
   getAuthorIdentity: () => {
     authorName: string;
     authorAvatar: string;
@@ -16,7 +18,7 @@ interface UseFoldersOptions {
   onNotification: (message: string, type?: "success" | "info") => void;
 }
 
-export function useFolders({ user, prompts, getAuthorIdentity, onNotification }: UseFoldersOptions) {
+export function useFolders({ user, prompts, canOrganize = true, getAuthorIdentity, onNotification }: UseFoldersOptions) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
         updateCombinedFolders();
 
         // Auto-seed folders "Remotion ideas" and "Flow ideas" if they do not exist
-        if (user && ownList.length >= 0) {
+        if (!libraryBetaEnabled) {
           const hasRemotion = ownList.some(f => f.name.toLowerCase() === "remotion ideas");
           const hasFlow = ownList.some(f => f.name.toLowerCase() === "flow ideas");
 
@@ -148,6 +150,7 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
 
   const handleCreateFolder = async (e: FormEvent) => {
     e.preventDefault();
+    if (!canOrganize) { onNotification("Crear carpetas está disponible con Pro.", "info"); return; }
     if (!user || !newFolderName.trim()) return;
 
     setIsSavingFolder(true);
@@ -210,6 +213,7 @@ export function useFolders({ user, prompts, getAuthorIdentity, onNotification }:
 
   const handleSaveFolderShareSettings = async (e: FormEvent, collaborators?: any) => {
     e.preventDefault();
+    if (!canOrganize) { onNotification("Compartir carpetas está disponible con Pro.", "info"); return; }
     if (!user || !showShareFolderModal) return;
 
     setIsSavingFolderShare(true);

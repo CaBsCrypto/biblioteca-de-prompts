@@ -7,7 +7,8 @@
       "config": {
         "includeFiles": [
           "dist/server.mjs",
-          "dist/mcp-widget.html"
+          "dist/mcp-widget.html",
+          "dist/mcp-prompts.html"
         ]
       }
     },
@@ -20,6 +21,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/\\.well-known/(oauth-protected-resource(?:/api/mcp)?|oauth-authorization-server/api/biblioteca-oauth)",
+      "dest": "/api/[...path].js"
+    },
     {
       "src": "/api/(.*)",
       "dest": "/api/[...path].js"

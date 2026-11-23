@@ -64,7 +64,7 @@ export interface AppRouterState {
   section?: string;
   resourceId?: string;
   resourceKind?: 'prompt' | 'skill';
-  libraryKind?: 'prompt' | 'skill';
+  libraryKind?: 'prompt' | 'skill' | 'activity' | 'groups';
 }
 
 export interface AppState {

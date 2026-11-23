@@ -10,12 +10,13 @@ interface Props {
   saved?: boolean;
   onOpen?: () => void;
   onAuthor?: () => void;
+  onCopied?: () => void;
   loadCopyContent: () => Promise<string>;
   children?: React.ReactNode;
 }
 
 /** Metadata stays compact; a deliverable is requested only after an explicit copy. */
-export default function CatalogResourceCard({ resourceKey, kind, metadata, saved, onOpen, onAuthor, loadCopyContent, children }: Props) {
+export default function CatalogResourceCard({ resourceKey, kind, metadata, saved, onOpen, onAuthor, onCopied, loadCopyContent, children }: Props) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -43,7 +44,7 @@ export default function CatalogResourceCard({ resourceKey, kind, metadata, saved
       if (request !== requestRef.current) return;
       const confirmed = await copyText(text);
       if (request !== requestRef.current) return;
-      if (confirmed) setCopied(true);
+      if (confirmed) { setCopied(true); onCopied?.(); }
       else setManualText(text);
     } catch (cause) {
       if (request === requestRef.current) setError(cause instanceof Error ? cause.message : 'No pudimos obtener el contenido. Vuelve a intentarlo.');

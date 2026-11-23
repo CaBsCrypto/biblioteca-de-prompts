@@ -20,10 +20,10 @@ const { default: handler } = await import('../api/[...path].js');
 assert.equal(typeof handler, 'function', 'Vercel entrypoint must import the compiled ESM backend.');
 
 /** Exercise the production handler with real Node request/response types, entirely in memory. */
-async function request(url) {
+async function request(url, method = 'GET') {
   const socket = new Socket();
   const req = new IncomingMessage(socket);
-  req.method = 'GET'; req.url = url; req.headers = { host: 'biblioteca.browns.studio' };
+  req.method = method; req.url = url; req.headers = { host: 'biblioteca.browns.studio' };
   const res = new ServerResponse(req);
   return await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Compiled handler did not respond: ${url}`)), 5000);
@@ -45,4 +45,7 @@ assert.match(JSON.parse(mcp.body).error.message, /Streamable HTTP/);
 const models = await request('/api/ai/models');
 assert.equal(models.status, 200, 'Existing AI metadata route must survive the ESM conversion.');
 assert.equal(JSON.parse(models.body).openrouterAvailable, false);
-console.log('Compiled ESM backend and Vercel entrypoint initialized; MCP and AI metadata routes passed without network requests.');
+const groups = await request('/api/work-groups', 'POST');
+assert.equal(groups.status, 401, 'Work groups must reject unauthenticated requests.');
+assert.equal(groups.headers['cache-control'], 'no-store');
+console.log('Compiled backend and Vercel entrypoint initialized; MCP, AI metadata and group authentication checks passed.');

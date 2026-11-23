@@ -6,6 +6,7 @@ export interface PromptVariable {
 
 export interface Prompt {
   id: string;
+  revision?: number;
   userId: string;
   title: string;
   description: string;

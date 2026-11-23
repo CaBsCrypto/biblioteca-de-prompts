@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Save, Plus, Trash2, Tag, HelpCircle, Sparkles, StickyNote, Globe, History, RotateCcw, Mic, MicOff, GitFork } from "lucide-react";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebase";
@@ -205,7 +205,8 @@ function VoiceDictationButton({ onTranscript, onNotification, tooltipText = "Dic
 interface PromptFormModalProps {
   prompt?: Prompt | null; // If editing
   folders: Folder[];
-  onSave: (data: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">) => void;
+  onSave: (data: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">) => void | boolean | Promise<void | boolean>;
+  draftOwnerId?: string;
   onClose: () => void;
   onOptimizeWithAI?: (text: string) => void; // Link to AI helper directly!
   onNotification?: (message: string, type: "success" | "info") => void;
@@ -215,10 +216,14 @@ export default function PromptFormModal({
   prompt,
   folders,
   onSave,
+  draftOwnerId,
   onClose,
   onOptimizeWithAI,
   onNotification
 }: PromptFormModalProps) {
+  const draftKey = draftOwnerId ? `prompts_editor_draft:${draftOwnerId}` : "prompts_editor_draft";
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [promptText, setPromptText] = useState("");
@@ -366,7 +371,7 @@ export default function PromptFormModal({
   // Load draft on mount (only for new prompts to prevent overwriting existing prompt edits)
   useEffect(() => {
     if (!prompt) {
-      const saved = localStorage.getItem("prompts_editor_draft");
+      const saved = localStorage.getItem(draftKey);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -382,12 +387,12 @@ export default function PromptFormModal({
         }
       }
     }
-  }, [prompt]);
+  }, [prompt, draftKey]);
 
   // Autosave draft on change
   useEffect(() => {
     if (!prompt && (title.trim() || description.trim() || promptText.trim())) {
-      localStorage.setItem("prompts_editor_draft", JSON.stringify({
+      localStorage.setItem(draftKey, JSON.stringify({
         title,
         description,
         promptText,
@@ -395,7 +400,7 @@ export default function PromptFormModal({
         tagsInput
       }));
     }
-  }, [title, description, promptText, category, tagsInput, prompt]);
+  }, [title, description, promptText, category, tagsInput, prompt, draftKey]);
 
   // Parse variables dynamically from text if we see double braces
   const handleExtractVariables = () => {
@@ -438,18 +443,19 @@ export default function PromptFormModal({
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !promptText.trim()) return;
-
-    localStorage.removeItem("prompts_editor_draft");
+    if (!title.trim() || !promptText.trim() || savingRef.current) return;
 
     const parsedTags = tagsInput
       .split(",")
       .map(t => t.trim())
       .filter(t => t !== "" && t.length <= 30);
 
-    onSave({
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const saved = await onSave({
       title: title.trim(),
       description: description.trim(),
       promptText: promptText.trim(),
@@ -468,7 +474,12 @@ export default function PromptFormModal({
       sourceClassId: prompt?.sourceClassId,
       sourceClassTitle: prompt?.sourceClassTitle,
       folderId: folderId || null
-    });
+      });
+      if (saved !== false && !prompt) localStorage.removeItem(draftKey);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -961,10 +972,11 @@ export default function PromptFormModal({
           <button
             type="button"
             onClick={handleSubmit}
+            disabled={saving}
             className="px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#ec4899] hover:opacity-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-500/10 cursor-pointer"
           >
             <Save size={14} />
-            <span>{prompt ? "Guardar Cambios" : "Guardar en Biblioteca"}</span>
+            <span>{saving ? "Guardando…" : prompt ? "Guardar Cambios" : "Guardar en Biblioteca"}</span>
           </button>
         </div>
 

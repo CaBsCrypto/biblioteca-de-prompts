@@ -5,6 +5,12 @@ import crypto from "crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import firebaseConfig from "./firebase-applet-config.json";
 import { installLibraryMcp } from './src/mcp/http';
+import { installWorkGroupsHttp } from './src/services/server/workGroupsHttp';
+import { installLibraryWritesHttp } from './src/services/server/libraryWritesHttp';
+import { installLibraryCollectionsHttp } from './src/services/server/libraryCollectionsHttp';
+import { installBillingHttp, installBillingWebhook } from './src/services/server/billingHttp';
+import { handleTransferBodyError, installPromptTransferHttp } from './src/services/server/promptTransferHttp';
+import { installChatGptOAuth, privateLibraryOAuthConfig, verifyChatGptAccessToken } from './src/services/server/chatgptOAuth';
 
 // Load environment variables
 dotenv.config();
@@ -684,8 +690,30 @@ export async function createApp(options: { enableVite?: boolean; serveStatic?: b
   const enableVite = options.enableVite ?? process.env.NODE_ENV !== "production";
   const serveStatic = options.serveStatic ?? process.env.NODE_ENV === "production";
   const app = express();
+  installBillingWebhook(app);
+  installChatGptOAuth(app);
+  const oauth = privateLibraryOAuthConfig();
+  app.get(['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/api/mcp'], (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (!oauth) {
+      res.status(404).json({ error: 'personal_library_unavailable' });
+      return;
+    }
+    res.json({
+      resource: oauth.resource,
+      authorization_servers: [oauth.issuer],
+      scopes_supported: ['library:read', 'library:write'],
+      bearer_methods_supported: ['header'],
+    });
+  });
   app.use(express.json({ limit: "64kb" }));
-  installLibraryMcp(app);
+  app.use(handleTransferBodyError);
+  installLibraryWritesHttp(app);
+  installLibraryCollectionsHttp(app);
+  installBillingHttp(app);
+  installPromptTransferHttp(app);
+  installWorkGroupsHttp(app);
+  installLibraryMcp(app, undefined, undefined, oauth ? { metadataUrl: oauth.resourceMetadataUrl, verify: verifyChatGptAccessToken } : undefined);
 
   // Check if API key is present
   const apiKey = process.env.GEMINI_API_KEY;

@@ -48,7 +48,7 @@ try {
   }
   const opened = toolData(await client.callTool({ name: 'open_library', arguments: { kind: 'all' } }, undefined, options));
   assert.ok(Array.isArray(opened.resources));
-  const uri = 'ui://biblioteca/library-v6.html';
+  const uri = 'ui://biblioteca/library-v7.html';
   const listed = await client.listResources({}, options);
   assert.ok(listed.resources.some(resource => resource.uri === uri), 'La interfaz no está registrada.');
   const ui = await client.readResource({ uri }, options);

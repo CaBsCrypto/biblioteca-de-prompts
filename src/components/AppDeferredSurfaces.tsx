@@ -113,7 +113,9 @@ interface AppModalLayerProps {
   showFormModal: boolean;
   editingPrompt: Prompt | null;
   folders: Folder[];
-  onSavePrompt: (data: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">) => void | Promise<void>;
+  onSavePrompt: (data: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">) => void | boolean | Promise<void | boolean>;
+  draftOwnerId?: string;
+  onPromptCopied?: (prompt: Prompt) => void;
   onCloseForm: () => void;
   onOptimizeWithAI: (text: string) => void;
   onNotification: (message: string, type?: NotificationKind) => void;
@@ -285,7 +287,9 @@ export function AppModalLayer(props: AppModalLayerProps) {
     <Suspense fallback={<DeferredSurfaceFallback />}>
       {showFormModal && (
         <PromptFormModal
+          key={props.draftOwnerId}
           prompt={editingPrompt}
+          draftOwnerId={props.draftOwnerId}
           folders={folders}
           onSave={onSavePrompt}
           onClose={onCloseForm}
@@ -298,6 +302,7 @@ export function AppModalLayer(props: AppModalLayerProps) {
         <PromptFillerModal
           prompt={usingPrompt}
           onClose={onCloseUsingPrompt}
+          onCopied={props.onPromptCopied}
         />
       )}
 
@@ -306,6 +311,7 @@ export function AppModalLayer(props: AppModalLayerProps) {
           prompt={copyingFilledPrompt}
           onClose={onCloseCopyingFilledPrompt}
           onNotification={onNotification}
+          onCopied={props.onPromptCopied}
         />
       )}
 

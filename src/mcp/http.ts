@@ -8,9 +8,24 @@ import config from '../../firebase-applet-config.json';
 import { createCatalogReader } from './catalogReader';
 import { createLibraryMcpServer } from './server';
 import { InvalidCatalogRequest, ResourceUnavailable, VersionChanged, type CatalogReader } from './contracts';
+import { getBibliotecaAdmin } from '../services/server/firebaseAdmin';
+import { createPromptTransfer } from '../services/server/promptTransfers';
+import { requesterNetwork } from '../services/server/promptTransferHttp';
+
+export interface ChatGptMcpAuth {
+  metadataUrl: string;
+  verify: (rawToken: string, scope: string) => Promise<string | null>;
+}
+
+export function configuredWidgetDomain(value = process.env.BIBLIOTECA_WIDGET_DOMAIN): string | undefined {
+  try {
+    const url = new URL(value ?? '');
+    return url.protocol === 'https:' && url.origin === value && !url.username && !url.password ? url.origin : undefined;
+  } catch { return undefined; }
+}
 
 let defaultReader: CatalogReader | undefined;
-function publicReader() {
+export function publicReader() {
   if (defaultReader) return defaultReader;
   const emulator = process.env.MCP_FIRESTORE_EMULATOR === 'true';
   if (emulator && process.env.NODE_ENV === 'production') throw new Error('El MCP de producción no permite emuladores.');
@@ -23,7 +38,7 @@ function publicReader() {
   return defaultReader;
 }
 
-export function installLibraryMcp(app: Express, reader?: CatalogReader, widgetHtml = () => readFileSync(path.resolve('dist/mcp-widget.html'), 'utf8')) {
+export function installLibraryMcp(app: Express, reader?: CatalogReader, widgetHtml = () => readFileSync(path.resolve('dist/mcp-widget.html'), 'utf8'), oauth?: ChatGptMcpAuth) {
   if (process.env.MCP_FIRESTORE_EMULATOR === 'true' && process.env.NODE_ENV !== 'production') {
     app.get('/__mcp-test', (_req, res) => {
       res.setHeader('Cache-Control', 'no-store');
@@ -108,14 +123,27 @@ export function installLibraryMcp(app: Express, reader?: CatalogReader, widgetHt
       return;
     }
     const localPort = process.env.NODE_ENV !== 'production' ? req.socket.localPort : undefined;
-    const hosts = ['biblioteca.browns.studio', process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL,
-      ...(localPort ? ['localhost:' + localPort, '127.0.0.1:' + localPort] : [])].filter(Boolean) as string[];
+    const hosted = ['biblioteca.browns.studio', process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL].filter(Boolean) as string[];
+    const localHosts = localPort ? ['localhost:' + localPort, '127.0.0.1:' + localPort] : [];
+    const hosts = [...hosted, ...localHosts];
+    const requestHost = req.get('host') ?? '';
+    const claimOrigin = localHosts.includes(requestHost) ? `http://${requestHost}`
+      : hosted.includes(requestHost) ? `https://${requestHost}` : 'https://biblioteca.browns.studio';
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true,
       enableDnsRebindingProtection: true, allowedHosts: hosts,
       allowedOrigins: ['https://chatgpt.com', 'https://chat.openai.com',
         ...(localPort ? ['http://localhost:' + localPort, 'http://127.0.0.1:' + localPort, 'http://localhost:6274'] : [])] });
     try {
-      const server = createLibraryMcpServer(reader ?? publicReader(), widgetHtml);
+      const bearer = req.get('authorization')?.match(/^Bearer ([^\s]+)$/i)?.[1];
+      const server = createLibraryMcpServer(reader ?? publicReader(), widgetHtml, {
+        widgetDomain: configuredWidgetDomain(),
+        claimOrigin,
+        extrasHtml: () => readFileSync(path.resolve('dist/mcp-prompts.html'), 'utf8'),
+        ...(process.env.BIBLIOTECA_PROMPT_TRANSFERS_ENABLED === 'true' ? {
+          transfer: input => createPromptTransfer(getBibliotecaAdmin().db, input, requesterNetwork(req)),
+        } : {}),
+        ...(oauth ? { personal: { metadataUrl: oauth.metadataUrl, authorize: scope => bearer ? oauth.verify(bearer, scope) : Promise.resolve(null) } } : {}),
+      });
       let finished = false;
       res.on('close', () => { if (!finished) { finished = true; void server.close(); } });
       await server.connect(transport);

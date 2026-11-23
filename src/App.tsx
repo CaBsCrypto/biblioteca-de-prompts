@@ -1,3 +1,4 @@
+import { WorkGroups } from './features/WorkGroups';
 import React, { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import {
   collection,
@@ -16,7 +17,6 @@ import {
   LogOut,
   FolderOpen,
   Check,
-  Zap,
   Youtube,
   BookOpen,
   Calendar,
@@ -79,6 +79,9 @@ import { AIAssistantAside, AppModalLayer, PublicProfileSurface, DeferredInlineFa
 import type { GeminiRecommendationResult } from "./components/RecommendationModal";
 import type { PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
+import { useLibraryOverview } from "./hooks/useLibraryOverview";
+import { libraryBetaEnabled, recordWebLibraryUse } from "./services/libraryClient";
+import { LibraryActivityPanel, LibraryPilotStatus } from "./components/LibraryPilotStatus";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
 import { useLibraryModals } from "./hooks/useLibraryModals";
@@ -108,22 +111,16 @@ import {
   filterPrompts,
   getAuthorProfileStats,
   getAvailableTags,
-  getPublicShowcasePrompts,
   getTagSuggestions,
   type CommunitySort,
   type LibraryViewFilter
 } from "./utils/promptFilters";
 
 const FOUNDER_PACK_USER_ID = "founder-pack";
-const PUBLIC_SHOWCASE_CATEGORIES: CategoryFilter[] = [
-  "Todas",
-  "YouTube",
-  "Marketing",
-  "IA Agentes",
-  "Asistente de Prompts",
-  "IA Videos",
-  "General"
-];
+const LIBRARY_TABS = ['prompt', 'skill', 'activity', 'groups'] as const;
+const LIBRARY_TAB_LABELS = { prompt: 'Prompts', skill: 'Skills', activity: 'Actividad', groups: 'Grupos' };
+const visibleLibraryTabs = LIBRARY_TABS.filter(tab => libraryBetaEnabled || tab !== 'activity');
+
 const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
   { id: "todos", label: "Todos" },
   { id: "privados", label: "Privados" },
@@ -216,9 +213,7 @@ export default function App() {
   };
 
   const [presetAItext, setPresetAItext] = useState("");
-  const [publicShowcaseCategory, setPublicShowcaseCategory] = useState<CategoryFilter>("Todas");
 
-  const [publicShowcaseSearch, setPublicShowcaseSearch] = useState("");
   const [pendingPublicSavePrompt, setPendingPublicSavePrompt] = useState<Prompt | null>(null);
   const [isResolvingPendingPublicSave, setIsResolvingPendingPublicSave] = useState(false);
   const [pendingForumDraft, setPendingForumDraft] = useState<CommunityPostInput | null>(null);
@@ -261,6 +256,8 @@ export default function App() {
     user,
     currentUserProfile,
     authLoading,
+    signingIn,
+    signInError,
     showProfileModal,
     setShowProfileModal,
     profileNameInput,
@@ -301,6 +298,8 @@ export default function App() {
   }, [user?.uid]);
 
   const isFounder = Boolean(user && currentUserProfile?.uid === user.uid && currentUserProfile.role === "founder");
+  const { overview, error: overviewError, refresh: refreshOverview } = useLibraryOverview(user?.uid);
+  const libraryAccess = overview?.access;
   const catalogIdentity = useMemo(() => ({
     name: currentUserProfile?.displayName || user?.displayName || "Creador",
     handle: currentUserProfile?.handle || "",
@@ -439,6 +438,7 @@ export default function App() {
   } = useFolders({
     user,
     prompts,
+    canOrganize: !libraryBetaEnabled || libraryAccess?.tier === 'pro',
     getAuthorIdentity,
     onNotification: triggerNotification
   });
@@ -550,7 +550,6 @@ export default function App() {
     loadBriefing,
     loadingSharedBriefing,
     publicBriefings,
-    loadingPublicBriefings,
     incrementBriefingStat
   } = useBriefings({
     user,
@@ -1267,6 +1266,11 @@ export default function App() {
     setCopyingFilledPrompt(prompt);
   };
 
+  const recordLibraryUse = (kind: 'prompt' | 'skill', id: string) => {
+    if (!libraryBetaEnabled || !user || (kind === 'prompt' && !prompts.some(prompt => prompt.id === id))) return;
+    void recordWebLibraryUse(user.uid, kind, id).then(refreshOverview).catch(() => {});
+  };
+
   const handleSeedSelectedPack = (selectedPrompts: typeof DEFAULT_PROMPTS) => {
     void handleSeedDefaults(selectedPrompts);
     setShowSeedPackModal(false);
@@ -1476,14 +1480,6 @@ export default function App() {
     return hackathons.filter((hackathon) => hackathon.authorUid === selectedAuthor.uid);
   }, [hackathons, selectedAuthor]);
 
-  const publicShowcasePrompts = useMemo(() => {
-    return getPublicShowcasePrompts({
-      prompts: visibleCommunityCatalogPrompts,
-      selectedCategory: publicShowcaseCategory,
-      searchQuery: publicShowcaseSearch
-    });
-  }, [visibleCommunityCatalogPrompts, publicShowcaseCategory, publicShowcaseSearch]);
-
   const socialFavoritePrompts = useMemo(() => {
     return socialFavorites.map((favorite) => ({
       favorite,
@@ -1607,14 +1603,22 @@ export default function App() {
     : currentSection === "publicar" ? "publish"
     : currentSection === "revisiones" ? "review" : "explore";
   const showCatalog = ["inicio", "explorar", "prompts", "skills", "creadores", "publicar", "revisiones"].includes(currentSection);
+  const showWelcome = !user && !authLoading && (currentSection === "explorar" || currentSection === "inicio") &&
+    !router.state.resourceId && !router.state.share && !router.state.folder;
+  const libraryNeedsSignIn = currentSection === "mi-biblioteca" && (authLoading || !user);
+  const libraryNeedsAccess = currentSection === "mi-biblioteca" && libraryBetaEnabled && !libraryAccess?.canRead;
+  const requestedLibraryTab = router.state.libraryKind ?? 'prompt';
+  const selectedLibraryTab = visibleLibraryTabs.includes(requestedLibraryTab) ? requestedLibraryTab : 'prompt';
   const renderCatalog = (mode: "explore" | "creators" | "publish" | "review" | "library") => (
     <Suspense fallback={<DeferredInlineFallback label="Cargando Biblioteca..." />}>
       <CatalogWorkspace
         mode={mode} catalog={catalog} user={user} identity={catalogIdentity} ownPrompts={prompts}
+        hideExploreHeading={showWelcome} authLoading={authLoading} signingIn={signingIn} signInError={signInError}
         browseKind={(router.state.resourceId ? appStoreState.catalogBrowse.returnSection : currentSection) === 'prompts' ? 'prompt' : (router.state.resourceId ? appStoreState.catalogBrowse.returnSection : currentSection) === 'skills' ? 'skill' : 'all'}
         onBrowseKind={(kind) => handleSectionChange(kind === 'prompt' ? 'prompts' : kind === 'skill' ? 'skills' : 'explorar')}
         onSignIn={() => void handleSignIn()} onOpenResource={openCatalogResource}
         onUsePrompt={(prompt) => handleUsePrompt(prompt, "catalog")}
+        onSavedSkillUse={(id) => recordLibraryUse("skill", id)}
         onSavePrompt={async (prompt) => {
           const saved = await handleForkPrompt(prompt, { beforeOpen: () => handleSectionChange('mi-biblioteca') });
           if (!saved) throw new Error('No pudimos guardar el remix. Inténtalo de nuevo.');
@@ -1735,35 +1739,36 @@ export default function App() {
         <ToastHUD message={notification.message} type={notification.type} />
       )}
 
-      {/* Main Top Header Navigation */}
-      <MainHeader
-        uiThemeMode={uiThemeMode}
-        setUiThemeMode={setUiThemeMode}
-        user={user}
-        currentUserProfile={currentUserProfile}
-        authLoading={authLoading}
-        isFounder={isFounder}
-        handleSignIn={handleSignIn}
-        handleSignOut={handleSignOut}
-        handleOpenProfileModal={handleOpenProfileModal}
-        setShowJoinClassModal={setShowJoinClassModal}
-        handleSectionChange={handleSectionChange}
-        buildProfileHandle={buildProfileHandle}
-      />
-
-      <AppTopNav
-        currentSection={currentSection}
-        promptsCount={catalog.resources.length}
-        libraryCount={prompts.length}
-        postsCount={forumPostsCount}
-        hackathonsCount={hackathons.length}
-        showcasesCount={showcasePostsCount}
-        newsCount={savedIdeas.length}
-        showAdmin={isFounder}
-        showGuidedMode={Boolean(user)}
-        onSectionChange={handleSectionChange}
-        onGuidedModeClick={openGuidedBetaMode}
-      />
+      <div className="sticky top-0 z-30 shrink-0">
+        <MainHeader
+          uiThemeMode={uiThemeMode}
+          setUiThemeMode={setUiThemeMode}
+          user={user}
+          currentUserProfile={currentUserProfile}
+          authLoading={authLoading}
+          signingIn={signingIn}
+          isFounder={isFounder}
+          handleSignIn={handleSignIn}
+          handleSignOut={handleSignOut}
+          handleOpenProfileModal={handleOpenProfileModal}
+          setShowJoinClassModal={setShowJoinClassModal}
+          handleSectionChange={handleSectionChange}
+        />
+        <AppTopNav
+          currentSection={currentSection}
+          promptsCount={catalog.resources.length}
+          libraryCount={prompts.length}
+          postsCount={forumPostsCount}
+          hackathonsCount={hackathons.length}
+          showcasesCount={showcasePostsCount}
+          newsCount={savedIdeas.length}
+          showAdmin={isFounder}
+          showGuidedMode={Boolean(user)}
+          onSectionChange={handleSectionChange}
+          onGuidedModeClick={openGuidedBetaMode}
+          onJoinClassClick={!user && !authLoading ? () => setShowJoinClassModal(true) : undefined}
+        />
+      </div>
 
       {import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true' && (
         <aside className="biblioteca-emulator-tools" aria-label="Cuentas de prueba locales">
@@ -1833,20 +1838,69 @@ export default function App() {
         
         {/* Left Side: Prompts Viewer Grid and category bar */}
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 space-y-5 sm:space-y-6">
-          {currentSection === "mi-biblioteca" && <>
-            <div className="catalog-page-heading"><h1>Mi Biblioteca</h1><p>Tus prompts y skills guardados, con sus versiones y atribución.</p></div>
+          {currentSection === "mi-biblioteca" && !libraryNeedsSignIn && !libraryNeedsAccess && <>
+            <div className="catalog-page-heading"><h1>Mi Biblioteca</h1></div>
+            {libraryBetaEnabled && libraryAccess && <LibraryPilotStatus access={libraryAccess} promptCount={prompts.length} />}
             <div className="catalog-kind-filter" role="tablist" aria-label="Recursos de Mi Biblioteca">
-              {(['prompt', 'skill'] as const).map(kind => <button key={kind} role="tab" id={`library-tab-${kind}`} aria-controls={`library-panel-${kind}`} aria-selected={(router.state.libraryKind || 'prompt') === kind} tabIndex={(router.state.libraryKind || 'prompt') === kind ? 0 : -1} className={(router.state.libraryKind || 'prompt') === kind ? 'is-active' : ''} onClick={() => router.setRouter({ section: 'mi-biblioteca', libraryKind: kind })} onKeyDown={event => {
+              {visibleLibraryTabs.map((kind, index) => <button key={kind} role="tab" id={`library-tab-${kind}`} aria-controls={`library-panel-${kind}`} aria-selected={selectedLibraryTab === kind} tabIndex={selectedLibraryTab === kind ? 0 : -1} className={selectedLibraryTab === kind ? 'is-active' : ''} onClick={() => {
+                router.setRouter({ section: 'mi-biblioteca', libraryKind: kind });
+                if (kind === 'activity') void refreshOverview();
+              }} onKeyDown={event => {
                 if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
                 event.preventDefault();
-                const next = event.key === 'Home' ? 'prompt' : event.key === 'End' ? 'skill' : kind === 'prompt' ? 'skill' : 'prompt';
+                const offset = event.key === 'ArrowLeft' ? -1 : 1;
+                const next = event.key === 'Home' ? visibleLibraryTabs[0] : event.key === 'End' ? visibleLibraryTabs.at(-1)! : visibleLibraryTabs[(index + offset + visibleLibraryTabs.length) % visibleLibraryTabs.length];
                 router.setRouter({ section: 'mi-biblioteca', libraryKind: next });
+                if (next === 'activity') void refreshOverview();
                 document.getElementById(`library-tab-${next}`)?.focus();
-              }}>{kind === 'prompt' ? 'Prompts' : 'Skills'}</button>)}
+              }}>{LIBRARY_TAB_LABELS[kind]}</button>)}
             </div>
-            {router.state.libraryKind === 'skill' && <div role="tabpanel" id="library-panel-skill" aria-labelledby="library-tab-skill">{renderCatalog('library')}</div>}
+            {selectedLibraryTab === 'groups' && <div role="tabpanel" id="library-panel-groups" aria-labelledby="library-tab-groups">
+              {user && !user.isAnonymous ? <WorkGroups key={user.uid} user={user} prompts={libraryDisplayPrompts} canShare={!libraryBetaEnabled || libraryAccess?.tier === 'pro'} /> : (
+                <div className="space-y-3">
+                  <p>Conecta tu cuenta de Google para crear un grupo o unirte a tu equipo.</p>
+                  <button className="rounded-lg border border-current/20 px-3 py-2" onClick={() => void handleSignIn()}>Conectar con Google</button>
+                </div>
+              )}
+            </div>}
+            {selectedLibraryTab === 'skill' && <div role="tabpanel" id="library-panel-skill" aria-labelledby="library-tab-skill">{renderCatalog('library')}</div>}
+            {selectedLibraryTab === 'activity' && overview && <div role="tabpanel" id="library-panel-activity" aria-labelledby="library-tab-activity">
+              <LibraryActivityPanel items={overview.activity} onRefresh={() => void refreshOverview()} />
+            </div>}
           </>}
-          {showCatalog ? renderCatalog(catalogMode) : currentSection === "progreso" ? (
+          {showCatalog ? (
+            <>
+              {showWelcome && <WelcomeHeroSection user={user} authLoading={authLoading}
+                onExplorePrompts={() => handleSectionChange("prompts")} onExploreSkills={() => handleSectionChange("skills")} />}
+              {renderCatalog(catalogMode)}
+            </>
+          ) : libraryNeedsSignIn ? (
+            <div className="catalog-workspace">
+              <section className="catalog-signin library-entry" aria-labelledby="library-entry-heading">
+                <BookOpen size={27} aria-hidden="true" />
+                <h1 id="library-entry-heading">Mi Biblioteca</h1>
+                {authLoading ? <p role="status">Comprobando tu sesión…</p> : <>
+                  <p>{router.state.libraryKind === "groups" ? "Entra con Google para crear un grupo o unirte a tu equipo." : "Entra con Google para guardar tus prompts y skills y encontrarlos cuando los necesites."}</p>
+                  <button type="button" className="catalog-button catalog-primary" disabled={signingIn} onClick={() => void handleSignIn()}>
+                    {signingIn ? "Abriendo Google…" : "Entrar con Google"}
+                  </button>
+                  {signInError && <p className="catalog-entry-error" role="alert">{signInError}</p>}
+                  <button type="button" className="catalog-link" onClick={() => handleSectionChange("explorar")}>Seguir explorando</button>
+                </>}
+              </section>
+            </div>
+          ) : libraryNeedsAccess ? (
+            <div className="catalog-workspace">
+              <section className="catalog-signin library-entry" aria-labelledby="library-pilot-heading">
+                <h1 id="library-pilot-heading">Mi Biblioteca</h1>
+                {libraryAccess || overviewError ? <>
+                  <p>{overviewError ?? 'Esta cuenta aún no tiene acceso al piloto de Mi Biblioteca.'}</p>
+                  <button className="catalog-button" type="button" onClick={() => void refreshOverview()}>Comprobar acceso</button>
+                  <button className="catalog-link" type="button" onClick={() => handleSectionChange('explorar')}>Seguir explorando</button>
+                </> : <p role="status">Comprobando tu acceso…</p>}
+              </section>
+            </div>
+          ) : currentSection === "progreso" ? (
             <>
             <Suspense fallback={<DeferredInlineFallback label="Cargando Mi Progreso..." />}>
               <ProgressDashboard
@@ -1928,7 +1982,7 @@ export default function App() {
                 onDetectHackathonOpportunity={(item) => openNewsInAssistant(item, "opportunity")}
               />
             </Suspense>
-          ) : currentSection === 'mi-biblioteca' && router.state.libraryKind === 'skill' ? null : (
+          ) : currentSection === 'mi-biblioteca' && selectedLibraryTab !== 'prompt' ? null : (
             <div role={currentSection === 'mi-biblioteca' ? 'tabpanel' : undefined} id={currentSection === 'mi-biblioteca' ? 'library-panel-prompt' : undefined} aria-labelledby={currentSection === 'mi-biblioteca' ? 'library-tab-prompt' : undefined}>
           
           {/* Welcome Dashboard Block if offline/unauthenticated */}
@@ -1968,28 +2022,8 @@ export default function App() {
               />
             </div>
           ) : !user && !authLoading ? (
-            <WelcomeHeroSection
-              user={user}
-              authLoading={authLoading}
-              handleSignIn={handleSignIn}
-              handleSectionChange={handleSectionChange}
-              setShowJoinClassModal={setShowJoinClassModal}
-              visibleCommunityCatalogPromptsCount={visibleCommunityCatalogPrompts.length}
-              forumPostsCount={forumPostsCount}
-              hackathons={hackathons}
-              showcasePostsCount={showcasePostsCount}
-              loadingPublicBriefings={loadingPublicBriefings}
-              publicBriefings={publicBriefings}
-              openPublicBriefing={openPublicBriefing}
-              publicShowcaseSearch={publicShowcaseSearch}
-              setPublicShowcaseSearch={setPublicShowcaseSearch}
-              publicShowcaseCategory={publicShowcaseCategory}
-              setPublicShowcaseCategory={setPublicShowcaseCategory}
-              filteredShowcasePrompts={publicShowcasePrompts}
-              handleCopyFilledPrompt={handleCopyFilledPrompt}
-              handleUsePrompt={handleUsePrompt}
-              PUBLIC_SHOWCASE_CATEGORIES={PUBLIC_SHOWCASE_CATEGORIES}
-            />
+            <WelcomeHeroSection user={user} authLoading={authLoading} onSignIn={() => void handleSignIn()}
+              onExplorePrompts={() => handleSectionChange("prompts")} onExploreSkills={() => handleSectionChange("skills")} />
           ) : (
             // Authenticated Dashboard Layout
             <div className="space-y-8">
@@ -2344,6 +2378,8 @@ export default function App() {
       <AppModalLayer
         showFormModal={showFormModal && privateAccountRef.current === user?.uid && (!editingPrompt || editingPrompt.userId === user?.uid)}
         editingPrompt={editingPrompt}
+        draftOwnerId={libraryBetaEnabled ? user?.uid : undefined}
+        onPromptCopied={prompt => recordLibraryUse('prompt', prompt.id)}
         folders={folders}
         onSavePrompt={handleSavePrompt}
         onCloseForm={() => {
@@ -2481,9 +2517,7 @@ export default function App() {
       {/* Humble Footer */}
       <footer className="bg-[#0f172a]/95 border-t border-[#334155]/50 py-5 px-6 md:px-12 text-center text-[10px] text-slate-450 shrink-0 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 select-none">
         <p>© {new Date().getFullYear()} Biblioteca · Prompts y skills de la comunidad.</p>
-        <p className="flex items-center justify-center gap-1.5 font-mono text-[9px] text-slate-500">
-          <Zap size={10} className="text-yellow-400" fill="currentColor" />
-        </p>
+        <a className="font-semibold text-slate-300 underline underline-offset-2 hover:text-white" href="/chatgpt">Biblioteca en ChatGPT</a>
       </footer>
 
     </div>

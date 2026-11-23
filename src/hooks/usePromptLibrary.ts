@@ -5,6 +5,7 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { DEFAULT_PROMPTS } from "../data";
 import type { Prompt } from "../types";
 import { mapPromptDoc, sortOwnPrompts } from "../utils/firestoreMappers";
+import { LibraryApiError, libraryBetaEnabled } from "../services/libraryClient";
 import {
   archivePromptVersion,
   createPrompt,
@@ -74,6 +75,10 @@ export function usePromptLibrary({
       (error) => {
         if (!active || accountUid.current !== user.uid) return;
         setLoadingPrompts(false);
+        if (libraryBetaEnabled && error.code === "permission-denied") {
+          setPrompts([]);
+          return;
+        }
         handleFirestoreError(error, OperationType.LIST, PROMPTS_COLLECTION);
       }
     );
@@ -101,7 +106,8 @@ export function usePromptLibrary({
         onNotification(`Se añadieron ${seededCount} prompts de este pack a tu biblioteca.`, "success");
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, PROMPTS_COLLECTION);
+      if (error instanceof LibraryApiError) onNotification(error.message, "info");
+      else handleFirestoreError(error, OperationType.WRITE, PROMPTS_COLLECTION);
     } finally {
       setLoadingPrompts(false);
     }
@@ -110,15 +116,15 @@ export function usePromptLibrary({
   const handleSavePrompt = async (
     promptData: Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">
   ) => {
-    if (!user) return;
+    if (!user) return false;
     const identity = getAuthorIdentity();
     const activeAccount = () => accountUid.current === user.uid;
 
     try {
       if (editingPrompt) {
-        if (editingPrompt.promptText !== promptData.promptText) {
+        if (!libraryBetaEnabled && editingPrompt.promptText !== promptData.promptText) {
           await archivePromptVersion(db, editingPrompt.id, editingPrompt.promptText);
-          if (!activeAccount()) return;
+          if (!activeAccount()) return false;
         }
 
         const forkMetadata = stripUndefined({
@@ -145,7 +151,7 @@ export function usePromptLibrary({
           ...forkMetadata,
           ...identity,
           folderId: promptData.folderId || null,
-        });
+        }, { uid: user.uid, revision: editingPrompt.revision });
         if (activeAccount()) onNotification("Prompt actualizado correctamente.");
       } else {
         const data: PromptSeed = {
@@ -173,10 +179,14 @@ export function usePromptLibrary({
         await createPrompt(db, user.uid, data, identity);
         if (activeAccount()) onNotification("Nuevo prompt añadido a la biblioteca.");
       }
-    } catch (error) {
-      if (activeAccount()) handleFirestoreError(error, editingPrompt ? OperationType.UPDATE : OperationType.CREATE, PROMPTS_COLLECTION);
-    } finally {
       if (activeAccount()) { setShowFormModal(false); setEditingPrompt(null); }
+      return true;
+    } catch (error) {
+      if (activeAccount()) {
+        if (!(error instanceof LibraryApiError)) console.error("Error guardando el prompt:", error);
+        onNotification(error instanceof LibraryApiError ? error.message : "No pudimos guardar el prompt. Intenta de nuevo.", "info");
+      }
+      return false;
     }
   };
 
@@ -198,10 +208,11 @@ export function usePromptLibrary({
     if (!window.confirm(`¿Estás seguro de que quieres eliminar "${target.title}"?`)) return;
 
     try {
-      await deletePrompt(db, target.id);
+      await deletePrompt(db, target.id, user.uid);
       onNotification("Prompt eliminado correctamente.", "info");
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, PROMPTS_COLLECTION);
+      if (error instanceof LibraryApiError) onNotification(error.message, "info");
+      else handleFirestoreError(error, OperationType.DELETE, PROMPTS_COLLECTION);
     }
   };
 
@@ -230,7 +241,8 @@ export function usePromptLibrary({
       );
       onNotification("¡Importado con éxito desde el Asistente IA!");
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, PROMPTS_COLLECTION);
+      if (error instanceof LibraryApiError) onNotification(error.message, "info");
+      else handleFirestoreError(error, OperationType.CREATE, PROMPTS_COLLECTION);
     }
   };
 

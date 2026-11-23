@@ -12,6 +12,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function libraryEnforced() {
+      let config = /databases/$(database)/documents/_bibliotecaConfig/library;
+      return exists(config) && get(config).data.enforced == true;
+    }
+
+    function libraryInvite() {
+      let invite = /databases/$(database)/documents/_bibliotecaEntitlements/$(request.auth.uid);
+      return exists(invite) && get(invite).data.chatgptPersonalLibrary == true;
+    }
+
+    function libraryPro() {
+      let grant = /databases/$(database)/documents/_bibliotecaAccessGrants/$(request.auth.uid);
+      return libraryInvite()
+        && exists(/databases/$(database)/documents/_bibliotecaPilotEntries/$(request.auth.uid))
+        && exists(grant) && get(grant).data.proExpiresAt > request.time;
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -873,8 +890,9 @@ service cloud.firestore {
       // Saved skills are private copies. A saved version stays
       // available to its owner when a public listing is updated or withdrawn.
       match /savedCatalogSkills/{resourceId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId;
+        allow get, list: if isSignedIn() && request.auth.uid == userId && (!libraryEnforced() || libraryInvite());
         allow create, update: if isSignedIn() && request.auth.uid == userId
+          && !libraryEnforced()
           && isValidId(resourceId) && isValidId(incoming().submissionId)
           && incoming().resourceId == resourceId
           && incoming().keys().hasOnly(['resourceId', 'submissionId', 'metadata', 'content', 'savedAt'])
@@ -882,6 +900,11 @@ service cloud.firestore {
           && catalogContent(incoming().content, 'skill', true)
           && incoming().savedAt == request.time;
         allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /libraryActivity/{eventId} {
+        allow read: if isSignedIn() && request.auth.uid == userId && libraryInvite();
+        allow write: if false;
       }
 
       match /favorites/{promptId} {
@@ -944,6 +967,7 @@ service cloud.firestore {
            ));
       
       allow create: if isSignedIn()
+        && (!libraryEnforced() || libraryPro())
         && isValidId(folderId)
         && incoming().userId == request.auth.uid
         && incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 100
@@ -956,6 +980,7 @@ service cloud.firestore {
         && incoming().createdAt == request.time;
         
       allow update: if isSignedIn()
+        && (!libraryEnforced() || libraryPro())
         && isValidId(folderId)
         && (
           // Owner edit
@@ -987,16 +1012,17 @@ service cloud.firestore {
     match /prompts/{promptId} {
       // Legacy isShared is an author marker, never a publication permission.
       // Catalog approval is the sole path to a public prompt payload.
-      allow get: if isFounder()
-        || (isSignedIn() && existing().userId == request.auth.uid)
-        || (isSignedIn() && canReadPromptFolder(existing().folderId));
+      allow get: if (!libraryEnforced() && isFounder())
+        || (isSignedIn() && (!libraryEnforced() || libraryInvite())
+          && (existing().userId == request.auth.uid || canReadPromptFolder(existing().folderId)));
         
-      allow list: if isFounder()
-        || (isSignedIn() && existing().userId == request.auth.uid)
-        || (isSignedIn() && canReadPromptFolder(existing().folderId));
+      allow list: if (!libraryEnforced() && isFounder())
+        || (isSignedIn() && (!libraryEnforced() || libraryInvite())
+          && (existing().userId == request.auth.uid || canReadPromptFolder(existing().folderId)));
       
       // Strict creation verification
       allow create: if isSignedIn() 
+        && !libraryEnforced()
         && isValidId(promptId) 
         && isValidPrompt(incoming())
         && incoming().createdAt == request.time
@@ -1004,6 +1030,7 @@ service cloud.firestore {
         
       // Only the owner or a folder editor can edit legacy private prompts.
       allow update: if isSignedIn()
+        && !libraryEnforced()
         && isValidId(promptId)
         && (
           // Case 1: Owner-authorized edit
@@ -1029,7 +1056,17 @@ service cloud.firestore {
         
       // Strictly deletion
       allow delete: if isSignedIn()
+        && !libraryEnforced()
         && existing().userId == request.auth.uid;
+
+      // Changes that do not replace text, move ownership or affect the saved count.
+      allow update: if isSignedIn() && libraryEnforced() && libraryInvite()
+        && existing().userId == request.auth.uid
+        && (
+          (incoming().diff(existing()).affectedKeys().hasOnly(['isFavorite', 'updatedAt'])
+            && incoming().isFavorite is bool && incoming().updatedAt == request.time)
+          || (incoming().diff(existing()).affectedKeys().hasOnly(['folderId']) && incoming().folderId == null)
+        );
 
       // Subcollection for comments
       match /comments/{commentId} {
@@ -1073,10 +1110,11 @@ service cloud.firestore {
 
       // Subcollection for version history
       match /versions/{versionId} {
-        allow get: if isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
-        allow list: if isSignedIn() && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
+        allow get, list: if isSignedIn() && (!libraryEnforced() || libraryInvite())
+          && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
         
         allow create: if isSignedIn()
+          && !libraryEnforced()
           && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid
           && isValidId(versionId)
           && incoming().promptText is string && incoming().promptText.size() > 0 && incoming().promptText.size() <= 10000

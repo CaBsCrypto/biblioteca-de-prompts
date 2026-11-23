@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import { db } from '../firebase';
+import { db, publicCatalogDb } from '../firebase';
+import { libraryBetaEnabled, requestLibrary } from '../services/libraryClient';
 import type { CatalogDraft, CatalogDraftInput, CatalogIdentity, CatalogPayload, CatalogResource, CatalogSubmission, SavedCatalogSkill } from '../typesCatalog';
 import {
   approveCatalogSubmission, deleteCatalogDraft, fetchCatalogPayload, fetchCatalogResource, fetchOwnCatalogDrafts,
@@ -54,9 +56,12 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
     setError(null);
     const privateReads = uid ? Promise.all([
       fetchOwnCatalogDrafts(db, uid), fetchOwnCatalogSubmissions(db, uid), fetchOwnCatalogResources(db, uid),
-      fetchSavedCatalogSkills(db, uid), isFounder ? fetchPendingCatalogSubmissions(db) : Promise.resolve([] as CatalogSubmission[]),
+      fetchSavedCatalogSkills(db, uid).catch(error => {
+        if (libraryBetaEnabled && error?.code === 'permission-denied') return [];
+        throw error;
+      }), isFounder ? fetchPendingCatalogSubmissions(db) : Promise.resolve([] as CatalogSubmission[]),
     ]) : Promise.resolve([[], [], [], [], []] as [CatalogDraft[], CatalogSubmission[], CatalogResource[], SavedCatalogSkill[], CatalogSubmission[]]);
-    const [publicResult, privateResult] = await Promise.allSettled([fetchPublishedCatalogResources(db), privateReads]);
+    const [publicResult, privateResult] = await Promise.allSettled([fetchPublishedCatalogResources(publicCatalogDb), privateReads]);
     if (!mounted.current || currentRequest !== requestId.current || accountUid.current !== uid) return;
     const failures: string[] = [];
     if (publicResult.status === 'fulfilled') setResources(publicResult.value);
@@ -77,6 +82,17 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
     void refresh();
     return () => { requestId.current += 1; };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!libraryBetaEnabled || !uid) return;
+    return onSnapshot(collection(db, 'users', uid, 'savedCatalogSkills'), snapshot => {
+      if (accountUid.current !== uid) return;
+      setSavedSkills(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as SavedCatalogSkill))
+        .sort((left, right) => (right.savedAt?.toMillis?.() ?? 0) - (left.savedAt?.toMillis?.() ?? 0)));
+    }, () => {
+      if (accountUid.current === uid) setSavedSkills([]);
+    });
+  }, [uid]);
 
   const requireUid = useCallback((): string => {
     if (!uid) throw new Error('Inicia sesión para usar tu biblioteca y publicar.');
@@ -117,13 +133,17 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
   const withdraw = useCallback((resource: CatalogResource) =>
     mutate(() => withdrawCatalogResource(db, resource, requireUid())), [mutate, requireUid]);
   const saveSkill = useCallback((resource: CatalogResource, payload: CatalogPayload) =>
-    mutate(() => saveCatalogSkill(db, requireUid(), resource, payload)), [mutate, requireUid]);
-  const fetchPayload = useCallback((resourceId: string) => fetchCatalogPayload(db, resourceId), []);
-  const fetchResource = useCallback((resourceId: string) => fetchCatalogResource(db, resourceId), []);
+    mutate(async () => {
+      const account = requireUid();
+      if (libraryBetaEnabled) await requestLibrary(account, '/api/library/skills', { resourceId: resource.id, submissionId: payload.submissionId });
+      else await saveCatalogSkill(db, account, resource, payload);
+    }), [mutate, requireUid]);
+  const fetchPayload = useCallback((resourceId: string) => fetchCatalogPayload(publicCatalogDb, resourceId), []);
+  const fetchResource = useCallback((resourceId: string) => fetchCatalogResource(publicCatalogDb, resourceId), []);
   const resolveLegacyShare = useCallback(async (promptId: string) =>
-    (await fetchPublishedResourceForSource(db, { promptId }))[0] ?? null, []);
+    (await fetchPublishedResourceForSource(publicCatalogDb, { promptId }))[0] ?? null, []);
   const resolveLegacyCollection = useCallback((folderId: string) =>
-    fetchPublishedResourceForSource(db, { folderId }), []);
+    fetchPublishedResourceForSource(publicCatalogDb, { folderId }), []);
 
   return {
     resources, loading, error,

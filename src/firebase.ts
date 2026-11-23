@@ -5,10 +5,20 @@ import firebaseConfig from '@/firebase-applet-config.json';
 
 // Initialize Firebase App
 const useEmulators = import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true';
-const app = initializeApp(useEmulators ? { ...firebaseConfig, projectId: 'demo-biblioteca', apiKey: 'demo-key', authDomain: 'localhost' } : firebaseConfig);
+const pilotSettings = import.meta.env.VITE_BIBLIOTECA_PILOT_FIREBASE_CONFIG;
+const webConfig = pilotSettings ? JSON.parse(pilotSettings) as typeof firebaseConfig : firebaseConfig;
+if (pilotSettings && (!webConfig.projectId || webConfig.projectId === firebaseConfig.projectId
+  || !webConfig.apiKey || !webConfig.authDomain)) {
+  throw new Error('Configura un proyecto Firebase independiente para el piloto.');
+}
+const app = initializeApp(useEmulators ? { ...firebaseConfig, projectId: 'demo-biblioteca', apiKey: 'demo-key', authDomain: 'localhost' } : webConfig);
 
 // CRITICAL: Initialize Firestore using the designated database ID from config
-export const db = getFirestore(app, useEmulators ? '(default)' : firebaseConfig.firestoreDatabaseId || '(default)');
+export const db = getFirestore(app, useEmulators || pilotSettings ? '(default)' : webConfig.firestoreDatabaseId || '(default)');
+// Preview private writes stay isolated. Public browsing uses the published catalog.
+export const publicCatalogDb = !useEmulators && pilotSettings && import.meta.env.VITE_BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true'
+  ? getFirestore(initializeApp(firebaseConfig, 'biblioteca-catalog-web'), firebaseConfig.firestoreDatabaseId || '(default)')
+  : db;
 export const auth = getAuth(app);
 if (useEmulators) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
