@@ -96,6 +96,19 @@ test("en modo piloto el cliente no puede saltarse la cuota ni cambiar la cuenta 
   await assertFails(setDoc(doc(member, "folders/library_folder"), validFolder("library_member")));
 });
 
+test("Gratis comercial permite leer prompts propios con Google y reserva las escrituras con cuota al servidor", async () => {
+  const google = (uid: string) => testEnv.authenticatedContext(uid, { firebase: { sign_in_provider: "google.com", identities: {} } }).firestore();
+  const owner = google("commercial_owner");
+  await seedDoc("_bibliotecaConfig/library", { enforced: true, mode: "commercial" });
+  await seedDoc("prompts/commercial_original", validPrompt("commercial_owner"));
+  await assertSucceeds(getDocs(query(collection(owner, "prompts"), where("userId", "==", "commercial_owner"))));
+  await assertFails(getDoc(doc(google("commercial_other"), "prompts/commercial_original")));
+  await assertFails(getDoc(doc(dbFor("commercial_owner"), "prompts/commercial_original")));
+  await assertFails(setDoc(doc(owner, "prompts/commercial_extra"), validPrompt("commercial_owner")));
+  await assertFails(updateDoc(doc(owner, "prompts/commercial_original"), { promptText: "Otra versión", updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(owner, "folders/commercial_free"), validFolder("commercial_owner")));
+});
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,

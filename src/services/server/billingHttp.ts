@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import type { Auth } from 'firebase-admin/auth';
 import type { Firestore } from 'firebase-admin/firestore';
@@ -18,7 +19,7 @@ interface BillingDependencies {
 function replyError(res: Response, error: unknown) {
   if (error instanceof BillingError || error instanceof LibraryAccessError) {
     const code = error.code;
-    const status = code === 'billing_unavailable' ? 503 : code === 'invalid_webhook' ? 401
+    const status = code === 'billing_unavailable' || code === 'library_unavailable' ? 503 : code === 'invalid_webhook' ? 401
       : code === 'access_required' || code === 'access_expired' ? 403 : code === 'code_unavailable' ? 404 : code === 'rate_limited' ? 429 : 400;
     res.status(status).json({ error: code, message: error.message });
   } else if (error instanceof z.ZodError || error instanceof SyntaxError) {
@@ -31,7 +32,7 @@ function replyError(res: Response, error: unknown) {
 
 function enabled(req: Request, res: Response, next: NextFunction) {
   res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-  if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED !== 'true') {
+  if (!managedLibraryEnabled()) {
     res.status(503).json({ error: 'billing_unavailable', message: 'El acceso a planes todavía no está disponible.' });
     return;
   }

@@ -38,6 +38,12 @@ function post(body: object = input, headers: Record<string, string> = {}) {
 }
 
 describe('HTTP de escrituras privadas', () => {
+  it('acepta una cuenta Google verificada en modo comercial con el piloto apagado', async () => {
+    vi.stubEnv('BIBLIOTECA_LIBRARY_BETA_ENABLED', 'false');
+    vi.stubEnv('BIBLIOTECA_LIBRARY_COMMERCIAL_ENABLED', 'true');
+    expect((await post()).status).toBe(200);
+    expect(harness.write).toHaveBeenCalledWith(expect.anything(), 'verified-google-uid', expect.objectContaining({ action: 'create' }), expect.anything());
+  });
   it('se mantiene cerrado si la beta no está activada', async () => {
     vi.stubEnv('BIBLIOTECA_LIBRARY_BETA_ENABLED', 'false');
     expect((await post()).status).toBe(503);

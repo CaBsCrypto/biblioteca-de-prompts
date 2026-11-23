@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import { findClassroomByCode, findClassroomById } from "../data/classroomSeeds";
 import type { Prompt } from "../types";
 import type { Classroom, ClassroomMember } from "../typesCommunity";
-import { LibraryApiError, libraryBetaEnabled, writeLibraryPrompt } from "../services/libraryClient";
+import { LibraryApiError, managedLibraryEnabled, writeLibraryPrompt } from "../services/libraryClient";
 
 interface UseClassroomAccessOptions {
   user: User | null;
@@ -190,7 +190,7 @@ export function useClassroomAccess({
         sourceClassTitle: classroom.title,
         folderId: null
       }));
-      const savedCount = libraryBetaEnabled
+      const savedCount = managedLibraryEnabled
         ? (await writeLibraryPrompt(user.uid, { action: "seed", prompts: pack })).createdCount
         : await Promise.all(pack.map(prompt => addDoc(collection(db, "prompts"), {
           ...prompt, userId: user.uid, ...identity, likedBy: [], likesCount: 0,

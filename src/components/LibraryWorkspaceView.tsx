@@ -424,7 +424,7 @@ export function LibraryWorkspaceView({
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {currentTab === "mi-biblioteca"
-                ? `${prompts.length} prompts guardados`
+                ? `${prompts.length} ${prompts.length === 1 ? 'prompt guardado' : 'prompts guardados'}`
                 : `${filteredPrompts.length} prompts públicos`}
             </p>
           </div>

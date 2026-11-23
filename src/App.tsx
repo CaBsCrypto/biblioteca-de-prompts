@@ -80,7 +80,7 @@ import type { GeminiRecommendationResult } from "./components/RecommendationModa
 import type { PublicProfileTab } from "./components/PublicProfileView";
 import { useAuthProfile } from "./hooks/useAuthProfile";
 import { useLibraryOverview } from "./hooks/useLibraryOverview";
-import { libraryBetaEnabled, recordWebLibraryUse } from "./services/libraryClient";
+import { commercialLibraryEnabled, managedLibraryEnabled, recordWebLibraryUse } from "./services/libraryClient";
 import { LibraryActivityPanel, LibraryPilotStatus } from "./components/LibraryPilotStatus";
 import { usePromptEvents } from "./hooks/usePromptEvents";
 import { usePromptLibrary } from "./hooks/usePromptLibrary";
@@ -119,7 +119,7 @@ import {
 const FOUNDER_PACK_USER_ID = "founder-pack";
 const LIBRARY_TABS = ['prompt', 'skill', 'activity', 'groups'] as const;
 const LIBRARY_TAB_LABELS = { prompt: 'Prompts', skill: 'Skills', activity: 'Actividad', groups: 'Grupos' };
-const visibleLibraryTabs = LIBRARY_TABS.filter(tab => libraryBetaEnabled || tab !== 'activity');
+const visibleLibraryTabs = LIBRARY_TABS.filter(tab => managedLibraryEnabled || tab !== 'activity');
 
 const LIBRARY_VIEW_FILTERS: Array<{ id: LibraryViewFilter; label: string }> = [
   { id: "todos", label: "Todos" },
@@ -438,7 +438,7 @@ export default function App() {
   } = useFolders({
     user,
     prompts,
-    canOrganize: !libraryBetaEnabled || libraryAccess?.tier === 'pro',
+    canOrganize: !managedLibraryEnabled || libraryAccess?.tier === 'pro',
     getAuthorIdentity,
     onNotification: triggerNotification
   });
@@ -1267,7 +1267,7 @@ export default function App() {
   };
 
   const recordLibraryUse = (kind: 'prompt' | 'skill', id: string) => {
-    if (!libraryBetaEnabled || !user || (kind === 'prompt' && !prompts.some(prompt => prompt.id === id))) return;
+    if (!managedLibraryEnabled || !user || (kind === 'prompt' && !prompts.some(prompt => prompt.id === id))) return;
     void recordWebLibraryUse(user.uid, kind, id).then(refreshOverview).catch(() => {});
   };
 
@@ -1605,8 +1605,8 @@ export default function App() {
   const showCatalog = ["inicio", "explorar", "prompts", "skills", "creadores", "publicar", "revisiones"].includes(currentSection);
   const showWelcome = !user && !authLoading && (currentSection === "explorar" || currentSection === "inicio") &&
     !router.state.resourceId && !router.state.share && !router.state.folder;
-  const libraryNeedsSignIn = currentSection === "mi-biblioteca" && (authLoading || !user);
-  const libraryNeedsAccess = currentSection === "mi-biblioteca" && libraryBetaEnabled && !libraryAccess?.canRead;
+  const libraryNeedsSignIn = currentSection === "mi-biblioteca" && (authLoading || !user || (commercialLibraryEnabled && user.isAnonymous));
+  const libraryNeedsAccess = currentSection === "mi-biblioteca" && managedLibraryEnabled && !libraryAccess?.canRead;
   const requestedLibraryTab = router.state.libraryKind ?? 'prompt';
   const selectedLibraryTab = visibleLibraryTabs.includes(requestedLibraryTab) ? requestedLibraryTab : 'prompt';
   const renderCatalog = (mode: "explore" | "creators" | "publish" | "review" | "library") => (
@@ -1840,8 +1840,8 @@ export default function App() {
         <main className="app-shell-main flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 space-y-5 sm:space-y-6">
           {currentSection === "mi-biblioteca" && !libraryNeedsSignIn && !libraryNeedsAccess && <>
             <div className="catalog-page-heading"><h1>Mi Biblioteca</h1></div>
-            {libraryBetaEnabled && libraryAccess && <LibraryPilotStatus access={libraryAccess} promptCount={prompts.length} />}
-            <div className="catalog-kind-filter" role="tablist" aria-label="Recursos de Mi Biblioteca">
+            {managedLibraryEnabled && libraryAccess && <LibraryPilotStatus access={libraryAccess} promptCount={prompts.length} />}
+            <div className="library-section-tabs" role="tablist" aria-label="Recursos de Mi Biblioteca">
               {visibleLibraryTabs.map((kind, index) => <button key={kind} role="tab" id={`library-tab-${kind}`} aria-controls={`library-panel-${kind}`} aria-selected={selectedLibraryTab === kind} tabIndex={selectedLibraryTab === kind ? 0 : -1} className={selectedLibraryTab === kind ? 'is-active' : ''} onClick={() => {
                 router.setRouter({ section: 'mi-biblioteca', libraryKind: kind });
                 if (kind === 'activity') void refreshOverview();
@@ -1856,7 +1856,7 @@ export default function App() {
               }}>{LIBRARY_TAB_LABELS[kind]}</button>)}
             </div>
             {selectedLibraryTab === 'groups' && <div role="tabpanel" id="library-panel-groups" aria-labelledby="library-tab-groups">
-              {user && !user.isAnonymous ? <WorkGroups key={user.uid} user={user} prompts={libraryDisplayPrompts} canShare={!libraryBetaEnabled || libraryAccess?.tier === 'pro'} /> : (
+              {user && !user.isAnonymous ? <WorkGroups key={user.uid} user={user} prompts={libraryDisplayPrompts} canShare={!managedLibraryEnabled || libraryAccess?.tier === 'pro'} /> : (
                 <div className="space-y-3">
                   <p>Conecta tu cuenta de Google para crear un grupo o unirte a tu equipo.</p>
                   <button className="rounded-lg border border-current/20 px-3 py-2" onClick={() => void handleSignIn()}>Conectar con Google</button>
@@ -1894,7 +1894,7 @@ export default function App() {
               <section className="catalog-signin library-entry" aria-labelledby="library-pilot-heading">
                 <h1 id="library-pilot-heading">Mi Biblioteca</h1>
                 {libraryAccess || overviewError ? <>
-                  <p>{overviewError ?? 'Esta cuenta aún no tiene acceso al piloto de Mi Biblioteca.'}</p>
+                  <p>{overviewError ?? (commercialLibraryEnabled ? 'Vuelve a entrar con Google para abrir Mi Biblioteca.' : 'Esta cuenta aún no tiene acceso al piloto de Mi Biblioteca.')}</p>
                   <button className="catalog-button" type="button" onClick={() => void refreshOverview()}>Comprobar acceso</button>
                   <button className="catalog-link" type="button" onClick={() => handleSectionChange('explorar')}>Seguir explorando</button>
                 </> : <p role="status">Comprobando tu acceso…</p>}
@@ -2378,7 +2378,7 @@ export default function App() {
       <AppModalLayer
         showFormModal={showFormModal && privateAccountRef.current === user?.uid && (!editingPrompt || editingPrompt.userId === user?.uid)}
         editingPrompt={editingPrompt}
-        draftOwnerId={libraryBetaEnabled ? user?.uid : undefined}
+        draftOwnerId={managedLibraryEnabled ? user?.uid : undefined}
         onPromptCopied={prompt => recordLibraryUse('prompt', prompt.id)}
         folders={folders}
         onSavePrompt={handleSavePrompt}

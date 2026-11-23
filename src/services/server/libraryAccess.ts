@@ -1,4 +1,5 @@
 import { Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
+import { libraryMode } from './libraryMode';
 
 const PILOT_DURATION_MS = 48 * 60 * 60_000;
 
@@ -16,12 +17,13 @@ export interface LibraryAccess {
 }
 
 export class LibraryAccessError extends Error {
-  constructor(readonly code: 'access_required' | 'access_expired' | 'prompt_limit' | 'prompt_too_long') {
+  constructor(readonly code: 'access_required' | 'access_expired' | 'prompt_limit' | 'prompt_too_long' | 'library_unavailable') {
     super({
       access_required: 'Esta cuenta todavía no tiene una invitación activa para la beta.',
       access_expired: 'Terminó tu acceso de prueba. Puedes consultar y exportar tus prompts o activar Pro para seguir guardando.',
       prompt_limit: 'El plan Gratis permite tres prompts guardados. Exporta o elimina uno para guardar otro.',
       prompt_too_long: 'El prompt supera el límite de caracteres de tu plan.',
+      library_unavailable: 'Mi Biblioteca no está disponible por ahora. Inténtalo de nuevo.',
     }[code]);
   }
 }
@@ -39,21 +41,24 @@ export function libraryGrantRef(db: Firestore, uid: string, sourceId: string) {
 /** Reads every source independently. Revoking a code never revokes a paid period. */
 export async function readLibraryAccess(db: Firestore, uid: string, tx?: Transaction): Promise<LibraryAccess> {
   const now = Date.now();
+  const mode = libraryMode();
+  if (mode === 'commercial') {
+    const configRef = db.collection('_bibliotecaConfig').doc('library');
+    const config = tx ? await tx.get(configRef) : await configRef.get();
+    if (config.get('enforced') !== true || config.get('mode') !== 'commercial') {
+      throw new LibraryAccessError('library_unavailable');
+    }
+  }
   const invitationRef = db.collection('_bibliotecaEntitlements').doc(uid);
   const entryRef = db.collection('_bibliotecaPilotEntries').doc(uid);
-  const grantsQuery = db.collection('_bibliotecaAccessGrants').doc(uid).collection('sources')
-    .where('expiresAt', '>', Timestamp.fromMillis(now));
-  const [invitation, entry] = tx ? await tx.getAll(invitationRef, entryRef)
-    : await Promise.all([invitationRef.get(), entryRef.get()]);
-  const grants = tx ? await tx.get(grantsQuery) : await grantsQuery.get();
-  const enabled = process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true';
-  if (!enabled) {
+  if (mode === 'legacy') {
+    const invitation = tx ? await tx.get(invitationRef) : await invitationRef.get();
     const active = invitation.get('chatgptPersonalLibrary') === true && timestampMillis(invitation.get('expiresAt')) > now;
     return { tier: 'pro', invited: active, canRead: active, canMutate: active, promptLimit: null, promptCharacterLimit: 10000 };
   }
-  const invited = enabled && invitation.get('chatgptPersonalLibrary') === true;
-  const bootstrapRequired = invited && !entry.exists && timestampMillis(invitation.get('expiresAt')) > now;
-  const betaExpires = entry.exists ? timestampMillis(entry.get('expiresAt')) : bootstrapRequired ? now + PILOT_DURATION_MS : 0;
+  const grantsQuery = db.collection('_bibliotecaAccessGrants').doc(uid).collection('sources')
+    .where('expiresAt', '>', Timestamp.fromMillis(now));
+  const grants = tx ? await tx.get(grantsQuery) : await grantsQuery.get();
   let proExpires = 0;
   for (const grant of grants.docs) {
     if (grant.get('tier') === 'pro' && !grant.get('revokedAt') && timestampMillis(grant.get('startsAt')) <= now) {
@@ -61,16 +66,26 @@ export async function readLibraryAccess(db: Firestore, uid: string, tx?: Transac
     }
   }
   const pro = proExpires > now;
+  const plan: Pick<LibraryAccess, 'tier' | 'promptLimit' | 'promptCharacterLimit' | 'proExpiresAt'> = {
+    tier: pro ? 'pro' : 'free',
+    promptLimit: pro ? null : 3,
+    promptCharacterLimit: pro ? 10000 : 2500,
+    ...(pro ? { proExpiresAt: new Date(proExpires).toISOString() } : {}),
+  };
+  if (mode === 'commercial') return { ...plan, invited: false, canRead: true, canMutate: true };
+
+  const [invitation, entry] = tx ? await tx.getAll(invitationRef, entryRef)
+    : await Promise.all([invitationRef.get(), entryRef.get()]);
+  const invited = invitation.get('chatgptPersonalLibrary') === true;
+  const bootstrapRequired = invited && !entry.exists && timestampMillis(invitation.get('expiresAt')) > now;
+  const betaExpires = entry.exists ? timestampMillis(entry.get('expiresAt')) : bootstrapRequired ? now + PILOT_DURATION_MS : 0;
   const canRead = invited && (entry.exists || bootstrapRequired);
   return {
-    tier: pro ? 'pro' : 'free',
+    ...plan,
     invited,
     canRead,
     canMutate: canRead && (betaExpires > now || pro),
-    promptLimit: pro ? null : 3,
-    promptCharacterLimit: pro ? 10000 : 2500,
     ...(betaExpires ? { betaExpiresAt: new Date(betaExpires).toISOString() } : {}),
-    ...(pro ? { proExpiresAt: new Date(proExpires).toISOString() } : {}),
     ...(bootstrapRequired ? { bootstrapRequired: true, bootstrapStartedAt: now } : {}),
   };
 }

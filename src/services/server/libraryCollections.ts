@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import { createHash } from 'node:crypto';
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
@@ -46,7 +47,7 @@ export async function saveLibrarySkill(db: Firestore, uid: string, result: Catal
   return db.runTransaction(async transaction => {
     const previous = await transaction.get(ref);
     if (previous.get('submissionId') !== resource.submissionId) {
-      if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true') {
+      if (managedLibraryEnabled()) {
         assertPromptMutation(await readLibraryAccess(db, uid, transaction), { promptCount: 0, promptLengths: [], additionalCount: 0 });
       }
       transaction.set(ref, {

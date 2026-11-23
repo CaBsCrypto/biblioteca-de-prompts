@@ -17,15 +17,26 @@ service cloud.firestore {
       return exists(config) && get(config).data.enforced == true;
     }
 
+    function libraryCommercial() {
+      let config = /databases/$(database)/documents/_bibliotecaConfig/library;
+      return libraryEnforced() && get(config).data.get('mode', '') == 'commercial';
+    }
+
     function libraryInvite() {
       let invite = /databases/$(database)/documents/_bibliotecaEntitlements/$(request.auth.uid);
       return exists(invite) && get(invite).data.chatgptPersonalLibrary == true;
     }
 
+    function libraryCanRead() {
+      return libraryCommercial()
+        ? request.auth.token.firebase.sign_in_provider == 'google.com'
+        : libraryInvite();
+    }
+
     function libraryPro() {
       let grant = /databases/$(database)/documents/_bibliotecaAccessGrants/$(request.auth.uid);
-      return libraryInvite()
-        && exists(/databases/$(database)/documents/_bibliotecaPilotEntries/$(request.auth.uid))
+      return libraryCanRead()
+        && (libraryCommercial() || exists(/databases/$(database)/documents/_bibliotecaPilotEntries/$(request.auth.uid)))
         && exists(grant) && get(grant).data.proExpiresAt > request.time;
     }
 
@@ -890,7 +901,7 @@ service cloud.firestore {
       // Saved skills are private copies. A saved version stays
       // available to its owner when a public listing is updated or withdrawn.
       match /savedCatalogSkills/{resourceId} {
-        allow get, list: if isSignedIn() && request.auth.uid == userId && (!libraryEnforced() || libraryInvite());
+        allow get, list: if isSignedIn() && request.auth.uid == userId && (!libraryEnforced() || libraryCanRead());
         allow create, update: if isSignedIn() && request.auth.uid == userId
           && !libraryEnforced()
           && isValidId(resourceId) && isValidId(incoming().submissionId)
@@ -903,7 +914,7 @@ service cloud.firestore {
       }
 
       match /libraryActivity/{eventId} {
-        allow read: if isSignedIn() && request.auth.uid == userId && libraryInvite();
+        allow read: if isSignedIn() && request.auth.uid == userId && libraryCanRead();
         allow write: if false;
       }
 
@@ -1013,11 +1024,11 @@ service cloud.firestore {
       // Legacy isShared is an author marker, never a publication permission.
       // Catalog approval is the sole path to a public prompt payload.
       allow get: if (!libraryEnforced() && isFounder())
-        || (isSignedIn() && (!libraryEnforced() || libraryInvite())
+        || (isSignedIn() && (!libraryEnforced() || libraryCanRead())
           && (existing().userId == request.auth.uid || canReadPromptFolder(existing().folderId)));
         
       allow list: if (!libraryEnforced() && isFounder())
-        || (isSignedIn() && (!libraryEnforced() || libraryInvite())
+        || (isSignedIn() && (!libraryEnforced() || libraryCanRead())
           && (existing().userId == request.auth.uid || canReadPromptFolder(existing().folderId)));
       
       // Strict creation verification
@@ -1060,7 +1071,7 @@ service cloud.firestore {
         && existing().userId == request.auth.uid;
 
       // Changes that do not replace text, move ownership or affect the saved count.
-      allow update: if isSignedIn() && libraryEnforced() && libraryInvite()
+      allow update: if isSignedIn() && libraryEnforced() && libraryCanRead()
         && existing().userId == request.auth.uid
         && (
           (incoming().diff(existing()).affectedKeys().hasOnly(['isFavorite', 'updatedAt'])
@@ -1110,7 +1121,7 @@ service cloud.firestore {
 
       // Subcollection for version history
       match /versions/{versionId} {
-        allow get, list: if isSignedIn() && (!libraryEnforced() || libraryInvite())
+        allow get, list: if isSignedIn() && (!libraryEnforced() || libraryCanRead())
           && get(/databases/$(database)/documents/prompts/$(promptId)).data.userId == request.auth.uid;
         
         allow create: if isSignedIn()

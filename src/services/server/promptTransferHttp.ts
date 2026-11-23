@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import { isIP } from 'node:net';
 import type { Express, Request, Response, NextFunction } from 'express';
 import type { ZodType } from 'zod';
@@ -47,7 +48,7 @@ function handle<T>(schema: ZodType<T>, authenticated: boolean, status: number, f
       try {
         const account = await getBibliotecaAdmin().auth.verifyIdToken(token, true);
         const provider = account.firebase.sign_in_provider;
-        if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true' ? provider === 'google.com' : provider !== 'anonymous') uid = account.uid;
+        if (managedLibraryEnabled() ? provider === 'google.com' : provider !== 'anonymous') uid = account.uid;
       } catch {
         // Revoked, disabled or invalid accounts do not get draft access.
       }

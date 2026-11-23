@@ -14,9 +14,10 @@ if (pilotSettings && (!webConfig.projectId || webConfig.projectId === firebaseCo
 const app = initializeApp(useEmulators ? { ...firebaseConfig, projectId: 'demo-biblioteca', apiKey: 'demo-key', authDomain: 'localhost' } : webConfig);
 
 // CRITICAL: Initialize Firestore using the designated database ID from config
-export const db = getFirestore(app, useEmulators || pilotSettings ? '(default)' : webConfig.firestoreDatabaseId || '(default)');
+export const db = getFirestore(app, useEmulators ? '(default)' : webConfig.firestoreDatabaseId || '(default)');
 // Preview private writes stay isolated. Public browsing uses the published catalog.
-export const publicCatalogDb = !useEmulators && pilotSettings && import.meta.env.VITE_BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true'
+export const publicCatalogDb = !useEmulators && pilotSettings && (import.meta.env.VITE_BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true'
+  || import.meta.env.VITE_BIBLIOTECA_LIBRARY_COMMERCIAL_ENABLED === 'true')
   ? getFirestore(initializeApp(firebaseConfig, 'biblioteca-catalog-web'), firebaseConfig.firestoreDatabaseId || '(default)')
   : db;
 export const auth = getAuth(app);

@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import { getBibliotecaAdmin } from './firebaseAdmin';
 import { GroupError, groupActionSchema, runGroupAction } from './workGroups';
 import { ensurePilotEntry } from './libraryAccess';
+import { managedLibraryEnabled } from './libraryMode';
 
 export function installWorkGroupsHttp(app: Express) {
   app.post('/api/work-groups', async (req, res) => {
@@ -19,12 +20,12 @@ export function installWorkGroupsHttp(app: Express) {
     try {
       const { db, auth } = getBibliotecaAdmin();
       const account = await auth.verifyIdToken(token, true).catch(() => null);
-      const pilot = process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true';
-      if (!account || account.firebase.sign_in_provider === 'anonymous' || (pilot && account.firebase.sign_in_provider !== 'google.com')) {
+      const managed = managedLibraryEnabled();
+      if (!account || account.firebase.sign_in_provider === 'anonymous' || (managed && account.firebase.sign_in_provider !== 'google.com')) {
         res.status(401).json({ message: 'Vuelve a iniciar sesión para acceder a tus grupos.' });
         return;
       }
-      if (pilot) {
+      if (managed) {
         const access = await ensurePilotEntry(db, account.uid);
         if (!access.canRead) { res.status(403).json({ message: 'Esta cuenta aún no tiene acceso al piloto.' }); return; }
         if (['create', 'join', 'invite', 'share'].includes(parsed.data.action) && access.tier !== 'pro') {

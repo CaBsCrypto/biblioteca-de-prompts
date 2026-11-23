@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import { createHash } from 'node:crypto';
 import type { UserRecord } from 'firebase-admin/auth';
 import { FieldPath, type Firestore } from 'firebase-admin/firestore';
@@ -54,7 +55,7 @@ export async function listPersonalPrompts(db: Firestore, uid: string, cursor?: s
 }> {
   const own = db.collection('prompts').where('userId', '==', uid).orderBy(FieldPath.documentId());
   const page = await (cursor ? own.startAfter(cursor) : own).limit(PAGE_SIZE + 1).get();
-  const status = !cursor && process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true'
+  const status = !cursor && managedLibraryEnabled()
     ? await getPersonalLibraryStatus(db, uid) : undefined;
   return {
     prompts: page.docs.slice(0, PAGE_SIZE).map(doc => ({ id: doc.id, title: String(doc.get('title') ?? 'Prompt').slice(0, 150) })),
@@ -73,7 +74,7 @@ export async function savePersonalPrompt(db: Firestore, uid: string, requestId: 
   // A retry returns the same prompt and never replaces subsequent edits.
   const id = 'chat_' + createHash('sha256').update(JSON.stringify([uid, requestId])).digest('base64url');
   const ref = db.collection('prompts').doc(id);
-  if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true') {
+  if (managedLibraryEnabled()) {
     const result = await runLibraryTransaction(db, async tx => {
       const operation = await prepareLibraryWrite(db, tx, uid, {
         action: 'create', requestId, prompt: draft, source: 'chatgpt',

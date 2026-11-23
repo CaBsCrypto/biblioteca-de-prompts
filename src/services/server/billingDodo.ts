@@ -33,6 +33,7 @@ export function readBillingOrigin(): string | undefined {
 
 export function readDodoConfig(): DodoConfig | undefined {
   if (process.env.BIBLIOTECA_BILLING_ENABLED !== 'true') return;
+  if (process.env.VERCEL_ENV === 'production' || (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview')) return;
   const apiKey = process.env.DODO_PAYMENTS_API_KEY?.trim();
   const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY?.trim();
   const businessId = process.env.BIBLIOTECA_DODO_BUSINESS_ID?.trim();

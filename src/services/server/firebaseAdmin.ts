@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import firebaseConfig from '../../../firebase-applet-config.json';
 import { configurePilotFirebase } from './pilotFirebase';
+import { libraryMode } from './libraryMode';
 
 let pilot: ReturnType<typeof configurePilotFirebase> | undefined;
 
@@ -22,7 +23,7 @@ export function getBibliotecaAdmin() {
     throw new Error('No se pudo identificar el entorno de Vercel para iniciar Firebase Admin.');
   }
   const preview = process.env.VERCEL_ENV === 'preview';
-  if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true' && !preview && !local) {
+  if (libraryMode() === 'pilot' && !preview && !local) {
     throw new Error('La biblioteca del piloto requiere un Preview aislado o emuladores locales.');
   }
   if (preview) pilot ??= configurePilotFirebase(firebaseConfig.projectId);

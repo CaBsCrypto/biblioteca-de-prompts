@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db, publicCatalogDb } from '../firebase';
-import { libraryBetaEnabled, requestLibrary } from '../services/libraryClient';
+import { managedLibraryEnabled, requestLibrary } from '../services/libraryClient';
 import type { CatalogDraft, CatalogDraftInput, CatalogIdentity, CatalogPayload, CatalogResource, CatalogSubmission, SavedCatalogSkill } from '../typesCatalog';
 import {
   approveCatalogSubmission, deleteCatalogDraft, fetchCatalogPayload, fetchCatalogResource, fetchOwnCatalogDrafts,
@@ -57,7 +57,7 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
     const privateReads = uid ? Promise.all([
       fetchOwnCatalogDrafts(db, uid), fetchOwnCatalogSubmissions(db, uid), fetchOwnCatalogResources(db, uid),
       fetchSavedCatalogSkills(db, uid).catch(error => {
-        if (libraryBetaEnabled && error?.code === 'permission-denied') return [];
+        if (managedLibraryEnabled && error?.code === 'permission-denied') return [];
         throw error;
       }), isFounder ? fetchPendingCatalogSubmissions(db) : Promise.resolve([] as CatalogSubmission[]),
     ]) : Promise.resolve([[], [], [], [], []] as [CatalogDraft[], CatalogSubmission[], CatalogResource[], SavedCatalogSkill[], CatalogSubmission[]]);
@@ -84,7 +84,7 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
   }, [refresh]);
 
   useEffect(() => {
-    if (!libraryBetaEnabled || !uid) return;
+    if (!managedLibraryEnabled || !uid) return;
     return onSnapshot(collection(db, 'users', uid, 'savedCatalogSkills'), snapshot => {
       if (accountUid.current !== uid) return;
       setSavedSkills(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as SavedCatalogSkill))
@@ -135,7 +135,7 @@ export function useCatalog({ user, identity, isFounder }: UseCatalogOptions) {
   const saveSkill = useCallback((resource: CatalogResource, payload: CatalogPayload) =>
     mutate(async () => {
       const account = requireUid();
-      if (libraryBetaEnabled) await requestLibrary(account, '/api/library/skills', { resourceId: resource.id, submissionId: payload.submissionId });
+      if (managedLibraryEnabled) await requestLibrary(account, '/api/library/skills', { resourceId: resource.id, submissionId: payload.submissionId });
       else await saveCatalogSkill(db, account, resource, payload);
     }), [mutate, requireUid]);
   const fetchPayload = useCallback((resourceId: string) => fetchCatalogPayload(publicCatalogDb, resourceId), []);

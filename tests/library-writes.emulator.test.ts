@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encryptGuestDraft } from '../src/features/guestPrompt/draftHandoffCrypto';
 import { getBibliotecaAdmin } from '../src/services/server/firebaseAdmin';
 import { runLibraryWrite, type LibraryPromptInput } from '../src/services/server/libraryWrites';
+import { ensurePilotEntry } from '../src/services/server/libraryAccess';
 import { getPersonalPrompt, listPersonalPrompts } from '../src/services/server/personalLibrary';
 import { claimPromptTransfer, createPromptTransfer } from '../src/services/server/promptTransfers';
 
@@ -16,6 +17,14 @@ const text = (length: number) => 'a'.repeat(length);
 const draft = (ordinal = 1) => ({ title: `Prompt ficticio ${ordinal}`, promptText: `Texto ficticio ${ordinal}` });
 // The emulator can hold contended transaction locks for up to 30 seconds.
 const concurrentTimeout = 60_000;
+
+async function newCommercialAccount() {
+  const { db } = getBibliotecaAdmin();
+  if ((db as unknown as { projectId: string }).projectId !== 'demo-biblioteca') throw new Error('Esta prueba solo usa el emulador.');
+  const uid = 'library-commercial-' + randomUUID();
+  accounts.push(uid);
+  return { db, uid };
+}
 
 async function account(pro = false) {
   const { db } = getBibliotecaAdmin();
@@ -68,6 +77,44 @@ describe.skipIf(!local)('Escrituras y cuotas compartidas con Firestore local', (
     await Promise.all(transfers.splice(0).map(id => db.collection('_promptTransfers').doc(id).delete()));
     await Promise.all(folders.splice(0).map(id => db.collection('folders').doc(id).delete()));
     vi.unstubAllEnvs();
+  });
+
+  it('abre Gratis sin invitación, conserva datos al bajar de Pro y libera plazas', async () => {
+    vi.stubEnv('BIBLIOTECA_LIBRARY_BETA_ENABLED', 'false');
+    vi.stubEnv('BIBLIOTECA_LIBRARY_COMMERCIAL_ENABLED', 'true');
+    const { db, uid } = await newCommercialAccount();
+    const config = db.collection('_bibliotecaConfig').doc('library');
+    const original = await config.get();
+    try {
+      await config.set({ enforced: true });
+      await expect(ensurePilotEntry(db, uid)).rejects.toMatchObject({ code: 'library_unavailable' });
+      await config.set({ enforced: true, mode: 'commercial' });
+      const access = await ensurePilotEntry(db, uid);
+      expect(access).toMatchObject({ tier: 'free', canRead: true, canMutate: true, promptLimit: 3, promptCharacterLimit: 2500 });
+      expect(access.betaExpiresAt).toBeUndefined();
+      expect((await db.collection('_bibliotecaPilotEntries').doc(uid).get()).exists).toBe(false);
+      const first = await create(db, uid, { title: 'Primero', promptText: text(2500) });
+      await expect(runLibraryWrite(db, uid, { action: 'create', requestId: randomUUID(), prompt: { title: 'Demasiado largo', promptText: text(2501) } })).rejects.toMatchObject({ code: 'prompt_too_long' });
+      await create(db, uid, draft(2));
+      await create(db, uid, draft(3));
+      await expect(runLibraryWrite(db, uid, { action: 'create', requestId: randomUUID(), prompt: draft(4) })).rejects.toMatchObject({ code: 'prompt_limit' });
+
+      const grant = db.collection('_bibliotecaAccessGrants').doc(uid).collection('sources').doc('gift');
+      await grant.set({ tier: 'pro', source: 'code', startsAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 60_000) });
+      const fourth = await create(db, uid, { title: 'Guardado Pro', promptText: text(10_000) });
+      await grant.update({ expiresAt: Timestamp.fromMillis(Date.now() - 1) });
+      expect(await ensurePilotEntry(db, uid)).toMatchObject({ tier: 'free', canRead: true, canMutate: true });
+      expect((await ownPrompts(db, uid)).size).toBe(4);
+      await expect(getPersonalPrompt(db, uid, fourth)).resolves.toMatchObject({ promptText: text(10_000) });
+      await runLibraryWrite(db, uid, { action: 'delete', promptId: fourth, requestId: randomUUID() });
+      await expect(runLibraryWrite(db, uid, { action: 'create', requestId: randomUUID(), prompt: draft(5) })).rejects.toMatchObject({ code: 'prompt_limit' });
+      await runLibraryWrite(db, uid, { action: 'delete', promptId: first, requestId: randomUUID() });
+      await create(db, uid, draft(6));
+      expect((await ownPrompts(db, uid)).size).toBe(3);
+    } finally {
+      if (original.exists) await config.set(original.data()!);
+      else await config.delete();
+    }
   });
 
   it('serializa cuatro altas simultáneas de web y ChatGPT en tres plazas Gratis', async () => {

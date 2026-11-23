@@ -9,10 +9,11 @@ export function LibraryPilotStatus({ access, promptCount }: { access: LibraryOve
     <div>
       <strong>{access.tier === 'pro' ? 'Pro' : 'Gratis'}</strong>
       <span>{access.promptLimit === null ? `${promptCount} prompts guardados` : `${promptCount} de ${access.promptLimit} prompts guardados`}</span>
+      {!access.betaExpiresAt && <span>Hasta {access.promptCharacterLimit.toLocaleString('es-CL')} caracteres por prompt</span>}
       {access.canMutate && expiresAt && <span>Acceso activo hasta el {date.format(new Date(expiresAt))}</span>}
       {!access.canMutate && <span>Tu ventana de prueba terminó. Tus guardados siguen disponibles.</span>}
     </div>
-    <a className="library-plan-link" href="/checkout">{access.tier === 'pro' ? 'Gestionar acceso' : 'Canjear código'}</a>
+    <a className="library-plan-link" href="/checkout">{access.tier === 'pro' || !access.betaExpiresAt ? 'Gestionar acceso' : 'Canjear código'}</a>
   </section>;
 }
 

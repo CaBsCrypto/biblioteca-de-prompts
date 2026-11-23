@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { DEFAULT_PROMPTS } from "../data";
 import type { Prompt } from "../types";
 import { mapPromptDoc, sortOwnPrompts } from "../utils/firestoreMappers";
-import { LibraryApiError, libraryBetaEnabled } from "../services/libraryClient";
+import { LibraryApiError, managedLibraryEnabled } from "../services/libraryClient";
 import {
   archivePromptVersion,
   createPrompt,
@@ -75,7 +75,7 @@ export function usePromptLibrary({
       (error) => {
         if (!active || accountUid.current !== user.uid) return;
         setLoadingPrompts(false);
-        if (libraryBetaEnabled && error.code === "permission-denied") {
+        if (managedLibraryEnabled && error.code === "permission-denied") {
           setPrompts([]);
           return;
         }
@@ -122,7 +122,7 @@ export function usePromptLibrary({
 
     try {
       if (editingPrompt) {
-        if (!libraryBetaEnabled && editingPrompt.promptText !== promptData.promptText) {
+        if (!managedLibraryEnabled && editingPrompt.promptText !== promptData.promptText) {
           await archivePromptVersion(db, editingPrompt.id, editingPrompt.promptText);
           if (!activeAccount()) return false;
         }

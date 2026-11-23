@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import { publicReader } from '../../mcp/http';
@@ -13,7 +14,7 @@ type Work = (admin: ReturnType<typeof getBibliotecaAdmin>, uid: string, req: Req
 function privateRoute(work: Work) {
   return async (req: Request, res: Response) => {
     res.set('Cache-Control', 'no-store');
-    if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED !== 'true') {
+    if (!managedLibraryEnabled()) {
       res.status(404).json({ message: 'Esta vista del piloto no está disponible.' });
       return;
     }
@@ -29,7 +30,7 @@ function privateRoute(work: Work) {
       const access = await ensurePilotEntry(admin.db, identity.uid);
       res.json(await work(admin, identity.uid, req, access));
     } catch (error) {
-      const status = error instanceof LibraryAccessError ? 403 : error instanceof LibraryCollectionError ? error.status
+      const status = error instanceof LibraryAccessError ? (error.code === 'library_unavailable' ? 503 : 403) : error instanceof LibraryCollectionError ? error.status
         : error instanceof InvalidCatalogRequest ? 400 : error instanceof ResourceUnavailable ? 404
           : error instanceof VersionChanged ? 409 : 503;
       const message = status === 503 ? 'Mi Biblioteca no está disponible por ahora. Inténtalo de nuevo.' : (error as Error).message;

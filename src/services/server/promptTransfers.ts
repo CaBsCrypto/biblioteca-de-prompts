@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import { createDecipheriv, createHash } from 'node:crypto';
 import { FieldValue, Timestamp, type Firestore, type Transaction } from 'firebase-admin/firestore';
 import { z } from 'zod';
@@ -119,7 +120,7 @@ export async function claimPromptTransfer(db: Firestore, input: z.infer<typeof t
 
     const draft = decryptTransfer(envelopeSchema.parse(transfer.envelope), input.key);
     let savedPromptId = promptRef.id;
-    if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true') {
+    if (managedLibraryEnabled()) {
       try {
         const operation = await prepareLibraryWrite(db, tx, uid, {
           action: 'create', requestId: 'qr:' + hash(input.code), prompt: draft, source: 'qr',
@@ -127,7 +128,7 @@ export async function claimPromptTransfer(db: Firestore, input: z.infer<typeof t
         operation.commit();
         savedPromptId = operation.result.promptId!;
       } catch (error) {
-        if (error instanceof LibraryAccessError) throw new TransferError(error.code, error.message);
+        if (error instanceof LibraryAccessError && error.code !== 'library_unavailable') throw new TransferError(error.code, error.message);
         throw error;
       }
     } else {

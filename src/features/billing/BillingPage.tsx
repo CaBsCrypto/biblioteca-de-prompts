@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Check, Copy } from 'lucide-react';
 import { useAuthProfile } from '../../hooks/useAuthProfile';
+import { commercialLibraryEnabled } from '../../services/libraryClient';
 import { copyText } from '../../utils/clipboard';
 import './billing.css';
 
@@ -118,6 +119,7 @@ export default function BillingPage() {
   const current = user?.uid === shownUid.current ? status : null;
   const canCheckout = Boolean(current?.checkoutReady && current.access.canRead && !busy);
   const accessDate = current?.access.tier === 'pro' ? current.access.proExpiresAt : current?.access.betaExpiresAt;
+  const activeFreeLabel = commercialLibraryEnabled ? 'Gratis activo' : 'Prueba Gratis activa';
 
   return <div className="billing-page">
     <header className="billing-header">
@@ -126,7 +128,7 @@ export default function BillingPage() {
     </header>
     <main className="billing-content">
       <h1>Tu acceso a Biblioteca</h1>
-      <p className="billing-intro">Guarda tus prompts en la web y accede a ellos desde ChatGPT con tu cuenta conectada.</p>
+      <p className="billing-intro">{commercialLibraryEnabled ? 'Consulta el plan y el acceso de tu biblioteca privada.' : 'Guarda tus prompts en la web y accede a ellos desde ChatGPT con tu cuenta conectada.'}</p>
       {!user ? <section className="billing-account">
         <p>Entra con Google para consultar tu acceso o canjear un código de acceso Pro.</p>
         <button className="billing-button billing-primary" disabled={authLoading || signingIn} onClick={() => void handleSignIn()}>
@@ -137,8 +139,8 @@ export default function BillingPage() {
         <p>Cuenta conectada <strong>{user.email || user.displayName}</strong></p>
         {loading && <p role="status">Consultando tu acceso…</p>}
         {current && <>
-          <h2>{current.access.canRead ? current.access.tier === 'pro' ? 'Pro activo' : current.access.canMutate ? 'Prueba Gratis activa' : 'Tu prueba terminó' : 'Acceso por invitación'}</h2>
-          {current.access.canRead ? <p>{accessDate ? `Acceso de escritura hasta el ${dateLabel(accessDate)}.` : 'Tu biblioteca permanece disponible para consulta.'} {current.access.canMutate ? '' : 'Puedes leer y exportar tus prompts guardados.'}</p>
+          <h2>{current.access.canRead ? current.access.tier === 'pro' ? 'Pro activo' : current.access.canMutate ? activeFreeLabel : 'Tu prueba terminó' : 'Acceso por invitación'}</h2>
+          {current.access.canRead ? <p>{accessDate ? `Acceso de escritura hasta el ${dateLabel(accessDate)}.` : 'Tu biblioteca sigue disponible.'} {current.access.canMutate ? '' : 'Puedes leer y exportar tus prompts guardados.'}</p>
             : <p>Esta beta requiere una invitación del fundador antes de activar el acceso.</p>}
           <button type="button" className="billing-text-button" disabled={busy || loading} onClick={() => setRevision(value => value + 1)}>Actualizar estado</button>
           {current.subscription?.status && <button type="button" className="billing-button" disabled={busy || !current.checkoutReady}
@@ -150,7 +152,7 @@ export default function BillingPage() {
       <div className="billing-offers">
         <section className="billing-offer">
           <h2>Gratis</h2><p className="billing-price">US$0</p>
-          <p>Hasta 3 prompts privados, con hasta 2.500 caracteres por prompt, durante tu acceso de prueba de 48 horas.</p>
+          <p>Hasta 3 prompts privados, con hasta 2.500 caracteres por prompt{commercialLibraryEnabled ? '.' : ', durante tu acceso de prueba de 48 horas.'}</p>
         </section>
         <section className="billing-offer billing-pro">
           <h2>Pro</h2><p className="billing-price">US$2,99 <span>al mes</span></p>

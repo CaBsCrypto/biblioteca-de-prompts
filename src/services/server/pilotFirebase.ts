@@ -5,6 +5,7 @@ import type { Credential } from 'firebase-admin/app';
 
 export function configurePilotFirebase(productionProject: string) {
   const projectId = process.env.BIBLIOTECA_PILOT_FIREBASE_PROJECT_ID?.trim();
+  const databaseId = process.env.BIBLIOTECA_PILOT_FIRESTORE_DATABASE_ID?.trim() || '(default)';
   const audience = process.env.BIBLIOTECA_PILOT_GCP_AUDIENCE?.trim();
   const account = process.env.BIBLIOTECA_PILOT_GCP_SERVICE_ACCOUNT?.trim();
   if (process.env.VERCEL_ENV !== 'preview' || !projectId || projectId === productionProject
@@ -34,5 +35,5 @@ export function configurePilotFirebase(productionProject: string) {
   };
   // Firestore 7's transport expects the enumerable auth headers from google-auth-library 9.
   const auth = new GoogleAuth({ authClient: identity, projectId });
-  return { projectId, credential, db: new Firestore({ projectId, databaseId: '(default)', auth }) };
+  return { projectId, credential, db: new Firestore({ projectId, databaseId, auth }) };
 }

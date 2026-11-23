@@ -4,7 +4,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc,
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import type { Folder, Prompt } from "../types";
 import { mapFolderDoc } from "../utils/firestoreMappers";
-import { libraryBetaEnabled } from "../services/libraryClient";
+import { managedLibraryEnabled } from "../services/libraryClient";
 
 interface UseFoldersOptions {
   user: User | null;
@@ -77,7 +77,7 @@ export function useFolders({ user, prompts, canOrganize = true, getAuthorIdentit
         updateCombinedFolders();
 
         // Auto-seed folders "Remotion ideas" and "Flow ideas" if they do not exist
-        if (!libraryBetaEnabled) {
+        if (!managedLibraryEnabled) {
           const hasRemotion = ownList.some(f => f.name.toLowerCase() === "remotion ideas");
           const hasFlow = ownList.some(f => f.name.toLowerCase() === "flow ideas");
 

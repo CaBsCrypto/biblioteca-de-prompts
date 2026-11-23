@@ -1,3 +1,4 @@
+import { managedLibraryEnabled } from './libraryMode';
 import type { Express, Request } from 'express';
 import { getBibliotecaAdmin } from './firebaseAdmin';
 import { LibraryAccessError } from './libraryAccess';
@@ -17,7 +18,7 @@ function allowedOrigin(req: Request) {
 export function installLibraryWritesHttp(app: Express) {
   app.all('/api/library/prompts', async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    if (process.env.BIBLIOTECA_LIBRARY_BETA_ENABLED !== 'true') {
+    if (!managedLibraryEnabled()) {
       res.status(503).json({ error: 'library_disabled', message: 'La biblioteca beta todavía no está disponible.' }); return;
     }
     if (req.method !== 'POST' || !req.is('application/json')) {
@@ -41,7 +42,8 @@ export function installLibraryWritesHttp(app: Express) {
       res.json(await runLibraryWrite(db, account.uid, { ...parsed.data, source: 'web' }, identity));
     } catch (error) {
       if (error instanceof LibraryWriteError || error instanceof LibraryAccessError) {
-        const status = error instanceof LibraryWriteError ? error.status : error.code === 'prompt_too_long' ? 400 : 403;
+        const status = error instanceof LibraryWriteError ? error.status
+          : error.code === 'library_unavailable' ? 503 : error.code === 'prompt_too_long' ? 400 : 403;
         res.status(status).json({ error: error.code, message: error.message }); return;
       }
       console.warn('[LibraryWrites] operation_failed');

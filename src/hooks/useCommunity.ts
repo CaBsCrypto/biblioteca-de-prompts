@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import type { Folder, Prompt } from "../types";
 import { mapFolderDoc, mapPromptDoc, sortCommunityPrompts } from "../utils/firestoreMappers";
 import type { CommunityScope } from "../utils/promptFilters";
-import { LibraryApiError, libraryBetaEnabled, writeLibraryPrompt } from "../services/libraryClient";
+import { LibraryApiError, managedLibraryEnabled, writeLibraryPrompt } from "../services/libraryClient";
 
 export type CommunityAuthor = { name: string; uid: string; avatar?: string; handle?: string };
 
@@ -153,7 +153,7 @@ export function useCommunity({
         updatedAt: serverTimestamp()
       };
 
-      const saved = libraryBetaEnabled
+      const saved = managedLibraryEnabled
         ? await writeLibraryPrompt(user.uid, { action: "create", prompt: draft })
         : undefined;
       const promptId = saved ? saved.promptId : (await addDoc(collection(db, "prompts"), forkData)).id;

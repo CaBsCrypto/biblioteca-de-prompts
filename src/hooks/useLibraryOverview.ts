@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { libraryBetaEnabled, requestLibrary, type LibraryOverview } from '../services/libraryClient';
+import { managedLibraryEnabled, requestLibrary, type LibraryOverview } from '../services/libraryClient';
 
 export function useLibraryOverview(uid: string | undefined) {
   const [snapshot, setSnapshot] = useState<{ uid: string; value?: LibraryOverview; error?: string }>();
   const revision = useRef(0);
   const refresh = useCallback(async () => {
-    if (!libraryBetaEnabled || !uid) return;
+    if (!managedLibraryEnabled || !uid) return;
     const current = ++revision.current;
     try {
       const value = await requestLibrary<LibraryOverview>(uid, '/api/library/overview');
@@ -18,7 +18,7 @@ export function useLibraryOverview(uid: string | undefined) {
   }, [uid]);
 
   useEffect(() => {
-    if (!libraryBetaEnabled || !uid) return;
+    if (!managedLibraryEnabled || !uid) return;
     void refresh();
     window.addEventListener('focus', refresh);
     return () => {

@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import type { Prompt } from "../../types";
 import { mapPromptDoc, sortOwnPrompts } from "../../utils/firestoreMappers";
-import { libraryBetaEnabled, writeLibraryPrompt } from "../libraryClient";
+import { managedLibraryEnabled, writeLibraryPrompt } from "../libraryClient";
 import { auth } from "../../firebase";
 
 export type PromptSeed = Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">;
@@ -51,7 +51,7 @@ export async function createPrompt(
   data: PromptSeed,
   identity: PromptAuthorIdentity
 ): Promise<string> {
-  if (libraryBetaEnabled) {
+  if (managedLibraryEnabled) {
     const result = await writeLibraryPrompt(uid, { action: "create", prompt: data });
     return result.promptIds[0];
   }
@@ -74,7 +74,7 @@ export async function updatePrompt(
   changes: Partial<Prompt> & { promptText: string },
   account?: { uid: string; revision?: number },
 ): Promise<void> {
-  if (libraryBetaEnabled) {
+  if (managedLibraryEnabled) {
     await writeLibraryPrompt(account?.uid ?? auth.currentUser?.uid ?? "", {
       action: "update", promptId, changes, expectedRevision: account?.revision ?? 0,
     });
@@ -95,7 +95,7 @@ export async function togglePromptFavorite(db: Firestore, promptId: string, next
 }
 
 export async function deletePrompt(db: Firestore, promptId: string, uid?: string): Promise<void> {
-  if (libraryBetaEnabled) {
+  if (managedLibraryEnabled) {
     await writeLibraryPrompt(uid ?? auth.currentUser?.uid ?? "", { action: "delete", promptId });
     return;
   }
@@ -107,7 +107,7 @@ export async function archivePromptVersion(
   promptId: string,
   previousPromptText: string
 ): Promise<void> {
-  if (libraryBetaEnabled) return;
+  if (managedLibraryEnabled) return;
   try {
     const versionsRef = versionsCollection(db, promptId);
     await addDoc(versionsRef, {
@@ -134,7 +134,7 @@ export async function seedPromptsForUser(
 ): Promise<number> {
   const toSeed = prompts.filter((p) => !existingTitles.has(p.title.trim().toLocaleLowerCase("es")));
   if (toSeed.length === 0) return 0;
-  if (libraryBetaEnabled) {
+  if (managedLibraryEnabled) {
     return (await writeLibraryPrompt(uid, { action: "seed", prompts: toSeed })).createdCount;
   }
 
@@ -182,7 +182,7 @@ export async function importPromptsFromJSON(
   const prompts = valid.map((p) => ({
         title: String(p.title).slice(0, 150),
         description: typeof p.description === "string" ? p.description.slice(0, 1000) : "",
-        promptText: libraryBetaEnabled ? String(p.promptText) : String(p.promptText).slice(0, 10000),
+        promptText: managedLibraryEnabled ? String(p.promptText) : String(p.promptText).slice(0, 10000),
         category: typeof p.category === "string" ? p.category.slice(0, 50) : "General",
         tags: Array.isArray(p.tags) ? p.tags.slice(0, 10).map((t) => String(t).slice(0, 50)) : [],
         isFavorite: Boolean(p.isFavorite),
@@ -197,7 +197,7 @@ export async function importPromptsFromJSON(
           : [],
         folderId: typeof p.folderId === "string" ? p.folderId.slice(0, 128) : null,
   }));
-  if (libraryBetaEnabled) {
+  if (managedLibraryEnabled) {
     return (await writeLibraryPrompt(uid, { action: "import", prompts })).createdCount;
   }
   await Promise.all(

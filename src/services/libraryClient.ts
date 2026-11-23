@@ -3,7 +3,8 @@ import type { LibraryActivity } from './server/libraryActivity';
 import type { readLibraryAccess } from './server/libraryAccess';
 import type { LibraryWrite } from './server/libraryWrites';
 
-export const libraryBetaEnabled = import.meta.env.VITE_BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true';
+export const commercialLibraryEnabled = import.meta.env.VITE_BIBLIOTECA_LIBRARY_COMMERCIAL_ENABLED === 'true';
+export const managedLibraryEnabled = commercialLibraryEnabled || import.meta.env.VITE_BIBLIOTECA_LIBRARY_BETA_ENABLED === 'true';
 
 export type LibraryOverview = {
   access: Awaited<ReturnType<typeof readLibraryAccess>>;
