@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Folder, Prompt } from "../types";
 import { mapFolderDoc, mapPromptDoc, sortCommunityPrompts } from "../utils/firestoreMappers";
 import type { CommunityScope } from "../utils/promptFilters";
+import { LibraryApiError, managedLibraryEnabled, writeLibraryPrompt } from "../services/libraryClient";
 
 export type CommunityAuthor = { name: string; uid: string; avatar?: string; handle?: string };
 
@@ -125,8 +126,7 @@ export function useCommunity({
         return true;
       }
 
-      const forkData = {
-        userId: user.uid,
+      const draft = {
         title: `${prompt.title.slice(0, 143)} (Clon)`,
         description: prompt.description || "",
         promptText: prompt.promptText,
@@ -142,6 +142,10 @@ export function useCommunity({
         forkedFromAuthorHandle: prompt.forkedFromAuthorHandle || prompt.authorHandle || "",
         forkedFromTitle: prompt.forkedFromTitle || prompt.title,
         suggestedVariables: prompt.suggestedVariables || [],
+      };
+      const forkData = {
+        ...draft,
+        userId: user.uid,
         ...getAuthorIdentity(),
         likedBy: [],
         likesCount: 0,
@@ -149,14 +153,24 @@ export function useCommunity({
         updatedAt: serverTimestamp()
       };
 
-      const docRef = await addDoc(collection(db, "prompts"), forkData);
+      const saved = managedLibraryEnabled
+        ? await writeLibraryPrompt(user.uid, { action: "create", prompt: draft })
+        : undefined;
+      const promptId = saved ? saved.promptId : (await addDoc(collection(db, "prompts"), forkData)).id;
+      if (!promptId) throw new Error("No se recibió el identificador del remix.");
       if (!activeAccount()) return false;
-      const editableFork = {
-        id: docRef.id,
+      let editableFork = {
+        id: promptId,
+        ...(saved && { revision: saved.revision }),
         ...forkData,
         createdAt: null,
         updatedAt: null
       } as Prompt;
+      if (saved?.createdCount === 0) {
+        const stored = await getDoc(doc(db, "prompts", promptId));
+        if (!stored.exists() || !activeAccount()) return false;
+        editableFork = mapPromptDoc(stored);
+      }
 
       setCurrentTab("mi-biblioteca");
       options.beforeOpen?.();
@@ -165,7 +179,10 @@ export function useCommunity({
       return true;
     } catch (err) {
       console.error("Error forking prompt:", err);
-      if (activeAccount()) onNotification("No se pudo clonar el prompt de la comunidad.", "info");
+      if (activeAccount()) {
+        if (err instanceof LibraryApiError && options.beforeOpen) throw err;
+        onNotification(err instanceof LibraryApiError ? err.message : "No se pudo clonar el prompt de la comunidad.", "info");
+      }
       return false;
     } finally {
       if (activeAccount()) setLoadingPrompts(false);

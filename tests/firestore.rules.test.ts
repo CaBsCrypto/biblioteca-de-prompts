@@ -75,6 +75,40 @@ const seedDoc = async (path: string, data: Record<string, unknown>) => {
   });
 };
 
+test("en modo piloto el cliente no puede saltarse la cuota ni cambiar la cuenta autorizada", async () => {
+  const member = dbFor("library_member");
+  const outsider = dbFor("library_outsider");
+  await seedDoc("_bibliotecaConfig/library", { enforced: true });
+  await seedDoc("_bibliotecaEntitlements/library_member", { chatgptPersonalLibrary: true });
+  await seedDoc("prompts/library_original", validPrompt("library_member"));
+  await seedDoc("users/library_member/libraryActivity/saved_test", { action: "saved" });
+
+  await assertSucceeds(getDoc(doc(member, "prompts/library_original")));
+  await assertFails(getDoc(doc(outsider, "prompts/library_original")));
+  await assertFails(setDoc(doc(member, "prompts/library_extra"), validPrompt("library_member")));
+  await assertFails(updateDoc(doc(member, "prompts/library_original"), { promptText: "Otra versión", updatedAt: serverTimestamp() }));
+  await assertFails(deleteDoc(doc(member, "prompts/library_original")));
+  await assertSucceeds(updateDoc(doc(member, "prompts/library_original"), { isFavorite: true, updatedAt: serverTimestamp() }));
+  await assertSucceeds(getDoc(doc(member, "users/library_member/libraryActivity/saved_test")));
+  await assertFails(getDoc(doc(outsider, "users/library_member/libraryActivity/saved_test")));
+  await assertFails(setDoc(doc(member, "_bibliotecaAccessGrants/library_member"), { proExpiresAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(member, "users/library_member/libraryActivity/forged_event"), { action: "used" }));
+  await assertFails(setDoc(doc(member, "folders/library_folder"), validFolder("library_member")));
+});
+
+test("Gratis comercial permite leer prompts propios con Google y reserva las escrituras con cuota al servidor", async () => {
+  const google = (uid: string) => testEnv.authenticatedContext(uid, { firebase: { sign_in_provider: "google.com", identities: {} } }).firestore();
+  const owner = google("commercial_owner");
+  await seedDoc("_bibliotecaConfig/library", { enforced: true, mode: "commercial" });
+  await seedDoc("prompts/commercial_original", validPrompt("commercial_owner"));
+  await assertSucceeds(getDocs(query(collection(owner, "prompts"), where("userId", "==", "commercial_owner"))));
+  await assertFails(getDoc(doc(google("commercial_other"), "prompts/commercial_original")));
+  await assertFails(getDoc(doc(dbFor("commercial_owner"), "prompts/commercial_original")));
+  await assertFails(setDoc(doc(owner, "prompts/commercial_extra"), validPrompt("commercial_owner")));
+  await assertFails(updateDoc(doc(owner, "prompts/commercial_original"), { promptText: "Otra versión", updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(owner, "folders/commercial_free"), validFolder("commercial_owner")));
+});
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId,

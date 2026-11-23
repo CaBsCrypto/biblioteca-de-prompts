@@ -18,6 +18,10 @@ export type CatalogNotification = (message: string, type: 'success' | 'info') =>
 
 interface Props {
   mode: 'explore' | 'creators' | 'publish' | 'review' | 'library';
+  hideExploreHeading?: boolean;
+  authLoading: boolean;
+  signingIn: boolean;
+  signInError: string;
   browseKind: CatalogKind | 'all';
   onBrowseKind: (kind: CatalogKind | 'all') => void;
   catalog: CatalogController;
@@ -27,6 +31,7 @@ interface Props {
   onSignIn: () => void;
   onOpenResource: (resource: CatalogResource) => void;
   onUsePrompt: (prompt: Prompt) => void;
+  onSavedSkillUse?: (id: string) => void;
   onSavePrompt: (prompt: Prompt) => void | Promise<void>;
   onNotify: CatalogNotification;
   selectedResourceId?: string | null;
@@ -120,7 +125,7 @@ export default function CatalogWorkspace(props: Props) {
   return <div className="catalog-workspace">
     {mode !== 'explore' && catalog.error && <div className="catalog-error" role="alert">{catalog.error}<button onClick={() => void catalog.refresh()}>Reintentar</button></div>}
     {mode === 'explore' && <>
-      <section className="catalog-explore-heading"><div><h1>{sectionLabel || 'Explora Biblioteca'}</h1><p>{kind === 'prompt' ? 'Elige una tarea, prepara sus variables y copia el prompt.' : kind === 'skill' ? 'Encuentra instrucciones para tu agente y obtén su versión revisada.' : 'Prompts y skills para pasar de una tarea a su resultado.'}</p></div><span className="catalog-heading-note">Catálogo gratuito</span></section>
+      {!props.hideExploreHeading && <section className="catalog-explore-heading"><div><h1>{sectionLabel || 'Explora Biblioteca'}</h1><p>{kind === 'prompt' ? 'Elige una tarea, prepara sus variables y copia el prompt.' : kind === 'skill' ? 'Encuentra instrucciones para tu agente y obtén su versión revisada.' : 'Prompts y skills para pasar de una tarea a su resultado.'}</p></div></section>}
       <section className="catalog-search-panel" aria-label="Buscar y filtrar recursos">
         <label className="catalog-search"><Search size={19} aria-hidden="true" /><input aria-label="Buscar por tarea, título o palabra clave" placeholder="Busca una tarea, un prompt o una skill" value={filters.query} onChange={event => setFilters(previous => ({ ...previous, query: event.target.value }))} /></label>
         <div className="catalog-filter-row"><div className="catalog-kind-filter" role="group" aria-label="Tipo de recurso">{([['all', 'Todo'], ['prompt', 'Prompts'], ['skill', 'Skills']] as const).map(([kind, label]) => <button key={kind} className={props.browseKind === kind ? 'is-active' : ''} aria-pressed={props.browseKind === kind} onClick={() => props.onBrowseKind(kind)}>{label}</button>)}</div><button className="catalog-filter-toggle" aria-expanded={filtersOpen} aria-controls={filterPanelId} onClick={() => setFiltersOpen(previous => !previous)}><SlidersHorizontal size={16} aria-hidden="true" />Filtros{advancedFilterCount > 0 && <span>({advancedFilterCount})</span>}</button></div>
@@ -138,7 +143,29 @@ export default function CatalogWorkspace(props: Props) {
     </>}
     {mode === 'publish' && (user ? <CatalogEditor key={user.uid} catalog={catalog} identity={identity} ownPrompts={ownPrompts} onNotify={onNotify} onOpenResource={onOpenResource} /> : <div className="catalog-signin"><Users size={32} /><h1>Comparte lo que sabes hacer</h1><p>Publica un prompt o una skill con un ejemplo de su resultado. Podrás guardar borradores y recibir la revisión antes de aparecer en el catálogo.</p><button className="catalog-button catalog-primary" onClick={onSignIn}>Ingresar para crear un borrador <ArrowRight size={16} /></button></div>)}
     {mode === 'review' && <CatalogReview catalog={catalog} user={user} onNotify={onNotify} />}
-    {mode === 'library' && <section className="catalog-saved"><div className="catalog-results-heading"><h2>Mis skills guardadas</h2><span aria-live="polite">{user && catalog.loadingPrivate ? 'Cargando…' : `${catalog.savedSkills.length} ${catalog.savedSkills.length === 1 ? 'skill' : 'skills'}`}</span></div>{!user ? <button className="catalog-button" onClick={onSignIn}>Ingresar para ver tus skills</button> : catalog.loadingPrivate ? <p className="catalog-loading" role="status">Cargando tus skills guardadas…</p> : catalog.savedSkills.length ? <div className="catalog-grid">{catalog.savedSkills.map(skill => <CatalogResourceCard key={skill.id} resourceKey={`${skill.id}:${skill.submissionId}`} kind="skill" metadata={skill.metadata} saved loadCopyContent={async () => skill.content.text}><button className="catalog-button" onClick={() => { try { downloadSkill(skill.content); } catch { onNotify('No pudimos descargar la skill.', 'info'); } }}><Download size={16} aria-hidden="true" /> SKILL.md</button>{skill.content.source === 'github' && <a className="catalog-link" href={safeCatalogUrl(buildSkillRepositoryUrl(skill.content))} target="_blank" rel="noopener noreferrer">Carpeta revisada <ArrowRight size={15} aria-hidden="true" /></a>}</CatalogResourceCard>)}</div> : <p className="catalog-muted">Guarda una skill desde su ficha para tener su versión a mano.</p>}</section>}
-    {(detailLoading || detailError || selectedResource) && <CatalogDetail resource={selectedResource} loading={detailLoading} error={detailError} catalog={catalog} user={user} onClose={props.onCloseResource} onReloadResource={() => { void catalog.refresh(); setDetailRevision(value => value + 1); }} onSignIn={onSignIn} onUsePrompt={props.onUsePrompt} onSavePrompt={props.onSavePrompt} onNotify={onNotify} />}
+    {mode === 'library' && <section className="catalog-saved">
+      <div className="catalog-results-heading">
+        <h2>Skills guardadas</h2>
+        <span aria-live="polite">{user && catalog.loadingPrivate ? 'Cargando…' : `${catalog.savedSkills.length} ${catalog.savedSkills.length === 1 ? 'skill' : 'skills'}`}</span>
+      </div>
+      {!user ? <button className="catalog-button" onClick={onSignIn}>Entrar para ver tus skills</button>
+        : catalog.loadingPrivate ? <p className="catalog-loading" role="status">Cargando tus skills guardadas…</p>
+          : catalog.savedSkills.length ? <div className="catalog-grid">{catalog.savedSkills.map(skill => <CatalogResourceCard
+            key={skill.id} resourceKey={`${skill.id}:${skill.submissionId}`} kind="skill" metadata={skill.metadata} saved
+            loadCopyContent={async () => skill.content.text} onCopied={() => props.onSavedSkillUse?.(skill.id)}>
+            <button className="catalog-button" onClick={() => {
+              try {
+                downloadSkill(skill.content);
+                props.onSavedSkillUse?.(skill.id);
+              } catch { onNotify('No pudimos descargar la skill.', 'info'); }
+            }}><Download size={16} aria-hidden="true" /> SKILL.md</button>
+            {skill.content.source === 'github' && <a className="catalog-link" href={safeCatalogUrl(buildSkillRepositoryUrl(skill.content))}
+              target="_blank" rel="noopener noreferrer">Carpeta revisada <ArrowRight size={15} aria-hidden="true" /></a>}
+          </CatalogResourceCard>)}</div> : <div className="catalog-first-save">
+            <p>Guarda una skill desde su ficha para tener su versión a mano.</p>
+            <button type="button" className="catalog-button" onClick={() => props.onBrowseKind('skill')}>Explorar skills</button>
+          </div>}
+    </section>}
+    {(detailLoading || detailError || selectedResource) && <CatalogDetail resource={selectedResource} loading={detailLoading} error={detailError} catalog={catalog} user={user} authLoading={props.authLoading} signingIn={props.signingIn} signInError={props.signInError} onClose={props.onCloseResource} onReloadResource={() => { void catalog.refresh(); setDetailRevision(value => value + 1); }} onSignIn={onSignIn} onUsePrompt={props.onUsePrompt} onSavePrompt={props.onSavePrompt} onNotify={onNotify} />}
   </div>;
 }

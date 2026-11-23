@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { X, Copy, Check, Info, FileText, Sparkles } from "lucide-react";
 import { Prompt, PromptVariable } from "../types";
+import { copyText } from "../utils/clipboard";
 
 interface CopyFilledModalProps {
   prompt: Prompt;
   onClose: () => void;
   onNotification?: (message: string, type: "success" | "info") => void;
+  onCopied?: (prompt: Prompt) => void;
 }
 
 export default function CopyFilledModal({
   prompt,
   onClose,
-  onNotification
+  onNotification,
+  onCopied,
 }: CopyFilledModalProps) {
   const [variables, setVariables] = useState<PromptVariable[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -62,8 +65,12 @@ export default function CopyFilledModal({
     setValues(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCopyClipboard = () => {
-    navigator.clipboard.writeText(finalPrompt);
+  const handleCopyClipboard = async () => {
+    if (!await copyText(finalPrompt)) {
+      onNotification?.("No se pudo confirmar la copia. Selecciona y copia el texto manualmente.", "info");
+      return;
+    }
+    onCopied?.(prompt);
     setCopied(true);
     if (onNotification) {
       onNotification("¡Prompt formateado con variables copiado al portapapeles!", "success");

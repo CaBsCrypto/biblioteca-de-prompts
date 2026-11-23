@@ -48,6 +48,33 @@ describe('widget prompt preparation', () => {
 });
 
 describe('widget restoration and links', () => {
+  it('upgrades old snapshots with usable settings and never coerces hostile preferences', () => {
+    expect(parseWidgetState({ selectedId: 'approved' })).toMatchObject({ view: 'cards', initialCount: 2, textSize: 'normal', autoReduce: true });
+    expect(parseWidgetState({ view: '<script>', initialCount: '6', textSize: {}, autoReduce: 'false' }))
+      .toMatchObject({ view: 'cards', initialCount: 2, textSize: 'normal', autoReduce: true });
+  });
+
+  it('restores settings-only private snapshots without borrowing another conversation preparation', () => {
+    vi.stubGlobal('window', { openai: { widgetState: { privateContent: { view: 'list', initialCount: 6, textSize: 'large', autoReduce: false } } } });
+    vi.stubGlobal('sessionStorage', { getItem: () => JSON.stringify({ selectedId: 'other', values: { codigo: 'private' } }) });
+    expect(captureWidgetRestoration()).toMatchObject({ source: 'host-private', state: {
+      view: 'list', initialCount: 6, textSize: 'large', autoReduce: false, selectedId: '', values: {},
+    } });
+  });
+
+  it('persists settings in both supported snapshots but keeps input values private', () => {
+    const setWidgetState = vi.fn(); const setItem = vi.fn();
+    vi.stubGlobal('window', { openai: { setWidgetState } }); vi.stubGlobal('sessionStorage', { setItem });
+    const settings = { view: 'list', initialCount: 4, textSize: 'large', autoReduce: false };
+    persistWidgetState(parseWidgetState({ ...settings, selectedId: 'approved', values: { codigo: 'private' } })!);
+    expect(JSON.parse(setItem.mock.calls[0][1])).toMatchObject({ ...settings, values: {} });
+    const snapshot = setWidgetState.mock.calls[0][0];
+    expect(snapshot.privateContent).toMatchObject({ ...settings, values: { codigo: 'private' } });
+    expect(snapshot.modelContent).toEqual({ bibliotecaSelection: 'approved' });
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('sessionStorage', { getItem: () => setItem.mock.calls[0][1] });
+    expect(captureWidgetRestoration()).toMatchObject({ source: 'session', state: { ...settings, values: {} } });
+  });
   it('opens snapshots from before compact mode with both presentation flags disabled', () => {
     expect(parseWidgetState({ kind: 'prompt', selectedId: 'approved-resource' }))
       .toMatchObject({ kind: 'prompt', collapsed: false, catalogExpanded: false });

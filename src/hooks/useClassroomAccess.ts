@@ -5,6 +5,7 @@ import { db } from "../firebase";
 import { findClassroomByCode, findClassroomById } from "../data/classroomSeeds";
 import type { Prompt } from "../types";
 import type { Classroom, ClassroomMember } from "../typesCommunity";
+import { LibraryApiError, managedLibraryEnabled, writeLibraryPrompt } from "../services/libraryClient";
 
 interface UseClassroomAccessOptions {
   user: User | null;
@@ -175,7 +176,7 @@ export function useClassroomAccess({
       }
 
       const identity = getAuthorIdentity();
-      await Promise.all(promptsToSave.map((prompt) => addDoc(collection(db, "prompts"), {
+      const pack = promptsToSave.map((prompt) => ({
         title: prompt.title,
         description: prompt.description,
         promptText: prompt.promptText,
@@ -185,25 +186,25 @@ export function useClassroomAccess({
         isShared: false,
         notas: "",
         suggestedVariables: prompt.suggestedVariables || [],
-        userId: user.uid,
-        ...identity,
-        likedBy: [],
-        likesCount: 0,
         sourceClassId: classroom.id,
         sourceClassTitle: classroom.title,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
         folderId: null
-      })));
+      }));
+      const savedCount = managedLibraryEnabled
+        ? (await writeLibraryPrompt(user.uid, { action: "seed", prompts: pack })).createdCount
+        : await Promise.all(pack.map(prompt => addDoc(collection(db, "prompts"), {
+          ...prompt, userId: user.uid, ...identity, likedBy: [], likesCount: 0,
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        }))).then(saved => saved.length);
 
       await updateDoc(doc(db, "classes", classroom.id, "members", user.uid), {
         savedPackAt: serverTimestamp()
       });
 
-      onNotification(`Guardamos ${promptsToSave.length} prompts de la clase como privados.`, "success");
+      onNotification(`Guardamos ${savedCount} prompts de la clase como privados.`, "success");
     } catch (error) {
       console.error("Error saving classroom pack:", error);
-      onNotification("No pudimos guardar el pack de clase. Intenta nuevamente.", "info");
+      onNotification(error instanceof LibraryApiError ? error.message : "No pudimos guardar el pack de clase. Intenta nuevamente.", "info");
     } finally {
       setLoadingClassroomAction(false);
     }

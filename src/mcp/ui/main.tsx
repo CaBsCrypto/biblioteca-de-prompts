@@ -7,4 +7,4 @@ import './widget.css';
 const element = document.getElementById('biblioteca-widget');
 if (!element) throw new Error('No se encontró el panel de Biblioteca.');
 const bridge = createLibraryBridge();
-createRoot(element).render(<LibraryWidget bridge={bridge} />);
+createRoot(element).render(<LibraryWidget bridge={bridge} personalAvailable={element.dataset.bibliotecaPersonal === 'true'} />);

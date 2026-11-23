@@ -17,6 +17,8 @@ export function parseSearchParams(search: string): AppRouterState {
   const section = params.get('section');
   if (section && SECTIONS.has(section)) result.section = section === 'prompts' || section === 'inicio' ? 'explorar' : section;
   if (result.section === 'mi-biblioteca' && params.get('tab') === 'skills') result.libraryKind = 'skill';
+  if (result.section === 'mi-biblioteca' && params.get('tab') === 'actividad') result.libraryKind = 'activity';
+  if (result.section === 'mi-biblioteca' && params.get('tab') === 'grupos') result.libraryKind = 'groups';
   return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined)) as AppRouterState;
 }
 
@@ -50,6 +52,8 @@ export function serializeRouterState(state: AppRouterState): string {
   }
   if (state.section && state.section !== 'explorar' && !state.profile) params.set('section', state.section);
   if (state.section === 'mi-biblioteca' && state.libraryKind === 'skill') params.set('tab', 'skills');
+  if (state.section === 'mi-biblioteca' && state.libraryKind === 'activity') params.set('tab', 'actividad');
+  if (state.section === 'mi-biblioteca' && state.libraryKind === 'groups') params.set('tab', 'grupos');
   return params.toString();
 }
 

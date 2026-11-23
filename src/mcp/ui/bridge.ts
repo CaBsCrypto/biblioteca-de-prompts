@@ -12,10 +12,15 @@ export interface WidgetState {
   values: Record<string, string>;
   collapsed: boolean;
   catalogExpanded: boolean;
+  view: 'cards' | 'list';
+  initialCount: 2 | 4 | 6;
+  textSize: 'normal' | 'large';
+  autoReduce: boolean;
 }
 
 export const EMPTY_WIDGET_STATE: WidgetState = {
   kind: 'all', query: '', category: '', compatibility: '', author: '', selectedId: '', values: {}, collapsed: false, catalogExpanded: false,
+  view: 'cards', initialCount: 2, textSize: 'normal', autoReduce: true,
 };
 
 export type WidgetDisplayMode = 'inline' | 'fullscreen' | 'pip';
@@ -83,6 +88,10 @@ export function parseWidgetState(value: unknown): WidgetState | undefined {
   if (input.kind === 'prompt' || input.kind === 'skill' || input.kind === 'all') state.kind = input.kind;
   if (typeof input.collapsed === 'boolean') state.collapsed = input.collapsed;
   if (typeof input.catalogExpanded === 'boolean') state.catalogExpanded = input.catalogExpanded;
+  if (input.view === 'cards' || input.view === 'list') state.view = input.view;
+  if (input.initialCount === 2 || input.initialCount === 4 || input.initialCount === 6) state.initialCount = input.initialCount;
+  if (input.textSize === 'normal' || input.textSize === 'large') state.textSize = input.textSize;
+  if (typeof input.autoReduce === 'boolean') state.autoReduce = input.autoReduce;
   for (const key of ['query', 'category', 'compatibility', 'author', 'selectedId'] as const) {
     if (typeof input[key] === 'string') state[key] = input[key].slice(0, key === 'query' ? 500 : 128);
   }
@@ -145,7 +154,9 @@ function hasWidgetPreferences(value: unknown): boolean {
   return Object.hasOwn(fields, 'kind') && (fields.kind === 'all' || fields.kind === 'prompt' || fields.kind === 'skill')
     || ['query', 'category', 'compatibility', 'author', 'selectedId'].some(key => Object.hasOwn(fields, key)
       && (typeof fields[key] === 'string' || key === 'selectedId' && fields[key] === null))
-    || ['collapsed', 'catalogExpanded'].some(key => typeof fields[key] === 'boolean');
+    || ['collapsed', 'catalogExpanded', 'autoReduce'].some(key => typeof fields[key] === 'boolean')
+    || fields.view === 'cards' || fields.view === 'list' || fields.textSize === 'normal' || fields.textSize === 'large'
+    || fields.initialCount === 2 || fields.initialCount === 4 || fields.initialCount === 6;
 }
 
 interface WidgetRestoration {
@@ -169,7 +180,8 @@ export function captureWidgetRestoration(): WidgetRestoration {
     const sessionState = parseWidgetState(sessionSnapshot);
     // The fallback is origin-scoped, so variable inputs must never cross widget/conversation instances.
     const significantPreferences = sessionState && (sessionState.kind !== 'all' || sessionState.query || sessionState.category
-      || sessionState.compatibility || sessionState.author || sessionState.selectedId || sessionState.collapsed || sessionState.catalogExpanded);
+      || sessionState.compatibility || sessionState.author || sessionState.selectedId || sessionState.collapsed || sessionState.catalogExpanded
+      || sessionState.view !== 'cards' || sessionState.initialCount !== 2 || sessionState.textSize !== 'normal' || !sessionState.autoReduce);
     if (significantPreferences && hasWidgetPreferences(sessionSnapshot)) {
       return { state: { ...sessionState, values: {} }, source: 'session', restorePresentation: true };
     }
@@ -302,7 +314,7 @@ export function createLibraryBridge() {
     return connection;
   }
 
-  async function call<T>(name: string, args: Record<string, unknown>): Promise<T> {
+  async function callTool(name: string, args: Record<string, unknown>) {
     if (!connected) throw new Error('Biblioteca todavía se está conectando. Vuelve a intentarlo.');
     const result = standardConnected
       ? await app.callServerTool({ name, arguments: args }, { timeout: 20_000 })
@@ -316,8 +328,35 @@ export function createLibraryBridge() {
       }
       throw new Error(typeof issue?.message === 'string' ? issue.message : typeof serverMessage === 'string' ? serverMessage : 'No pudimos obtener el recurso. Actualiza la ficha.');
     }
+    return result;
+  }
+
+  async function call<T>(name: string, args: Record<string, unknown>): Promise<T> {
+    const result = await callTool(name, args);
     if (!result.structuredContent) throw new Error('El catálogo no devolvió datos. Vuelve a intentarlo.');
     return result.structuredContent as T;
+  }
+
+  async function callPrivate<T>(name: string, args: Record<string, unknown>): Promise<T> {
+    const result = await callTool(name, args);
+    const payload = objectFields(result._meta)?.bibliotecaPrivate;
+    if (!objectFields(payload)) throw new Error('La vista no recibió tus datos privados. Abre Mi Biblioteca de nuevo.');
+    return payload as T;
+  }
+
+  async function sendPersonalPrompt(text: string) {
+    const prompt = text.trim();
+    if (!prompt || !connected) throw new Error('Abre el prompt antes de usarlo en la conversación.');
+    if (!standardConnected) {
+      if (!hostWindow()?.sendFollowUpMessage) throw new Error('Esta vista no permite enviar mensajes al chat.');
+      await hostWindow()!.sendFollowUpMessage!({ prompt });
+      return;
+    }
+    const content = [{ type: 'text' as const, text: prompt }];
+    const response = extensions.message
+      ? await extensions.message.send({ role: 'user', content, _meta: { 'openai/message': { target: 'active', send: true } } })
+      : await app.sendMessage({ role: 'user', content });
+    if (response.isError) throw new Error('ChatGPT no recibió el prompt. Vuelve a intentarlo.');
   }
 
   async function selectResource(resource: PublicCatalogResource | null) {
@@ -419,7 +458,7 @@ export function createLibraryBridge() {
   }
 
   return {
-    app, connect, call, selectResource, useResource, downloadSkill, openLink, close, displayMode, availableDisplayModes, requestDisplayMode, layoutContext, isConnected: () => connected,
+    app, connect, call, callPrivate, sendPersonalPrompt, selectResource, useResource, downloadSkill, openLink, close, displayMode, availableDisplayModes, requestDisplayMode, layoutContext, isConnected: () => connected,
     subscribe(listener: (event: WidgetEvent) => void) { listeners.add(listener); if (latest) listener(latest); return () => { listeners.delete(listener); }; },
   };
 }

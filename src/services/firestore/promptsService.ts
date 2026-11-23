@@ -14,6 +14,8 @@ import {
 } from "firebase/firestore";
 import type { Prompt } from "../../types";
 import { mapPromptDoc, sortOwnPrompts } from "../../utils/firestoreMappers";
+import { managedLibraryEnabled, writeLibraryPrompt } from "../libraryClient";
+import { auth } from "../../firebase";
 
 export type PromptSeed = Omit<Prompt, "id" | "userId" | "createdAt" | "updatedAt">;
 
@@ -49,6 +51,10 @@ export async function createPrompt(
   data: PromptSeed,
   identity: PromptAuthorIdentity
 ): Promise<string> {
+  if (managedLibraryEnabled) {
+    const result = await writeLibraryPrompt(uid, { action: "create", prompt: data });
+    return result.promptIds[0];
+  }
   const ref = doc(promptsCollection(db));
   await setDoc(ref, {
     ...data,
@@ -65,8 +71,15 @@ export async function createPrompt(
 export async function updatePrompt(
   db: Firestore,
   promptId: string,
-  changes: Partial<Prompt> & { promptText: string }
+  changes: Partial<Prompt> & { promptText: string },
+  account?: { uid: string; revision?: number },
 ): Promise<void> {
+  if (managedLibraryEnabled) {
+    await writeLibraryPrompt(account?.uid ?? auth.currentUser?.uid ?? "", {
+      action: "update", promptId, changes, expectedRevision: account?.revision ?? 0,
+    });
+    return;
+  }
   const ref = promptDoc(db, promptId);
   await updateDoc(ref, {
     ...changes,
@@ -81,7 +94,11 @@ export async function togglePromptFavorite(db: Firestore, promptId: string, next
   });
 }
 
-export async function deletePrompt(db: Firestore, promptId: string): Promise<void> {
+export async function deletePrompt(db: Firestore, promptId: string, uid?: string): Promise<void> {
+  if (managedLibraryEnabled) {
+    await writeLibraryPrompt(uid ?? auth.currentUser?.uid ?? "", { action: "delete", promptId });
+    return;
+  }
   await deleteDoc(promptDoc(db, promptId));
 }
 
@@ -90,6 +107,7 @@ export async function archivePromptVersion(
   promptId: string,
   previousPromptText: string
 ): Promise<void> {
+  if (managedLibraryEnabled) return;
   try {
     const versionsRef = versionsCollection(db, promptId);
     await addDoc(versionsRef, {
@@ -116,6 +134,9 @@ export async function seedPromptsForUser(
 ): Promise<number> {
   const toSeed = prompts.filter((p) => !existingTitles.has(p.title.trim().toLocaleLowerCase("es")));
   if (toSeed.length === 0) return 0;
+  if (managedLibraryEnabled) {
+    return (await writeLibraryPrompt(uid, { action: "seed", prompts: toSeed })).createdCount;
+  }
 
   await Promise.all(
     toSeed.map((p) => {
@@ -158,35 +179,37 @@ export async function importPromptsFromJSON(
     throw new Error("No se encontraron prompts válidos en el archivo JSON (se requiere título y texto del prompt).");
   }
 
-  await Promise.all(
-    valid.map((p) => {
-      const ref = doc(promptsCollection(db));
-      const data = {
+  const prompts = valid.map((p) => ({
         title: String(p.title).slice(0, 150),
         description: typeof p.description === "string" ? p.description.slice(0, 1000) : "",
-        promptText: String(p.promptText).slice(0, 10000),
+        promptText: managedLibraryEnabled ? String(p.promptText) : String(p.promptText).slice(0, 10000),
         category: typeof p.category === "string" ? p.category.slice(0, 50) : "General",
         tags: Array.isArray(p.tags) ? p.tags.slice(0, 10).map((t) => String(t).slice(0, 50)) : [],
         isFavorite: Boolean(p.isFavorite),
         isShared: Boolean(p.isShared),
         notas: typeof p.notas === "string" ? p.notas.slice(0, 6000) : "",
         suggestedVariables: Array.isArray(p.suggestedVariables)
-          ? p.suggestedVariables.map((v) => ({
+          ? p.suggestedVariables.filter(v => v && typeof v === "object").map((v) => ({
               name: typeof v.name === "string" ? v.name.slice(0, 100) : "",
               description: typeof v.description === "string" ? v.description.slice(0, 500) : "",
               defaultValue: typeof v.defaultValue === "string" ? v.defaultValue.slice(0, 500) : "",
             }))
           : [],
-        userId: uid,
         folderId: typeof p.folderId === "string" ? p.folderId.slice(0, 128) : null,
+  }));
+  if (managedLibraryEnabled) {
+    return (await writeLibraryPrompt(uid, { action: "import", prompts })).createdCount;
+  }
+  await Promise.all(
+    prompts.map((prompt) => setDoc(doc(promptsCollection(db)), {
+        ...prompt,
+        userId: uid,
         ...identity,
         likedBy: [],
         likesCount: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      };
-      return setDoc(ref, data);
-    })
+    }))
   );
   return valid.length;
 }

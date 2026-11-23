@@ -424,7 +424,7 @@ export function LibraryWorkspaceView({
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {currentTab === "mi-biblioteca"
-                ? `${prompts.length} prompts guardados`
+                ? `${prompts.length} ${prompts.length === 1 ? 'prompt guardado' : 'prompts guardados'}`
                 : `${filteredPrompts.length} prompts públicos`}
             </p>
           </div>
@@ -1002,16 +1002,21 @@ export function LibraryWorkspaceView({
               </div>
               <div>
                 <h3 className="font-extrabold text-white text-sm">
-                  Sin resultados
+                  {currentTab === "mi-biblioteca" && prompts.length === 0 ? "Todavía no tienes prompts guardados" : "Sin resultados"}
                 </h3>
                 <p className="text-slate-500 text-xs mt-1.5 max-w-xs mx-auto leading-relaxed">
                   {currentTab === "mi-biblioteca"
                     ? prompts.length === 0
-                      ? "Tu biblioteca está lista. Elige un pack para empezar o crea tu primer prompt."
+                      ? "Crea un prompt propio o guarda una copia desde el catálogo."
                       : "No hay prompts que coincidan con los filtros actuales."
                     : "No hay prompts en la comunidad que coincidan con los filtros."}
                 </p>
               </div>
+              {currentTab === "mi-biblioteca" && prompts.length === 0 && (
+                <button type="button" className="ui-button-primary min-h-11 rounded-xl px-5 text-sm" onClick={handleOpenAdd}>
+                  Crear mi primer prompt
+                </button>
+              )}
               {currentTab === "mi-biblioteca" && missingDefaultPromptCount > 0 && (
                 <button
                   onClick={() => setShowSeedPackModal(true)}

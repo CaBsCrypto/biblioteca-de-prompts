@@ -8,9 +8,10 @@ import "../catalog.css";
 interface PromptFillerModalProps {
   prompt: Prompt;
   onClose: () => void;
+  onCopied?: (prompt: Prompt) => void;
 }
 
-export default function PromptFillerModal({ prompt, onClose }: PromptFillerModalProps) {
+export default function PromptFillerModal({ prompt, onClose, onCopied }: PromptFillerModalProps) {
   const variables = useMemo(() => extractPromptVariables(prompt.promptText).map(name => {
     const suggestion = prompt.suggestedVariables?.find(variable => variable.name === name);
     return { name, description: suggestion?.description || "", defaultValue: suggestion?.defaultValue || "" };
@@ -111,6 +112,7 @@ export default function PromptFillerModal({ prompt, onClose }: PromptFillerModal
       if (operation !== operationRef.current) return;
       if (confirmed) {
         setCopied(variant);
+        onCopied?.(prompt);
         resetTimerRef.current = setTimeout(() => setCopied(null), 2000);
       } else {
         setManualText(text);

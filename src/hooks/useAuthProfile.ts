@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithPopup, signInWithRedirect, signOut, User } from "firebase/auth";
@@ -12,23 +12,18 @@ interface UseAuthProfileOptions {
 }
 
 function getGoogleAuthErrorMessage(error: unknown) {
-  const code = error instanceof FirebaseError
-    ? error.code
-    : typeof error === "object" && error && "code" in error
-      ? String((error as { code?: unknown }).code)
-      : "";
-
-  switch (code) {
+  switch (getGoogleAuthErrorCode(error)) {
     case "auth/unauthorized-domain":
-      return `Dominio no autorizado en Firebase Auth. Agrega ${window.location.hostname} en Authentication > Settings > Authorized domains.`;
-    case "auth/popup-blocked":
-      return "El navegador bloqueó la ventana de Google. Permite popups para este sitio e inténtalo nuevamente.";
-    case "auth/popup-closed-by-user":
-      return "Cerraste la ventana de Google antes de terminar el inicio de sesión.";
     case "auth/operation-not-allowed":
-      return "Google Auth no está habilitado en Firebase Authentication.";
+      return "El acceso con Google no está disponible en este sitio. Puedes seguir explorando el catálogo.";
+    case "auth/popup-blocked":
+      return "Tu navegador bloqueó el acceso a Google. Abre Biblioteca en otra pestaña e inténtalo de nuevo.";
+    case "auth/popup-closed-by-user":
+      return "Se cerró la ventana de Google. Puedes intentar entrar de nuevo.";
+    case "auth/network-request-failed":
+      return "Se interrumpió la conexión. Revisa tu conexión a internet e inténtalo de nuevo.";
     default:
-      return "No se pudo iniciar sesión con Google. Revisa la consola o la configuración de Firebase Auth.";
+      return "No pudimos iniciar sesión con Google. Inténtalo de nuevo.";
   }
 }
 
@@ -52,6 +47,9 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
   const [user, setUser] = useState<User | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState("");
+  const signInInProgress = useRef(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileNameInput, setProfileNameInput] = useState("");
   const [profileHandleInput, setProfileHandleInput] = useState("");
@@ -108,12 +106,14 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          onNotification("Sesion iniciada con exito.", "success");
+          onNotification("Sesión iniciada con éxito.", "success");
         }
       })
       .catch((error) => {
         console.error("Error completing Google redirect sign-in:", error);
-        onNotification(getGoogleAuthErrorMessage(error), "info");
+        const message = getGoogleAuthErrorMessage(error);
+        setSignInError(message);
+        onNotification(message, "info");
       });
   }, []);
 
@@ -122,6 +122,7 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
       setCurrentUserProfile(profile => profile?.uid === currentUser?.uid ? profile : null);
       setUser(currentUser);
       if (currentUser) {
+        setSignInError("");
         ensureUserProfile(currentUser).catch((error) => {
           console.error("Error ensuring user profile:", error);
         });
@@ -132,6 +133,10 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
   }, []);
 
   const handleSignIn = async () => {
+    if (signInInProgress.current) return;
+    signInInProgress.current = true;
+    setSigningIn(true);
+    setSignInError("");
     try {
       // Redirect also works in embedded preview browsers when testing with the Auth Emulator.
       if ((import.meta.env.DEV && import.meta.env.VITE_FIREBASE_EMULATORS === 'true') || shouldUseRedirectSignIn()) {
@@ -139,16 +144,23 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
         return;
       }
 
-      await signInWithPopup(auth, googleProvider);
-      onNotification("Sesión iniciada con éxito.", "success");
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-      const code = getGoogleAuthErrorCode(error);
-      if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+      try {
+        await signInWithPopup(auth, googleProvider);
+      } catch (error) {
+        const code = getGoogleAuthErrorCode(error);
+        if (code !== "auth/popup-blocked" && code !== "auth/cancelled-popup-request") throw error;
         await signInWithRedirect(auth, googleProvider);
         return;
       }
-      onNotification(getGoogleAuthErrorMessage(error), "info");
+      onNotification("Sesión iniciada con éxito.", "success");
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      const message = getGoogleAuthErrorMessage(error);
+      setSignInError(message);
+      onNotification(message, "info");
+    } finally {
+      signInInProgress.current = false;
+      setSigningIn(false);
     }
   };
 
@@ -259,6 +271,8 @@ export function useAuthProfile({ onNotification, onAfterSignOut }: UseAuthProfil
     user,
     currentUserProfile,
     authLoading,
+    signingIn,
+    signInError,
     showProfileModal,
     setShowProfileModal,
     profileNameInput,

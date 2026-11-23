@@ -1,5 +1,32 @@
 import { describe, expect, test } from 'vitest';
 import { catalogResourcePath, parseLocation, parseSearchParams, serializeLocation } from '../src/router/useAppRouter';
+import { getChatGptListingUrl, publicSitePage } from '../src/router/publicSiteRoutes';
+
+describe('standalone public pages', () => {
+  test('matches the landing, consent and handoff paths without altering catalog navigation', () => {
+    expect(publicSitePage('/chatgpt')).toBe('chatgpt');
+    expect(publicSitePage('/chatgpt/conectar')).toBe('chatgpt-consent');
+    expect(publicSitePage('/crear/')).toBe('guest-create');
+    expect(publicSitePage('/recibir')).toBe('guest-receive');
+    for (const path of ['/', '/recibir/otro', '/crear//', '/recurso/prompt/crear', '/prompts']) {
+      expect(publicSitePage(path)).toBeNull();
+    }
+  });
+
+  test('permits direct ChatGPT listings and uses the demo for other URLs', () => {
+    const plugin = 'https://chatgpt.com/plugins/biblioteca';
+    const app = 'https://chatgpt.com/apps/biblioteca/asdk_app_69bb9bf59d108191ae696e64feb3a965';
+    expect(getChatGptListingUrl(plugin)).toBe(plugin);
+    expect(getChatGptListingUrl(app)).toBe(app);
+    for (const value of [
+      undefined, '', 'https://chatgpt.com/plugins', 'https://chatgpt.com/plugins/',
+      'https://chatgpt.com.ejemplo.com/plugins/biblioteca',
+      'https://otro.com@chatgpt.com/plugins/biblioteca',
+      'http://chatgpt.com/plugins/biblioteca', 'https://chatgpt.com:444/plugins/biblioteca',
+      plugin + '?next=https://otro.com', app + '#entrada',
+    ]) expect(getChatGptListingUrl(value)).toBeUndefined();
+  });
+});
 
 describe('catalog navigation and legacy aliases', () => {
   test('resolves canonical kind/id and refresh independently of query parameters', () => {
@@ -43,4 +70,11 @@ describe('catalog navigation and legacy aliases', () => {
     expect(parseLocation('/', '?section=mi-biblioteca')).toEqual({ section: 'mi-biblioteca' });
     expect(parseLocation('/', '?tab=skills')).toEqual({ section: 'explorar' });
   });
+});
+
+test('abre la pestaña privada de grupos desde Mi Biblioteca', () => {
+  const url = '?section=mi-biblioteca&tab=grupos';
+  const state = parseLocation('/', url);
+  expect(state).toEqual({ section: 'mi-biblioteca', libraryKind: 'groups' });
+  expect(serializeLocation(state)).toBe('/' + url);
 });

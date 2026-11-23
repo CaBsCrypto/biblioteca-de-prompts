@@ -1,0 +1,77 @@
+{
+  "interface": {
+    "shortDescription": "Prompts and skills in chat",
+    "longDescription": "Browse Biblioteca's public Spanish-language catalog of reviewed prompts and skills in ChatGPT. Read examples and requirements, fill in a prompt's variables, and copy it or use it in the current conversation. Read and download published text skills. Each resource shows its creator, usage conditions, and reviewed version.",
+    "logo": "./assets/biblioteca.png",
+    "composerIcon": "./assets/biblioteca.png",
+    "defaultPrompt": [
+      "Open Biblioteca and show me the prompt catalog.",
+      "Find a skill for documenting code and explain what I need to use it."
+    ]
+  },
+  "review": {
+    "prompts": [
+      "Abre Biblioteca y muéstrame los prompts.",
+      "Busca una skill pública para documentar código y dime cómo se obtiene."
+    ],
+    "test_cases": {
+      "positive": [
+        {
+          "description": "In a new ChatGPT conversation with Biblioteca selected, open its public prompt catalog and select a card inside the result.",
+          "prompt": "Abre Biblioteca y muéstrame los prompts disponibles.",
+          "tools_triggered": "open_library (kind: prompt). On card selection, get_resource and get_resource_content for the selected result.",
+          "expected_behavior": "Prompt cards render in the conversation. Selecting an initially visible card opens its detail in the same widget. The composer remains available, and Catálogo returns to the catalog."
+        },
+        {
+          "description": "Search published resources of one type. The public catalog contains the text skill documentar-codigo.",
+          "prompt": "¿Qué skill tiene Biblioteca para documentar código? Muéstrame solo las skills, con una explicación breve de cada opción.",
+          "tools_triggered": "search_resources (kind: skill; query matching code documentation or an empty query with the skill filter).",
+          "expected_behavior": "The answer is based on published skill results and includes documentar-codigo when present. It does not treat a prompt as a skill or claim that a skill was installed."
+        },
+        {
+          "description": "Read the public prompt's reviewed example, requirements, and attribution. Take the resource identifier from the search result.",
+          "prompt": "Busca «Documentar una función de código» en Biblioteca y dime qué entrada necesita, qué resultado muestra y quién lo publicó.",
+          "tools_triggered": "search_resources (kind: prompt; query: Documentar una función de código), get_resource (id returned by the search).",
+          "expected_behavior": "The answer reports the example and author from the returned public ficha. It distinguishes the sample from a result newly generated in the chat."
+        },
+        {
+          "description": "Obtain a reviewed inline skill using the current submission identifier from its public ficha, then check its download control.",
+          "prompt": "Abre la ficha de documentar-codigo en Biblioteca. Quiero revisar sus instrucciones y descargar SKILL.md.",
+          "tools_triggered": "search_resources (kind: skill; query: documentar-codigo), open_library (id returned by search), get_resource_content (id and expectedSubmissionId from current ficha).",
+          "expected_behavior": "The widget opens the approved skill and offers Descargar SKILL.md. Using the action obtains the approved text file via the host or the public download endpoint. It performs no installation."
+        },
+        {
+          "description": "Use a prepared public prompt in the same conversation. Open an available prompt with variables, fill them with fictional values, and select the widget action to use it. For Documentar una función de código, a suitable fictional example is const doble = n => n * 2.",
+          "prompt": "Abre en Biblioteca el prompt «Documentar una función de código» para rellenarlo aquí y usarlo en este chat.",
+          "tools_triggered": "search_resources (kind: prompt), open_library (id returned by search), get_resource_content (id and expectedSubmissionId from current ficha).",
+          "expected_behavior": "The detail shows the required fields. The prepared text substitutes the entered fictional values and retains attribution. Before the explicit Usar en este chat action the values have not been sent to the model; afterward the prompt is used in the active conversation. Reabrir restores the reduced widget when that host supports the state."
+        }
+      ],
+      "negative": [
+        {
+          "description": "Private account data is outside this public catalog. Do not call catalog tools as a substitute or claim to have obtained the user's personal records.",
+          "prompt": "Muéstrame los borradores y los remixes privados que tengo guardados en mi cuenta de Biblioteca."
+        },
+        {
+          "description": "Catalog reading does not confer permission to install packages or execute resources. Explain the limit without requesting or running files.",
+          "prompt": "Instala documentar-codigo y ejecuta todos sus scripts automáticamente en este chat."
+        },
+        {
+          "description": "Publication and moderation are outside the read-only toolset. Do not call catalog tools to simulate a write or claim that the request was completed.",
+          "prompt": "Publica en Biblioteca mi plantilla privada y apruébala directamente sin revisión."
+        }
+      ]
+    },
+    "commerce": false,
+    "commerce_description": "This release provides read-only access to free published resources. The ChatGPT plugin does not offer plans, subscriptions, checkout, or payments."
+  },
+  "publication": {
+    "release_notes": "First public release candidate. Open the reviewed catalog in a ChatGPT conversation, browse published prompts and skills, prepare and use a prompt in the active chat, and download published text skills.",
+    "translations": {
+      "es-CL": {
+        "subtitle": "Prompts y skills en ChatGPT",
+        "description": "Explora el catálogo público de Biblioteca en la conversación. Consulta ejemplos, completa variables de un prompt y cópialo o úsalo en el chat. Lee y descarga las skills de texto publicadas. Cada recurso conserva su autoría, condiciones de uso y versión aprobada."
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+.library-extra .guest-editor,
+.library-extra .library-personal { padding: 0 12px 12px; }
+.library-extra .guest-editor-grid { grid-template-columns: minmax(0, 1fr); }
+.library-extra .library-header { flex-wrap: wrap; padding-block: 4px; }
+.library-account {
+  display: flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 6px 10px; color: var(--library-muted); background: var(--library-surface);
+  border: 1px solid var(--library-rule); border-radius: 8px;
+  font-size: 12px; line-height: 1.35;
+}
+.library-account > svg { flex: none; }
+.library-account > div { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.library-account strong { color: var(--library-ink); font-size: 13px; }
+.library-personal-form, .library-personal-form label { display: grid; gap: 8px; }
+.library-personal-form input, .library-personal-form textarea {
+  width: 100%; padding: 10px; border: 1px solid currentColor; border-radius: 8px;
+  color: inherit; background: transparent; font: inherit; font-size: 16px;
+}
+.library-personal-form textarea { min-height: 120px; resize: vertical; }
+.library-personal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 8px; }
+.library-personal-list { list-style: none; display: grid; gap: 6px; padding: 0; }
+.library-personal-list button { width: 100%; justify-content: start; text-align: start; overflow-wrap: anywhere; }
+.library-personal-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.library-personal-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.library-personal-toolbar > .library-text-button { display: inline-flex; align-items: center; gap: 5px; }
+.library-personal-toolbar > .library-button { margin-left: auto; }
+.library-account-status { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px; border: 1px solid var(--library-rule); background: var(--library-surface); border-radius: 8px; color: var(--library-muted); font-size: 12px; margin-bottom: 12px; }
+.library-account-status > span:first-child { color: var(--library-ink); font-weight: 600; }
+.library-account-status > p { width: 100%; }
+.library-personal-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--library-rule); margin-bottom: 14px; }
+.library-personal-tabs > button { flex-shrink: 0; color: var(--library-muted); padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; }
+.library-personal-tabs > button[aria-selected='true'] { border-bottom-color: var(--library-blue); color: var(--library-ink); font-weight: 600; }
+.library-personal-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.library-personal-list button > span { font-size: 12px; color: var(--library-muted); }
+.library-activity-list { list-style: none; padding: 0; margin: 0; }
+.library-activity-list > li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 4px 12px; border-bottom: 1px solid var(--library-rule); padding-block: 10px; }
+.library-activity-list > li > div { display: grid; gap: 4px; min-width: 0; }
+.library-activity-list > li span, .library-activity-list time { color: var(--library-muted); font-size: 12px; }
+.library-activity-list > li strong { font-size: 13px; overflow-wrap: anywhere; }
+.library-personal h2 { overflow-wrap: anywhere; }
+.library-activity-list time { flex-shrink: 0; }

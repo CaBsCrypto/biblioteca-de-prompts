@@ -16,6 +16,9 @@ interface Props {
   error: string;
   catalog: CatalogController;
   user: User | null;
+  authLoading?: boolean;
+  signingIn?: boolean;
+  signInError?: string;
   onClose: () => void;
   onSignIn: () => void;
   onUsePrompt: (prompt: Prompt) => void;
@@ -25,9 +28,11 @@ interface Props {
 }
 
 type DetailAction = 'original' | 'prepared' | 'link' | 'save' | 'download' | 'repository';
+const SAVE_AFTER_SIGN_IN = 'biblioteca:catalog-save-after-sign-in';
 
-export default function CatalogDetail({ resource, loading, error, catalog, user, onClose, onSignIn, onSavePrompt, onNotify, onReloadResource }: Props) {
+export default function CatalogDetail({ resource, loading, error, catalog, user, authLoading, signingIn, signInError, onClose, onSignIn, onSavePrompt, onNotify, onReloadResource }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const selectionKey = resource ? `${resource.id}:${resource.kind}:${resource.submissionId}` : '';
@@ -52,6 +57,8 @@ export default function CatalogDetail({ resource, loading, error, catalog, user,
   const [missingVariables, setMissingVariables] = useState<string[]>([]);
   const [fallback, setFallback] = useState<{ text: string; label: string } | null>(null);
   const [verifiedRepositoryUrl, setVerifiedRepositoryUrl] = useState('');
+  const [resumedSave, setResumedSave] = useState('');
+  const saveContext = user && selectionKey ? `${user.uid}:${selectionKey}` : '';
 
   useEffect(() => {
     mountedRef.current = true;
@@ -102,6 +109,19 @@ export default function CatalogDetail({ resource, loading, error, catalog, user,
 
   useEffect(() => { if (fallback) selectCopyText(fallbackRef.current); }, [fallback]);
   useEffect(() => {
+    if (!saveContext) return;
+    try {
+      if (sessionStorage.getItem(SAVE_AFTER_SIGN_IN) !== selectionKey) return;
+      sessionStorage.removeItem(SAVE_AFTER_SIGN_IN);
+      setResumedSave(saveContext);
+    } catch { /* The resource URL still opens the same ficha if storage is unavailable. */ }
+  }, [saveContext, selectionKey]);
+  useEffect(() => {
+    if (resumedSave && resumedSave === saveContext && !contentLoading && payload) {
+      saveButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [resumedSave, saveContext, contentLoading, Boolean(payload)]);
+  useEffect(() => {
     if (!busyAction && preparing && pendingVariableFocus.current) {
       variableInputs.current.get(pendingVariableFocus.current)?.focus();
       pendingVariableFocus.current = '';
@@ -110,7 +130,11 @@ export default function CatalogDetail({ resource, loading, error, catalog, user,
 
   async function runAction(action: DetailAction) {
     if (!resource || busyRef.current) return;
-    if (action === 'save' && !user) { onSignIn(); return; }
+    if (action === 'save' && !user) {
+      try { sessionStorage.setItem(SAVE_AFTER_SIGN_IN, selectionKey); } catch { /* Storage is optional. */ }
+      onSignIn();
+      return;
+    }
     const selected = resource;
     const snapshot = { ...values };
     const key = selectionKey;
@@ -125,6 +149,7 @@ export default function CatalogDetail({ resource, loading, error, catalog, user,
       setPayload(current.payload);
       if (action === 'save') {
         if (accountRef.current !== account) return;
+        setResumedSave('');
         if (selected.kind === 'skill') {
           await catalog.saveSkill(current.resource, current.payload);
           if (active() && accountRef.current === account) {
@@ -238,9 +263,14 @@ export default function CatalogDetail({ resource, loading, error, catalog, user,
                 <button className="catalog-button" disabled={disabled} onClick={() => void runAction('download')}><Download size={17} aria-hidden="true" />{busyAction === 'download' ? 'Preparando…' : 'Descargar SKILL.md'}</button>
                 {repoUrl && <button className="catalog-button" disabled={disabled} onClick={() => void runAction('repository')}><ExternalLink size={16} aria-hidden="true" />{busyAction === 'repository' ? 'Verificando carpeta…' : 'Abrir carpeta revisada'}</button>}
               </>}
-              <button className="catalog-button" disabled={disabled} onClick={() => void runAction('save')}><Library size={16} aria-hidden="true" />{busyAction === 'save' ? 'Guardando…' : resource.kind === 'prompt' ? 'Guardar remix privado' : 'Guardar skill'}</button>
+              <button ref={saveButtonRef} className="catalog-button" disabled={disabled || authLoading || signingIn} onClick={() => void runAction('save')}>
+                <Library size={16} aria-hidden="true" />
+                {signingIn ? 'Abriendo Google…' : authLoading ? 'Comprobando tu sesión…' : !user ? 'Entrar para guardar' : busyAction === 'save' ? 'Guardando…' : resource.kind === 'prompt' ? 'Guardar remix privado' : 'Guardar skill'}
+              </button>
               <button className="catalog-button catalog-secondary-action" disabled={disabled} onClick={() => void runAction('link')}>{copiedAction === 'link' ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}{busyAction === 'link' ? 'Copiando…' : copiedAction === 'link' ? 'Enlace copiado' : 'Copiar enlace'}</button>
             </div>
+            {!user && signInError && <p className="catalog-entry-error" role="alert">{signInError}</p>}
+            {resumedSave && resumedSave === saveContext && <p className="catalog-action-status" role="status">Ya estás en tu cuenta. Confirma el guardado en Mi Biblioteca.</p>}
             {actionMessage && <p className="catalog-action-status" role="status" aria-live="polite">{actionMessage}</p>}
             {verifiedRepositoryUrl && <a className="catalog-link" href={verifiedRepositoryUrl} target="_blank" rel="noopener noreferrer">Abrir enlace verificado <ExternalLink size={15} aria-hidden="true" /></a>}
             {fallback && <div className="catalog-copy-fallback"><label htmlFor="catalog-manual-copy">{fallback.label}: copia manual</label><textarea id="catalog-manual-copy" ref={fallbackRef} rows={4} readOnly value={fallback.text} onFocus={event => selectCopyText(event.currentTarget)} /><p>Texto seleccionado. Pulsa Ctrl+C o ⌘C.</p></div>}
